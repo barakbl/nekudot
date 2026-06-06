@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Layers — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Layers</p>
+      <h1>Layers</h1>
+      <p class="lead">Stack independent canvases and blend them with opacity.</p>
+
+      <h2>The layers panel</h2>
+      <p>
+        Open it from the <strong>Windows</strong> menu or with <span class="kbd">l</span>.
+        Each layer is its own canvas. Strokes land on the <strong>active</strong>
+        layer — click a layer row to make it active. Connecting lines are baked
+        onto the <strong>connection layer</strong> instead (see below), which can
+        be a different layer. The panel lists layers top-down in the same order
+        they stack on screen — drag a row by its grip handle to reorder them
+        (see below).
+      </p>
+      <div class="note">
+        New artwork starts with two layers: <strong>layer-2</strong> active for
+        painting on top, and <strong>layer-1</strong> as the connection layer
+        beneath — so the web builds under your strokes by default.
+      </div>
+
+      <h2>The connection layer</h2>
+      <p>
+        Exactly one layer is always the connection layer, marked by the link
+        button
+        <span class="conn-glyph"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>
+        on its row. It's the layer connecting brushes bake their lines onto.
+        Click another row's link to move it there; it's independent of the
+        active layer, so you can paint on one layer while the web accumulates on
+        another. Whether a brush connects at all is its
+        <em>Connect to stroke or map?</em> setting — see
+        <a href="/book/map.html">connecting</a>.
+      </p>
+
+      <h2>Reordering layers</h2>
+      <p>
+        Drag a layer by its <strong>grip handle</strong>
+        <span class="conn-glyph"><svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden="true"><circle cx="6" cy="4" r="1.2"/><circle cx="10" cy="4" r="1.2"/><circle cx="6" cy="8" r="1.2"/><circle cx="10" cy="8" r="1.2"/><circle cx="6" cy="12" r="1.2"/><circle cx="10" cy="12" r="1.2"/></svg></span>
+        (the dotted handle on the left of each row) and drop it where you want in
+        the stack. The panel is top-down, so dragging a row <em>up</em> brings
+        that layer forward and <em>down</em> sends it back. Only the grip starts a
+        drag, so the opacity slider, buttons and rename keep working.
+      </p>
+      <p>
+        When you drop, the stack renumbers cleanly and the
+        <strong>selected layer</strong> and the
+        <strong>connection-layer marker</strong> stay with their layers (so the
+        same layer is still active, just at its new height). A reorder is a single
+        undo step.
+      </p>
+
+      <h2>Per-layer controls</h2>
+      <dl class="settings">
+        <dt>Reorder (grip handle)</dt>
+        <dd>Drag the dotted handle on the left to move the layer up or down the stack.</dd>
+        <dt>Name</dt>
+        <dd>Double-click to rename.</dd>
+        <dt>Opacity</dt>
+        <dd>Blend the whole layer over the ones beneath it (0–100%).</dd>
+        <dt>Connection layer (link button)</dt>
+        <dd>Make this the connection layer — the target for baked connecting lines. Always exactly one; click to move it here.</dd>
+        <dt>Duplicate</dt>
+        <dd>Copy the layer and its pixels into a new layer above. Duplicating the connection layer hands the marker to the copy.</dd>
+        <dt>Delete</dt>
+        <dd>Remove the layer (at least one must remain). Deleting the connection layer passes the connection to the layer beneath it.</dd>
+        <dt>Background</dt>
+        <dd>The bottom row sets the canvas background color.</dd>
+      </dl>
+
+      <div class="note">
+        Layers are about <em>pixels</em>. The point clouds that drive connecting
+        lines are separate, shared <a href="/book/map.html">memory maps</a> — so
+        you can paint on different layers while feeding (or reading from) the
+        same cloud.
+      </div>
+
+      <h2>Tips</h2>
+      <ul>
+        <li>Keep the connecting web on its own layer (the default connection layer) so you can fade or delete it without touching the strokes.</li>
+        <li>Duplicate a layer before a risky pass — it's a cheap snapshot.</li>
+        <li>Reorder by the grip, not the row — dragging elsewhere selects or edits the layer instead.</li>
+        <li>Drag any panel by its title bar to get it out of the way.</li>
+      </ul>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

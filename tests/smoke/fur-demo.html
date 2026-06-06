@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fur demo</title>
+    <style>
+      body { margin: 0; background: #2b2b2b; font: 13px system-ui, sans-serif; color: #ddd; }
+      #grid { display: grid; grid-template-columns: repeat(2, max-content); gap: 18px; padding: 18px; }
+      figure { margin: 0; text-align: center; }
+      figure canvas { display: block; border: 1px solid #555; background: #fff; }
+      figcaption { margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module">
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { SoftPencilBrush } from "/src/brushes/soft-pencil.ts";
+
+      const SZ = 520;
+      const SEED = 1234;
+
+      function mulberry32(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // ---- geometry helpers: each returns an array of [x,y] points -----------
+      const J = (rnd, v, j) => v + (rnd() - 0.5) * j;
+
+      function ellipseOutline(cx, cy, rx, ry, spacing, rnd) {
+        const n = Math.max(12, Math.round((Math.PI * (rx + ry)) / spacing)), s = [];
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * Math.PI * 2;
+          s.push([J(rnd, cx + rx * Math.cos(a), 3), J(rnd, cy + ry * Math.sin(a), 3)]);
+        }
+        return s;
+      }
+      function ellipseFill(cx, cy, rx, ry, step, rnd) {
+        const rows = [];
+        let dir = 1;
+        for (let y = -ry; y <= ry; y += step) {
+          const hx = rx * Math.sqrt(Math.max(0, 1 - (y / ry) ** 2)), row = [];
+          const xa = dir > 0 ? -hx : hx, xb = dir > 0 ? hx : -hx;
+          for (let x = xa; dir > 0 ? x <= xb : x >= xb; x += dir * step)
+            row.push([J(rnd, cx + x, 4), J(rnd, cy + y, 4)]);
+          if (row.length) rows.push(row);
+          dir *= -1;
+        }
+        return rows;
+      }
+      function polyOutline(pts, spacing, rnd) {
+        const s = [];
+        for (let i = 0; i < pts.length; i++) {
+          const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length];
+          const len = Math.hypot(x1 - x0, y1 - y0), n = Math.max(2, Math.round(len / spacing));
+          for (let k = 0; k < n; k++) {
+            const t = k / n;
+            s.push([J(rnd, x0 + (x1 - x0) * t, 2), J(rnd, y0 + (y1 - y0) * t, 2)]);
+          }
+        }
+        return s;
+      }
+      function triFill(p0, p1, p2, step, rnd) {
+        const minx = Math.min(p0[0], p1[0], p2[0]), maxx = Math.max(p0[0], p1[0], p2[0]);
+        const miny = Math.min(p0[1], p1[1], p2[1]), maxy = Math.max(p0[1], p1[1], p2[1]);
+        const sign = (a, b, c) => (a[0] - c[0]) * (b[1] - c[1]) - (b[0] - c[0]) * (a[1] - c[1]);
+        const inside = (p) => {
+          const d1 = sign(p, p0, p1), d2 = sign(p, p1, p2), d3 = sign(p, p2, p0);
+          const neg = d1 < 0 || d2 < 0 || d3 < 0, pos = d1 > 0 || d2 > 0 || d3 > 0;
+          return !(neg && pos);
+        };
+        const rows = [];
+        let dir = 1;
+        for (let y = miny; y <= maxy; y += step) {
+          const row = [];
+          const xa = dir > 0 ? minx : maxx, xb = dir > 0 ? maxx : minx;
+          for (let x = xa; dir > 0 ? x <= xb : x >= xb; x += dir * step)
+            if (inside([x, y])) row.push([J(rnd, x, 3), J(rnd, y, 3)]);
+          if (row.length) rows.push(row);
+          dir *= -1;
+        }
+        return rows;
+      }
+      // A curving tapered limb (tail), filled across its width.
+      function curveBand(p0, c, p1, width, rnd) {
+        const rows = [[], [], []]; // -w, 0, +w offsets
+        const n = 46;
+        for (let i = 0; i <= n; i++) {
+          const t = i / n, mt = 1 - t;
+          const x = mt * mt * p0[0] + 2 * mt * t * c[0] + t * t * p1[0];
+          const y = mt * mt * p0[1] + 2 * mt * t * c[1] + t * t * p1[1];
+          const dx = 2 * mt * (c[0] - p0[0]) + 2 * t * (p1[0] - c[0]);
+          const dy = 2 * mt * (c[1] - p0[1]) + 2 * t * (p1[1] - c[1]);
+          const L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+          const w = width * (1 - 0.45 * t); // taper
+          rows[0].push([J(rnd, x - nx * w, 2), J(rnd, y - ny * w, 2)]);
+          rows[1].push([J(rnd, x, 2), J(rnd, y, 2)]);
+          rows[2].push([J(rnd, x + nx * w, 2), J(rnd, y + ny * w, 2)]);
+        }
+        return rows;
+      }
+
+      // ---- a simple sitting cat — fill only, so fur frays the edges ----------
+      function catStrokes(rnd) {
+        const cx = 260, out = [];
+        const F = 12; // fill spacing → short, dense hairs
+        out.push(...ellipseFill(cx, 340, 120, 140, F, rnd)); // body
+        out.push(...ellipseFill(cx, 175, 85, 80, F, rnd)); // head
+        out.push(...triFill([205, 108], [248, 96], [198, 40], 10, rnd)); // L ear
+        out.push(...triFill([315, 108], [272, 96], [322, 40], 10, rnd)); // R ear
+        out.push(...curveBand([360, 430], [500, 380], [470, 215], 14, rnd)); // tail
+        // eyes: small light rings so they read without dark blobs
+        for (const ex of [233, 287]) out.push(ellipseOutline(ex, 170, 12, 14, 9, rnd));
+        return out;
+      }
+
+      function render(label, strokesFn) {
+        const canvas = document.createElement("canvas");
+        canvas.width = SZ;
+        canvas.height = SZ;
+        const ctx = canvas.getContext("2d");
+        const renderer = new CanvasRenderer(ctx, { dpr: 1 });
+        renderer.fillBackground("#ffffff");
+        renderer.setStrokeStyle("#1a1a1a");
+
+        const finder = createNeighborFinder("quadtree", []);
+        const brush = new SoftPencilBrush(renderer, finder, SEED);
+        brush.applyArtStylePreset("fur");
+
+        for (const stroke of strokesFn(mulberry32(99))) {
+          if (!stroke.length) continue;
+          brush.strokeStart(stroke[0][0], stroke[0][1]);
+          for (const [x, y] of stroke) brush.stroke(x, y);
+          brush.strokeEnd();
+        }
+
+        const fig = document.createElement("figure");
+        fig.appendChild(canvas);
+        const cap = document.createElement("figcaption");
+        cap.textContent = label;
+        fig.appendChild(cap);
+        document.getElementById("grid").appendChild(fig);
+      }
+
+      render("cat — fur preset", catStrokes);
+      window.__renderDone = true;
+    </script>
+  </body>
+</html>

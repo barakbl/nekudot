@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>harmony render — same gesture</title>
+  <style>body{margin:0;background:#fff} .row{display:flex;gap:0} canvas{background:#fff;border-bottom:1px solid #eee} .lab{font:12px system-ui;padding:4px 8px;color:#333}</style>
+  </head>
+  <body>
+    <div id="wrap"></div>
+    <script type="module">
+      // Render the faithful Harmony brushes for the SAME gentle-sine gesture +
+      // pass count the real-app test uses, so the two screenshots are directly
+      // comparable. PASSES and the path match realapp-compare.mjs.
+      const W = 1096, H = 320, PASSES = 3;
+      function path() {
+        const pts=[]; const x0=150,x1=950,yc=160,amp=80; let prev=null,acc=0;
+        for(let x=x0;x<=x1;x+=1){ const y=yc+amp*Math.sin((x-x0)/90); if(!prev){pts.push([x,y]);prev=[x,y];continue;} acc+=Math.hypot(x-prev[0],y-prev[1]); prev=[x,y]; if(acc>=6){pts.push([x,y]);acc=0;} }
+        return pts;
+      }
+      const pts = path();
+      function mulberry(seed){let s=seed>>>0;return()=>{s=(s+0x6d2b79f5)>>>0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+      function render(kind){
+        const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const ctx=cv.getContext('2d');
+        ctx.fillStyle='#fff'; ctx.fillRect(0,0,W,H); ctx.lineWidth=1; ctx.lineCap='butt';
+        const rng=mulberry(1234); const points=[]; let count=0,px=0,py=0; const col='0,0,0';
+        const run=()=>{ px=pts[0][0]; py=pts[0][1]; for(const [x,y] of pts){ points.push([x,y]); const cx=points[count][0],cy=points[count][1];
+          if(kind==='sketchy'){ ctx.strokeStyle='rgba('+col+',0.05)'; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke();
+            for(let i=0;i<points.length;i++){const dx=points[i][0]-cx,dy=points[i][1]-cy,d=dx*dx+dy*dy; if(d<4000&&rng()>d/2000){ctx.beginPath();ctx.moveTo(cx+dx*0.3,cy+dy*0.3);ctx.lineTo(points[i][0]-dx*0.3,points[i][1]-dy*0.3);ctx.stroke();}} }
+          else if(kind==='web'){ ctx.strokeStyle='rgba('+col+',0.5)'; ctx.beginPath(); ctx.moveTo(px,py); ctx.lineTo(x,y); ctx.stroke(); ctx.strokeStyle='rgba('+col+',0.1)';
+            for(let i=0;i<points.length;i++){const dx=points[i][0]-cx,dy=points[i][1]-cy,d=dx*dx+dy*dy; if(d<2500&&rng()>0.9){ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(points[i][0],points[i][1]);ctx.stroke();}} }
+          else if(kind==='shaded'){ for(let i=0;i<points.length;i++){const dx=points[i][0]-cx,dy=points[i][1]-cy,d=dx*dx+dy*dy; if(d<1000){ctx.strokeStyle='rgba('+col+','+((1-d/1000)*0.1)+')'; ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(points[i][0],points[i][1]);ctx.stroke();}} }
+          px=x; py=y; count++; } };
+        for(let p=0;p<PASSES;p++) run();
+        return cv;
+      }
+      const wrap=document.getElementById('wrap');
+      for(const [kind,label] of [['sketchy','Harmony sketchy (≈Airy)'],['web','Harmony web (≈String Art)'],['shaded','Harmony shaded (≈Shading)']]){
+        const lab=document.createElement('div'); lab.className='lab'; lab.textContent=label+' — same gesture, '+PASSES+' passes'; wrap.appendChild(lab);
+        wrap.appendChild(render(kind));
+      }
+      window.__done=true;
+    </script>
+  </body>
+</html>

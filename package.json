@@ -1,0 +1,27 @@
+{
+  "name": "nekudot",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "smoke": "node tests/smoke/smoke.mjs",
+    "render-presets": "node tests/smoke/render-presets.mjs",
+    "smoke-render": "node tests/smoke/all-render.mjs",
+    "smoke-render:update": "node tests/smoke/all-render.mjs --update"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^4.1.6"
+  },
+  "dependencies": {
+    "@types/d3-quadtree": "^3.0.6",
+    "d3-quadtree": "^3.0.1",
+    "fflate": "^0.8.3",
+    "zod": "^4.4.3"
+  }
+}

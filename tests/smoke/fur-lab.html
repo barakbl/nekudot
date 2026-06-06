@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fur lab</title>
+    <style>
+      body { margin: 0; background: #2b2b2b; font: 12px system-ui, sans-serif; color: #ddd; }
+      #grid { display: grid; grid-template-columns: repeat(var(--cols, 4), max-content); gap: 14px; padding: 16px; }
+      figure { margin: 0; text-align: center; }
+      figure canvas { display: block; border: 1px solid #555; background: #fff; }
+      figcaption { margin-top: 4px; max-width: 320px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module">
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { SoftPencilBrush } from "/src/brushes/soft-pencil.ts";
+
+      const W = 320, H = 270, SEED = 4242;
+
+      function mulberry32(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const J = (rnd, v, j) => v + (rnd() - 0.5) * j;
+
+      // Boustrophedon fill of an ellipse → dense rows of dots (each row a stroke),
+      // like a patch of an animal's flank. Fur grows from this dot cloud.
+      function ellipseFill(cx, cy, rx, ry, step, rnd) {
+        const rows = [];
+        let dir = 1;
+        for (let y = -ry; y <= ry; y += step) {
+          const hx = rx * Math.sqrt(Math.max(0, 1 - (y / ry) ** 2)), row = [];
+          const xa = dir > 0 ? -hx : hx, xb = dir > 0 ? hx : -hx;
+          for (let x = xa; dir > 0 ? x <= xb : x >= xb; x += dir * step)
+            row.push([J(rnd, cx + x, 4), J(rnd, cy + y, 4)]);
+          if (row.length) rows.push(row);
+          dir *= -1;
+        }
+        return rows;
+      }
+
+      // The test scene: a compact fur tuft (a moderately sparse fill ringed by
+      // whitespace) so individual hairs, their lay, tip quality, length, wave
+      // and the frayed silhouette all read clearly instead of saturating.
+      function moundStrokes(rnd) {
+        return ellipseFill(W / 2, H * 0.42, 82, 54, 11, rnd);
+      }
+
+      // Start from the real "fur" preset then apply this variant's overrides by
+      // matching keys against the live settings (same path the UI uses).
+      function applyOverrides(brush, overrides) {
+        for (const s of brush.getSettings()) {
+          if (Object.prototype.hasOwnProperty.call(overrides, s.key)) {
+            s.onChange(overrides[s.key]);
+          }
+        }
+      }
+
+      function render(variant) {
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d");
+        const renderer = new CanvasRenderer(ctx, { dpr: 1 });
+        renderer.fillBackground("#ffffff");
+        renderer.setStrokeStyle(variant.stroke || "#1a1a1a");
+
+        const finder = createNeighborFinder("quadtree", []);
+        const brush = new SoftPencilBrush(renderer, finder, SEED);
+        brush.applyArtStylePreset("fur");
+        const { label, stroke, ...overrides } = variant;
+        applyOverrides(brush, overrides);
+
+        for (const s of moundStrokes(mulberry32(7))) {
+          if (!s.length) continue;
+          brush.strokeStart(s[0][0], s[0][1]);
+          for (const [x, y] of s) brush.stroke(x, y);
+          brush.strokeEnd();
+        }
+        return canvas;
+      }
+
+      const variants = window.__FUR_VARIANTS || [{ label: "fur (default)" }];
+      const grid = document.getElementById("grid");
+      grid.style.setProperty("--cols", String(Math.min(4, variants.length)));
+      for (const v of variants) {
+        const fig = document.createElement("figure");
+        try {
+          fig.appendChild(render(v));
+        } catch (e) {
+          const c = document.createElement("figcaption");
+          c.textContent = (v.label || "?") + " — ERROR: " + e.message;
+          fig.appendChild(c);
+          grid.appendChild(fig);
+          continue;
+        }
+        const cap = document.createElement("figcaption");
+        const { label, stroke, ...ov } = v;
+        const keys = Object.keys(ov);
+        cap.textContent =
+          (label || "variant") +
+          (keys.length ? "\n" + keys.map((k) => `${k}=${ov[k]}`).join("  ") : "");
+        fig.appendChild(cap);
+        grid.appendChild(fig);
+      }
+      window.__renderDone = true;
+    </script>
+  </body>
+</html>

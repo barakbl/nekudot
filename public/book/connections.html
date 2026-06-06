@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connections — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Connections</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>Connections</h1>
+      <p class="lead">
+        A connection is the web a brush weaves between nearby points — the styles
+        that used to be called “presets.” Pick one and any connecting brush wears
+        it.
+      </p>
+
+      <h2>What they are</h2>
+      <p>
+        Some brushes (<a href="/book/brushes/classic-round.html">Round</a>,
+        <a href="/book/brushes/handfree.html">Handfree</a>,
+        <a href="/book/brushes/soft-pencil.html">Soft Pencil</a>) don't just lay a
+        stroke — they look up neighbouring points in the
+        <a href="/book/map.html">memory map</a> and draw lines between them. A
+        <strong>connection</strong> is a named bundle of settings for those lines:
+        their density, reach, opacity, line shape, grain and texture. The mark is
+        made of many faint lines, so the look <strong>builds up as you cover an
+        area</strong>.
+      </p>
+      <div class="note">
+        Choose a connection from the navbar <strong>Connecting</strong> combo
+        (next to the brush selector); open its gear for the dials. The dials a
+        style actually uses show by default — the rest fold under <em>More</em>.
+        See <a href="/book/map.html">Memory maps &amp; connecting</a> for every
+        dial and <a href="/book/bigger-areas.html">Covering bigger areas</a> for
+        Weight, Spread &amp; Dynamics.
+      </p>
+
+      <h2 id="classic"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 6 L12 11 M4 11.5 L13 5 M3 9 L11 9"/></svg></span>Classic</h2>
+      <p>
+        The default sketchy web (after mrdoob's Harmony “sketchy” brush): faint,
+        brush-width lines, slightly inset so they float between points rather than
+        piling up on the dots. The everyday connecting look — start here, then
+        raise <em>Weight</em> for a bolder mark made of more thin hairs.
+      </p>
+
+      <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 3 V21 M3 12 H21 M6 6 L18 18 M18 6 L6 18"/><path d="M12 6 A6 6 0 0 1 18 12 M12 6 A6 6 0 0 0 6 12"/></svg></span><a href="/book/brushes/web.html">Web →</a></h2>
+      <p>
+        A sparser, slightly stronger net of full-length lines (Harmony's “web”):
+        distinct strands stretched between points. Great for spider-webs, nets and
+        wireframe-like fills.
+      </p>
+
+      <h2 id="arc"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M2 12 A6 6 0 0 1 14 12"/><circle cx="2" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>Arc</h2>
+      <p>
+        Bulging arcs between points instead of straight lines — each connection
+        bows outward into a curve. Reads as scallops, petals and looping ribbon;
+        pairs well with a dotted dash and some inset (the basis of
+        <a href="/book/textures.html#lace">Lace</a>).
+      </p>
+
+      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 10 L8 5 M5 12.5 L11 6 M8 13 L13 8"/></svg></span><a href="/book/brushes/soft-pencil.html">Shaded →</a></h2>
+      <p>
+        Dense, short, full-length lines whose opacity fades with distance
+        (Harmony's soft-pencil): scribble back and forth to build smooth, soft
+        tone. The <a href="/book/brushes/soft-pencil.html">Soft Pencil</a> brush is
+        this style on a brush with no solid core.
+      </p>
+
+      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 13 Q4 7 5 4 M6 13 Q7 7 8 4 M9 13 Q10 7 11 4 M12 13 Q12.5 8 13 5"/></svg></span><a href="/book/textures.html#fur">Fur →</a></h2>
+      <p>
+        A combed pelt of soft, flowing guard hairs that lie along a grain, taper
+        to wispy tips and fray at the edges. See
+        <a href="/book/textures.html">Texture connections</a>.
+      </p>
+
+      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 8 A2 2 0 0 1 6 8 A2 2 0 0 1 10 8 A2 2 0 0 1 14 8"/><circle cx="2" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="6" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg></span><a href="/book/textures.html#lace">Lace →</a></h2>
+      <p>
+        A fine crossing net of floating, dotted scallops (arc connections + a
+        dotted dash + inset ends). Best for filling a shape with lace. See
+        <a href="/book/textures.html">Texture connections</a>.
+      </p>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

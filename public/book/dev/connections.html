@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writing a connection — Nekudot developer docs</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Developers › Writing a connection</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>Writing a connection</h1>
+      <p class="lead">A connection (web, fur, lace…) is one <code>ConnectionBase</code> subclass plus a one-line row in <code>connections.json</code>.</p>
+
+      <h2>What a connection is</h2>
+      <p>
+        The connecting half of the app lives in
+        <code>src/brushes/connections/</code>.
+        <code>ConnectionBase</code> owns all connecting state and the engine that
+        weaves the web — finding neighbours, drawing the lines, and fanning each
+        one into <em>Weight</em>×1px hairs. A <strong>connection style</strong>
+        is a subclass that just declares its <em>defaults</em>, the extra dials it
+        exposes, and (optionally) a custom texture hook. It then shows up
+        automatically in the navbar <strong>Connecting</strong> combo, and every
+        connecting brush (<a href="/book/brushes/classic-round.html">Round</a>,
+        <a href="/book/brushes/handfree.html">Handfree</a>,
+        <a href="/book/brushes/soft-pencil.html">Soft Pencil</a>) can wear it.
+      </p>
+
+      <h2>1. A minimal connection</h2>
+      <p>
+        Default-export a <code>ConnectionBase</code> subclass and name its menu
+        glyph. <code>defaults()</code> returns the full flat set of connecting
+        values (the same keys the settings panel shows) — everything the engine
+        needs to draw.
+      </p>
+      <pre><code>// src/brushes/connections/hatch.ts
+import { ConnectionBase } from "./base";
+import type { ConnectingFlat } from "../../connecting-types";
+
+export const icon = "…svg markup or a single char…";
+
+export default class HatchConnection extends ConnectionBase {
+  protected defaults(): ConnectingFlat {
+    return {
+      alpha: 0.12, color: "main", connect: "line", dash: "solid",
+      density: 40, radius: 50, minDist: 0, inset: 0, fade: 0,
+      strands: 1, spread: 6, scatter: 0, taper: 0, flow: 0, fray: 0,
+      length: 1, wave: 0, dynamics: 0, curl: 0,
+      grainStrength: 0.85, grainAngle: 45, grainCross: false, // comb at 45°
+    };
+  }
+}</code></pre>
+      <p class="muted">
+        Routing (which map a stroke reads/stores, and whether it connects) keeps
+        the shared defaults — a connection only sets art style. See
+        <a href="/book/map.html">Memory maps &amp; connecting</a> for what each
+        key does.
+      </p>
+
+      <h2>2. Expose your own dials</h2>
+      <p>
+        Every connection shows the universal dials (Weight, Spread, Opacity,
+        Density, Reach, Grain, Line shape, Dash, Color…). Override
+        <code>extraSliders()</code> to surface the ones specific to your style —
+        use the <code>numStyle()</code> helper so they read the live value.
+      </p>
+      <pre><code>protected extraSliders(): BrushSetting[] {
+  return [
+    this.numStyle("taper", "Taper", 0, 1, 0.05),
+    this.numStyle("wave", "Wave", 0, 1, 0.05),
+  ];
+}</code></pre>
+      <p class="muted">
+        A dial is <em>supported</em> only if it's in <code>baseSliders()</code> or
+        your <code>extraSliders()</code>; the panel shows the ones a style
+        actually uses by default and folds the rest under “More.”
+      </p>
+
+      <h2>3. A custom texture</h2>
+      <p>
+        For multi-strand styles, each connection fans into hairs via
+        <code>drawFanned()</code>, which calls <code>drawHair()</code> per hair.
+        The base draws a straight 1px line; override <code>drawHair()</code> to
+        shape it — exactly how <code>FurConnection</code> gets its tapering,
+        combed, wavy pelt. Draw with <code>this.drawConnection()</code> and pull
+        randomness from <code>this.random()</code> (the brush's seeded RNG, so a
+        redraw is reproducible).
+      </p>
+      <pre><code>protected drawHair(
+  rx: number, ry: number, tx: number, ty: number,
+  px: number, py: number, style: LineStyle,
+  taper: number, flow: number, wave: number, phase: number,
+): void {
+  // …split the root→tip segment into a curved, fading polyline…
+  this.drawConnection({ id: 0, x: rx, y: ry }, { id: 0, x: tx, y: ty }, style);
+}</code></pre>
+
+      <h2>4. Open dials by default</h2>
+      <p>
+        Override <code>defaultOpenKeys()</code> to add your signature dials to the
+        set the panel always shows (the base already opens Weight, Spread,
+        Opacity, Density, Reach, Dash &amp; Color):
+      </p>
+      <pre><code>defaultOpenKeys(): readonly string[] {
+  return [...super.defaultOpenKeys(), "grainStrength", "grainAngle"];
+}</code></pre>
+
+      <h2>5. Register the connection</h2>
+      <p>
+        Add one row to <code>src/brushes/connections/connections.json</code>
+        (order = the navbar combo order). The combo, its icons and
+        <code>createConnection()</code> are all generated from it via
+        <code>import.meta.glob</code> — nothing else to touch.
+      </p>
+      <pre><code>// src/brushes/connections/connections.json
+{ "name": "hatch", "file": "hatch.ts", "info": "Combed straight hatching." }</code></pre>
+
+      <h2>Hooks on <code>ConnectionBase</code></h2>
+      <dl class="settings">
+        <dt><code>defaults(): ConnectingFlat</code></dt>
+        <dd>Required. The full flat set of connecting values your style starts from.</dd>
+        <dt><code>extraSliders(): BrushSetting[]</code></dt>
+        <dd>The dials this style supports beyond the universal ones (use <code>numStyle()</code>).</dd>
+        <dt><code>defaultOpenKeys(): string[]</code></dt>
+        <dd>Style keys the panel shows open by default, regardless of value.</dd>
+        <dt><code>drawHair(...)</code></dt>
+        <dd>Shape one fanned hair (override for fur-like textures); the base draws it straight.</dd>
+        <dt><code>drawConnection(p1, p2, style)</code> / <code>random()</code></dt>
+        <dd>Draw a line onto the connection layer; pull seeded randomness.</dd>
+      </dl>
+
+      <div class="note">
+        Adding a connecting <em>brush</em> instead? See
+        <a href="/book/dev/brushes.html">Writing a brush</a> — a brush opts into
+        connecting with <code>this.initConnection("classic")</code>.
+      </div>
+    </main>
+
+    <footer>Nekudot developer docs · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

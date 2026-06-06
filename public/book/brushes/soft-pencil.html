@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Soft Pencil — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › <a href="/book/connections.html">Connections</a> › Shaded</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 10 L8 5 M5 12.5 L11 6 M8 13 L13 8"/></svg></span>Shaded <span class="tag">Soft Pencil</span></h1>
+      <p class="lead">Soft, build-up shading — like a pencil rubbed across paper.</p>
+
+      <h2>What it does</h2>
+      <p>
+        Soft Pencil lays down <strong>no solid line</strong>. Instead, each point
+        of your stroke draws faint lines to nearby points, and — the key part —
+        each line's opacity <strong>fades with distance</strong>: close points
+        draw darker, far ones fade to nothing. Scribble back and forth and the
+        overlapping faint lines accumulate into a smooth, soft tone.
+      </p>
+      <div class="note">
+        It's a port of <strong>mrdoob's Harmony “shaded” brush</strong>
+        (<a href="https://mrdoob.github.io/harmony/" target="_blank" rel="noopener">harmony</a>) —
+        full credit for the idea is his. In Nekudot it's built on the standard
+        connecting machinery with the <em>Alpha&nbsp;falloff</em> control turned up.
+      </p>
+
+      <h2>How to use</h2>
+      <ul>
+        <li>Press <span class="kbd">3</span> or pick it from the brush menu.</li>
+        <li>Scribble over an area; pass over it again to deepen the tone.</li>
+        <li>Tune <em>Radius</em> for how far it reaches, <em>Density&nbsp;%</em> for how solid the fill is, and <em>Alpha&nbsp;falloff</em> for how fast lines fade with length.</li>
+      </ul>
+
+      <h2>vs. Web</h2>
+      <p>
+        <a href="/book/brushes/web.html">Web</a> draws sparse, equal-opacity
+        strands for <em>structure</em>. Soft Pencil draws dense, short lines whose
+        opacity fades with distance for <em>tone</em> — the
+        <em>Alpha&nbsp;falloff</em> setting is what separates the two. See
+        <a href="/book/map.html">Memory maps &amp; connecting</a> for the full
+        list of connection controls.
+      </p>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lines — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Brushes › <a href="/book/brushes/grid.html">Grid</a> › Lines</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="13" x2="9" y2="7"/><line x1="8" y1="14" x2="14" y2="8"/></svg></span>Lines <span class="tag">key 5</span></h1>
+      <p class="lead">A grid-tap brush that stamps short angled strokes — like hatching.</p>
+
+      <h2>What it does</h2>
+      <p>
+        Lines works like <a href="/book/brushes/dots.html">Dots</a>, but stamps
+        a short line segment at each grid intersection instead of a dot. All
+        segments share the same angle and length, so a tap lays down a field of
+        parallel hatch marks that fades toward the edge of the reach.
+      </p>
+
+      <h2>How to use</h2>
+      <ul>
+        <li>Press <span class="kbd">5</span> or pick it from the brush menu.</li>
+        <li>Click to drop a patch of hatching; overlap taps at different angles for cross-hatching.</li>
+      </ul>
+
+      <h2>Settings</h2>
+      <dl class="settings">
+        <dt>Angle</dt>
+        <dd>Direction of every segment (0° = horizontal).</dd>
+        <dt>Size</dt>
+        <dd>Length of each segment.</dd>
+        <dt>X spacing / Y spacing</dt>
+        <dd>Grid spacing between segments.</dd>
+        <dt>Reach</dt>
+        <dd>Radius around the click that gets stamped, with opacity falloff.</dd>
+        <dt>Tap strength</dt>
+        <dd>Maximum opacity at the center of a tap.</dd>
+        <dt>Opacity falloff</dt>
+        <dd>How sharply opacity fades toward the edge of the reach — <strong>0</strong> = flat, higher = steeper.</dd>
+      </dl>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

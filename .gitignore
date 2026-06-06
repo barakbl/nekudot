@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+.DS_Store
+*.log
+.vscode
+.idea
+
+# Scratch planning notes (local only)
+book-plan
+plan-download

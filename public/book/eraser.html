@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eraser — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Utilities › Eraser</p>
+      <h1>Eraser</h1>
+      <p class="lead">Rubs out pixels — without forgetting anything.</p>
+
+      <h2>What it is</h2>
+      <p>
+        The eraser is a <strong>tool toggle</strong>, not a brush. Click the
+        eraser button in the toolbar to turn it on; click it again (or pick any
+        brush) to turn it off. While it's on, your strokes <em>remove</em> paint
+        instead of adding it, clearing whatever is underneath on the
+        <strong>active layer</strong>.
+      </p>
+
+      <h2>How it works with brushes</h2>
+      <p>
+        The eraser borrows the <strong>currently selected brush's shape and
+        size</strong> — it doesn't have its own. A fat round brush erases in fat
+        round dabs; a Squares brush erases square chunks; making the brush bigger
+        makes the eraser bigger. Under the hood it just switches the brush to
+        "remove" mode, so everything you know about the brush still applies.
+      </p>
+      <ul>
+        <li>Pick the brush whose footprint you want, then toggle the eraser on.</li>
+        <li>It erases the <a href="/book/layers.html">active layer</a> only. To rub out the connecting web, make the <strong>connection layer</strong> active first.</li>
+        <li>Toggle the eraser off to go straight back to painting with that same brush.</li>
+      </ul>
+
+      <h2>The eraser and memory</h2>
+      <p>
+        This is the important part: <strong>erasing is purely visual.</strong> It
+        clears pixels on the canvas but does <em>not</em> touch the
+        <a href="/book/map.html">memory maps</a>. While erasing, no points are
+        added to the point cloud and none are removed — the remembered points
+        behind the paint stay exactly where they were.
+      </p>
+      <div class="note">
+        So if you erase a stroke and then draw with a connecting brush, its web
+        will still reach toward the points you "erased" — they're invisible but
+        not forgotten. To actually forget points (and stop them attracting
+        connections), <em>clear the memory map</em> instead — that's a separate
+        action from erasing.
+      </div>
+
+      <h2>When to use which</h2>
+      <ul>
+        <li><strong>Eraser</strong> — remove paint you don't want, while keeping the structure the web is built on.</li>
+        <li><strong>Clear the map</strong> — forget the remembered points so new connections start fresh.</li>
+        <li><strong>Layer opacity / delete</strong> — fade or drop a whole layer at once (see <a href="/book/layers.html">Layers</a>).</li>
+      </ul>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

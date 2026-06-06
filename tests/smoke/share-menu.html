@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>share-in-more-menu</title></head>
+  <body>
+    <script type="module">
+      import "/src/styles.css";
+      import { createMenu } from "/src/menu.ts";
+
+      const menu = createMenu(
+        [{ value: "round", label: "Round", icon: "●" }],
+        () => {},
+        [], // actions — Share is NO LONGER here (moved into the More menu)
+        undefined,
+        "round",
+        () => {},
+        {
+          initialTheme: "dark",
+          onThemeChange: (t) => { window.__theme = t; },
+          onShareImage: () => { window.__shared = true; },
+          onExportImage: () => {},
+          onSaveArtwork: () => {},
+          onLoadArtwork: () => {},
+        },
+      );
+      document.body.appendChild(menu.el);
+      menu.toggleCanvasMenu(); // open the "More" popover
+
+      const pop = () => document.querySelector(".canvas-menu-popover");
+      const labels = [...pop().querySelectorAll(".opt-label")].map((e) => e.textContent);
+      const shareRow = [...pop().querySelectorAll(".brush-option")]
+        .find((r) => r.querySelector(".opt-label")?.textContent === "Share as PNG");
+
+      // --- theme submenu: collapsed to current, expands on click ----------------
+      const head = pop().querySelector(".canvas-menu-current");
+      const sub = pop().querySelector(".canvas-menu-sub");
+      const headLabel = () => head.querySelector(".opt-label").textContent;
+      const subVisible = () => getComputedStyle(sub).display !== "none";
+      const themeStart = { current: headLabel(), subHiddenInitially: !subVisible() };
+      head.click(); // open the submenu
+      const subOpened = subVisible();
+      const subOptions = [...sub.querySelectorAll(".opt-label")].map((e) => e.textContent);
+      const lightRow = [...sub.querySelectorAll(".brush-option")]
+        .find((r) => r.querySelector(".opt-label")?.textContent === "Light");
+      lightRow?.click(); // choose a different theme
+      const afterPick = { current: headLabel(), themeChanged: window.__theme, subCollapsed: !subVisible() };
+
+      shareRow?.click(); // exercise the share click → onShareImage (closes popover)
+      const toolbarHasShare = !![...document.querySelectorAll(".toolbar > .icon-btn")]
+        .find((b) => b.title === "Share");
+
+      window.__result = {
+        popoverLabels: labels,
+        hasShareAsPng: labels.includes("Share as PNG"),
+        shareIconSvg: !!shareRow?.querySelector(".opt-icon svg"),
+        clickFired: window.__shared === true,
+        toolbarHasShareButton: toolbarHasShare,
+        themeStart, subOpened, subOptions, afterPick,
+      };
+      // reopen popover + theme submenu for the screenshot
+      menu.toggleCanvasMenu();
+      head.click();
+      window.__done = true;
+    </script>
+  </body>
+</html>

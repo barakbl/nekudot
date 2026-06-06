@@ -1,0 +1,256 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Connecting-line build-up — Nekudot vs Harmony</title>
+    <style>
+      body { margin: 0; background: #222; color: #ddd; font: 12px system-ui; }
+      #grid { display: grid; grid-template-columns: repeat(4, max-content); gap: 10px; padding: 12px; }
+      figure { margin: 0; text-align: center; }
+      canvas { display: block; border: 1px solid #555; background: #fff; }
+      figcaption { margin-top: 3px; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module">
+      // Empirical comparison of connecting-line build-up between Nekudot's real
+      // engine (RoundBrush + a connection preset) and a faithful in-page port of
+      // mrdoob's Harmony brushes (sketchy / web / shaded). Both are driven by the
+      // IDENTICAL fixed gesture so any difference in ink is the engine, not input.
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { RoundBrush } from "/src/brushes/round.ts";
+
+      const W = 600, H = 360, SEED = 1234;
+
+      // --- deterministic RNG (shared shape across both engines) -----------------
+      function mulberry32(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // --- the one fixed gesture ------------------------------------------------
+      // A left-to-right scribble with a vertical wiggle. Sampled at ~6px spacing
+      // for "1x" (a normal mouse's mousemove cadence). `mult` densifies the SAME
+      // path to emulate getCoalescedEvents() sub-sampling — the only thing that
+      // changes is how many points land on the identical curve.
+      function pathPoint(t) {
+        const x = 60 + t * (W - 120);
+        const y = H / 2 + 70 * Math.sin((x - 60) / 70) + 18 * Math.sin((x - 60) / 23 + 1.3);
+        return [x, y];
+      }
+      function gesture(mult = 1) {
+        // estimate path length to keep ~6px base spacing
+        let len = 0, prev = pathPoint(0);
+        for (let i = 1; i <= 400; i++) {
+          const p = pathPoint(i / 400);
+          len += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+          prev = p;
+        }
+        const n = Math.max(2, Math.round((len / 6) * mult));
+        const pts = [];
+        for (let i = 0; i <= n; i++) pts.push(pathPoint(i / n));
+        return pts;
+      }
+
+      // --- ink metrics ----------------------------------------------------------
+      // inkMass: total darkness Σ(1 - luminance/255) — captures faint tone build-up.
+      // nonWhite: pixels darker than 250 — coverage area.
+      function measure(ctx) {
+        const d = ctx.getImageData(0, 0, W, H).data;
+        let mass = 0, nonWhite = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          const dark = 1 - lum / 255;
+          mass += dark;
+          if (lum < 250) nonWhite++;
+        }
+        return { mass, nonWhite };
+      }
+
+      function newCanvas(baseAlpha = 1) {
+        const cv = document.createElement("canvas");
+        cv.width = W; cv.height = H;
+        const ctx = cv.getContext("2d", { willReadFrequently: true });
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
+        ctx.globalAlpha = baseAlpha; // becomes the main-stroke alpha (see below)
+        return { cv, ctx };
+      }
+
+      // ========================================================================
+      // NEKUDOT — real engine. A bare CanvasRenderer + quadtree finder means the
+      // connection runs in mode "both" against the persistent finder (no router),
+      // exactly the path the live app uses for the memory map.
+      // baseAlpha sets ctx.globalAlpha before drawing: RoundBrush.onStroke draws
+      // the main line with no explicit alpha, so it inherits this; each connection
+      // line sets its own absolute alpha and restores back to it. So baseAlpha
+      // controls ONLY the main stroke, matching the Harmony counterpart's main line.
+      function makeNek(preset, baseAlpha, density) {
+        const { cv, ctx } = newCanvas(baseAlpha);
+        const renderer = new CanvasRenderer(ctx, { dpr: 1 });
+        renderer.setStrokeStyle("#000000");
+        const finder = createNeighborFinder("quadtree", []);
+        const brush = new RoundBrush(renderer, finder, SEED);
+        brush.applyArtStylePreset(preset);
+        if (density !== undefined) brush.activeConnection().applyFlat({ density });
+        // keep baseAlpha as the resting globalAlpha after every connection restore
+        const origReset = ctx;
+        return {
+          cv, ctx,
+          pass(pts) {
+            ctx.globalAlpha = baseAlpha;
+            brush.strokeStart(pts[0][0], pts[0][1]);
+            for (const [x, y] of pts) brush.stroke(x, y);
+            brush.strokeEnd();
+          },
+        };
+      }
+
+      // ========================================================================
+      // HARMONY — faithful port of js/brushes/{sketchy,web,shaded}.js. `points`
+      // lives in the closure and is NEVER reset by strokeStart (mirrors the real
+      // brush, which only resets on re-instantiation), so it accumulates across
+      // passes just like Nekudot's finder. rng replaces Math.random for determinism.
+      function makeHarmony(kind, color, connect) {
+        const { cv, ctx } = newCanvas(1);
+        const [r, g, b] = color;
+        const rng = mulberry32(SEED);
+        const points = [];
+        let count = 0, prevX = 0, prevY = 0;
+        ctx.lineWidth = 1; ctx.lineCap = "butt";
+
+        function strokeStart(x, y) { prevX = x; prevY = y; }
+
+        function stroke(x, y) {
+          points.push([x, y]);
+          const cx = points[count][0], cy = points[count][1];
+          if (kind === "sketchy") {
+            ctx.strokeStyle = `rgba(${r},${g},${b},${0.05})`;
+            ctx.beginPath(); ctx.moveTo(prevX, prevY); ctx.lineTo(x, y); ctx.stroke();
+            if (connect)
+              for (let i = 0; i < points.length; i++) {
+                const dx = points[i][0] - cx, dy = points[i][1] - cy, d = dx * dx + dy * dy;
+                if (d < 4000 && rng() > d / 2000) {
+                  ctx.beginPath();
+                  ctx.moveTo(cx + dx * 0.3, cy + dy * 0.3);
+                  ctx.lineTo(points[i][0] - dx * 0.3, points[i][1] - dy * 0.3);
+                  ctx.stroke();
+                }
+              }
+          } else if (kind === "web") {
+            ctx.strokeStyle = `rgba(${r},${g},${b},${0.5})`;
+            ctx.beginPath(); ctx.moveTo(prevX, prevY); ctx.lineTo(x, y); ctx.stroke();
+            ctx.strokeStyle = `rgba(${r},${g},${b},${0.1})`;
+            if (connect)
+              for (let i = 0; i < points.length; i++) {
+                const dx = points[i][0] - cx, dy = points[i][1] - cy, d = dx * dx + dy * dy;
+                if (d < 2500 && rng() > 0.9) {
+                  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(points[i][0], points[i][1]); ctx.stroke();
+                }
+              }
+          } else if (kind === "shaded") {
+            // no main line in Harmony shaded
+            if (connect)
+              for (let i = 0; i < points.length; i++) {
+                const dx = points[i][0] - cx, dy = points[i][1] - cy, d = dx * dx + dy * dy;
+                if (d < 1000) {
+                  ctx.strokeStyle = `rgba(${r},${g},${b},${(1 - d / 1000) * 0.1})`;
+                  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(points[i][0], points[i][1]); ctx.stroke();
+                }
+              }
+          }
+          prevX = x; prevY = y; count++;
+        }
+
+        return {
+          cv, ctx,
+          pass(pts) {
+            strokeStart(pts[0][0], pts[0][1]);
+            for (const [x, y] of pts) stroke(x, y);
+          },
+        };
+      }
+
+      // ========================================================================
+      // PAIRS. mainAlpha = the Harmony main-line alpha for that brush, applied to
+      // Nekudot's main line too so totals are comparable. (sketchy 0.05, web 0.5,
+      // shaded none → 0 so Nekudot's main line is invisible, matching Harmony.)
+      const PAIRS = [
+        { id: "classic-vs-sketchy", nek: "classic", harm: "sketchy", label: "Airy / Sketchy",   mainAlpha: 0.05 },
+        { id: "web-vs-web",         nek: "web",     harm: "web",     label: "StringArt / Web",   mainAlpha: 0.5 },
+        { id: "shaded-vs-shaded",   nek: "shaded",  harm: "shaded",  label: "Shading / Shaded",  mainAlpha: 0 },
+      ];
+      const COLOR = [0, 0, 0];
+      const PASSES = 8;
+
+      // Build-up curve over N repeated passes, plus a within-stroke curve for one
+      // pass. Connection-only ink = full − main-line-only (subtraction isolates
+      // the web on both engines, removing the main-stroke confound entirely).
+      const results = { passes: PASSES, pairs: {} };
+      const images = {};
+
+      for (const p of PAIRS) {
+        // repeated-pass build-up — reuse one engine instance across passes so the
+        // point cloud / points[] accumulate (the real cross-stroke behaviour).
+        const nekFull = makeNek(p.nek, p.mainAlpha);
+        const nekMain = makeNek(p.nek, p.mainAlpha, 0);          // density 0 → no web
+        const harmFull = makeHarmony(p.harm, COLOR, true);
+        const harmMain = makeHarmony(p.harm, COLOR, false);      // no connection loop
+        const pts = gesture(1);
+
+        const rows = [];
+        for (let pass = 1; pass <= PASSES; pass++) {
+          nekFull.pass(pts); nekMain.pass(pts); harmFull.pass(pts); harmMain.pass(pts);
+          const nf = measure(nekFull.ctx).mass, nm = measure(nekMain.ctx).mass;
+          const hf = measure(harmFull.ctx).mass, hm = measure(harmMain.ctx).mass;
+          rows.push({
+            pass,
+            nekTotal: nf, harmTotal: hf,
+            nekWeb: Math.max(0, nf - nm), harmWeb: Math.max(0, hf - hm),
+          });
+          if (pass === 3) {
+            images[p.id + "__nek"] = nekFull.cv.toDataURL("image/png");
+            images[p.id + "__harm"] = harmFull.cv.toDataURL("image/png");
+          }
+        }
+
+        // sampling amplifier: pass-1 web ink for Nekudot at 1x/2x/4x sampling of
+        // the SAME path, vs Harmony fixed at 1x. Emulates getCoalescedEvents().
+        const sampling = [];
+        for (const mult of [1, 2, 4]) {
+          const f = makeNek(p.nek, p.mainAlpha);
+          const m = makeNek(p.nek, p.mainAlpha, 0);
+          const gp = gesture(mult);
+          f.pass(gp); m.pass(gp);
+          sampling.push({ mult, n: gp.length, web: Math.max(0, measure(f.ctx).mass - measure(m.ctx).mass) });
+        }
+        const hOne = makeHarmony(p.harm, COLOR, true);
+        const hOneM = makeHarmony(p.harm, COLOR, false);
+        const g1 = gesture(1);
+        hOne.pass(g1); hOneM.pass(g1);
+        const harmWeb1 = Math.max(0, measure(hOne.ctx).mass - measure(hOneM.ctx).mass);
+
+        results.pairs[p.id] = { label: p.label, rows, sampling, harmWeb1, baseN: g1.length };
+      }
+
+      // visual montage
+      const grid = document.getElementById("grid");
+      for (const [name, url] of Object.entries(images)) {
+        const fig = document.createElement("figure");
+        const im = new Image(); im.src = url; im.width = W / 2; im.height = H / 2;
+        const cap = document.createElement("figcaption"); cap.textContent = name;
+        fig.appendChild(im); fig.appendChild(cap); grid.appendChild(fig);
+      }
+
+      window.__results = results;
+      window.__images = images;
+      window.__done = true;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Architecture — Nekudot developer docs</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Developers › Architecture</p>
+      <h1>Architecture</h1>
+      <p class="lead">How Nekudot is put together, for anyone hacking on it.</p>
+
+      <h2>Stack</h2>
+      <p>
+        Vanilla <strong>TypeScript</strong> + the Canvas 2D API, bundled by
+        <strong>Vite</strong>. No UI framework — the DOM is built by hand.
+        <a href="https://github.com/d3/d3-quadtree" target="_blank" rel="noopener">d3-quadtree</a>
+        powers neighbour lookups, <strong>zod</strong> validates all persisted
+        data, and <strong>fflate</strong> zips the <code>.nekudot</code> archive.
+      </p>
+
+      <h2>Module map</h2>
+      <pre class="filetree"><code>src/
+  main.ts              app wiring: brushes, toolbar, panels, pointer loop, undo
+  base.ts              BrushBase — the brush template; delegates connecting to a Connection
+  renderer.ts          IRenderer + CanvasRenderer (Canvas2D, dpr-scaled)
+  neighbor-finder.ts   NeighborFinder + quadtree (capped point cloud)
+  connecting-types.ts  shared types: ConnectMap/Mode, ConnectRouter, dash
+  pixel-log.ts         append-only per-pixel provenance log (IndexedDB)
+  save-artwork.ts      export a .nekudot zip
+  load-artwork.ts      validate + import a .nekudot (zip-bomb safe)
+  export.ts            flatten layers to a PNG
+  brushes/             one file per brush (+ grid.ts, shapes-stroke.ts bases)
+    brushes.json       ordered brush index (name/file/shortcut/group/connections)
+    registry.ts        builds BRUSH_DEFS from brushes.json — map, menu, shortcuts, names
+    connections/       the connecting engine + art-style "connections"
+      base.ts          ConnectionBase — connecting state + the web/fan engine
+      registry.ts      builds the connection list from connections.json
+      connections.json ordered index of connection styles
+      routing.ts       ROUTING_PRESETS — where a stroke reads/stores neighbours
+      classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
+  layered/
+    manager.ts         LayerManager: IRenderer + NeighborFinder + ConnectRouter
+    layer.ts           Layer = one canvas + renderer
+    neighbors-map.ts   NeighborsMap = a named point cloud
+    schema.ts          zod schema for the layer/map config
+    box.ts             Layers panel UI
+    neighbors-map-box.ts  Maps panel UI
+  store/               LocalStorage + IndexedDB stores, PaintStore, UndoStore
+  menu.ts settings-panel.ts size-picker.ts confirm.ts chip.ts help.ts drag.ts</code></pre>
+
+      <h2>The rendering seam: <code>IRenderer</code></h2>
+      <p>
+        Everything that draws goes through <code>IRenderer</code>
+        (<code>renderer.ts</code>) — <code>drawLine</code>, <code>fillCircle</code>,
+        <code>strokeEllipse</code>, <code>drawChisel</code>, etc.
+        <code>CanvasRenderer</code> wraps a single <code>CanvasRenderingContext2D</code>
+        and is scaled by the device pixel ratio once at construction, so brushes
+        work in CSS pixels and stay crisp on retina.
+      </p>
+      <p>
+        Crucially, <strong><code>LayerManager</code> also implements
+        <code>IRenderer</code></strong> and delegates every draw call to the
+        <em>active</em> layer's renderer. A brush holds an <code>IRenderer</code>
+        and never knows whether it's drawing to one canvas or a layer stack.
+      </p>
+
+      <h2>Layers &amp; memory maps</h2>
+      <p>
+        A <strong>Layer</strong> is one DOM canvas + renderer. The
+        <strong>LayerManager</strong> owns the stack, composites by z-index, and
+        exposes layer ops (add/duplicate/delete/opacity).
+      </p>
+      <p>
+        Point clouds are separate and <strong>top-level</strong>: each
+        <strong>NeighborsMap</strong> owns a <code>NeighborFinder</code> (a
+        d3-quadtree) — see the <a href="/book/map.html">Memory maps</a> page.
+        The manager implements <code>NeighborFinder</code> too, routing
+        <code>addPixel</code>/<code>findNeighbors</code> to the selected map.
+        The cloud is capped (<code>MAX_PIXELS</code>) with oldest-eviction so
+        lookups stay fast.
+      </p>
+
+      <h2>The stroke loop</h2>
+      <p>
+        <code>main.ts</code> turns pointer input into brush calls. Pointer moves
+        are de-coalesced so fast gestures keep full resolution:
+      </p>
+      <pre><code>stage.addEventListener("pointerdown", (e) => {
+  brush.strokeStart(e.offsetX, e.offsetY);
+  brush.stroke(e.offsetX, e.offsetY);
+});
+stage.addEventListener("pointermove", (e) => {
+  for (const ev of e.getCoalescedEvents())
+    brush.stroke(ev.offsetX, ev.offsetY);
+});
+// pointerup → brush.strokeEnd(); pushUndo(); persist;</code></pre>
+      <p>
+        <code>BrushBase.stroke()</code> is a <em>template method</em>: it
+        deposits the point into the trail map, calls the subclass's
+        <code>onStroke()</code> to paint the mark, then — if the brush has a
+        <code>Connection</code> attached — lets it weave the web via
+        <code>connection.connect()</code>.
+      </p>
+
+      <h2>Connecting &amp; <code>ConnectRouter</code></h2>
+      <p>
+        To target specific layers/maps by stable id, the manager implements
+        <code>ConnectRouter</code> (<code>connecting-types.ts</code>):
+        <code>listLayers/listMaps</code>, <code>addPixelToMap</code>,
+        <code>findNeighborsInMap</code>, <code>drawConnectionToLayer</code>,
+        <code>activeLayerId/selectedMapId/strokeWidth</code>, etc. A connection
+        picks it up by duck-typing its renderer, so tests can run with a bare
+        renderer.
+      </p>
+      <p>
+        The connecting half is its own module under
+        <code>src/brushes/connections/</code>. <code>ConnectionBase</code> holds
+        all connecting state and the web/fan engine
+        (<code>connectingNeighbors</code>, <code>drawFanned</code>,
+        <code>drawHair</code>); each art style — <em>Classic, Web, Arc, Shaded,
+        Fur, Lace</em> — is a subclass that just sets defaults, names the dials it
+        exposes, and may override a texture hook (Fur's <code>drawHair</code>).
+        A connecting brush attaches one with <code>initConnection("classic")</code>
+        and the navbar combo swaps it via <code>applyArtStylePreset</code>;
+        routing presets live in <code>connections/routing.ts</code>. Both the
+        brush list and the connection list are data-driven from JSON indexes
+        (<code>brushes.json</code>, <code>connections.json</code>) resolved with
+        <code>import.meta.glob</code>.
+      </p>
+
+      <h2>Persistence</h2>
+      <ul>
+        <li><strong>Settings &amp; layer config</strong> → LocalStorage, keyed like <code>brush.&lt;name&gt;.&lt;setting&gt;</code>; validated by zod (<code>layered/schema.ts</code>).</li>
+        <li><strong>Paint &amp; point clouds</strong> → IndexedDB via <code>PaintStore</code> (PNG blobs per layer + map points), debounced on stroke end.</li>
+        <li><strong>Undo/redo</strong> → <code>UndoStore</code> snapshots (config + paint).</li>
+        <li><strong>Pixel log</strong> → append-only JSONL of every deposited point (<code>pixel-log.ts</code>).</li>
+      </ul>
+
+      <h2>Save / load / export</h2>
+      <p>
+        <code>save-artwork.ts</code> writes a <code>.nekudot</code> zip (manifest
+        + per-layer PNGs + map JSON + pixel log). <code>load-artwork.ts</code>
+        imports it defensively: validate the manifest with zod first, cap each
+        entry's uncompressed size before inflating (zip-bomb defence), decode
+        images via <code>createImageBitmap</code>. <code>export.ts</code>
+        flattens the visible layers into a single PNG. <code>build.sh</code>
+        bundles the whole app into one self-contained HTML file.
+      </p>
+
+      <div class="note">
+        Ready to add a brush? See
+        <a href="/book/dev/brushes.html">Writing a brush</a>.
+      </div>
+    </main>
+
+    <footer>Nekudot developer docs · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

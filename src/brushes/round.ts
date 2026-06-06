@@ -1,0 +1,116 @@
+import {
+  BrushBase,
+  DASH_PATTERNS,
+  DASH_STYLES,
+  DASH_ICONS,
+  type BrushSetting,
+  type DashStyle,
+} from "../base";
+import type { IRenderer } from "../renderer";
+import type { NeighborFinder, Pixel } from "../neighbor-finder";
+import type { Store } from "../store/base";
+import type { BrushContext } from "./registry";
+
+// Menu glyph for the toolbar — Round's mark is a filled dot.
+export const icon = "●";
+
+export function create(c: BrushContext): RoundBrush {
+  return new RoundBrush(c.renderer, c.finder, undefined, c.store);
+}
+
+// Art style applied when Round is first used / on selection. The art style is
+// otherwise chosen from the navbar Connecting combo (persisted under app.artStyle).
+export const DEFAULT_ART_STYLE = "classic";
+
+// The Round brush: a continuous round-capped line plus the connecting web. It is
+// the only connecting brush — the connection art style (classic, web, arc,
+// shaded, fur, lace) is picked from the navbar Connecting combo, not baked into
+// the brush.
+export class RoundBrush extends BrushBase {
+  private lastX = 0;
+  private lastY = 0;
+  private strokeDash: DashStyle = "solid";
+  private accumDist = 0;
+
+  constructor(
+    renderer: IRenderer,
+    finder: NeighborFinder,
+    seed?: number,
+    store?: Store,
+  ) {
+    super(renderer, finder, seed, store);
+    // Round is a connecting brush: attach the default connection (the navbar
+    // combo / onSelect swaps it via applyArtStylePreset).
+    this.initConnection(DEFAULT_ART_STYLE);
+  }
+
+  name() {
+    return "Round";
+  }
+
+  // Round draws one continuous line per stroke → buffer it so a faint stroke
+  // reads as uniform alpha instead of dotted at the sample joints.
+  bufferedStroke(): boolean {
+    return true;
+  }
+
+  strokeStart(x: number, y: number): void {
+    this.lastX = x;
+    this.lastY = y;
+    this.accumDist = 0;
+  }
+
+  protected onStroke(x: number, y: number, _current: Pixel): void {
+    const dx = x - this.lastX;
+    const dy = y - this.lastY;
+    this.renderer.drawLine(
+      { id: 0, x: this.lastX, y: this.lastY },
+      { id: 0, x, y },
+      {
+        cap: "round",
+        dash: DASH_PATTERNS[this.strokeDash],
+        dashOffset: this.accumDist,
+      },
+    );
+    this.accumDist += Math.hypot(dx, dy);
+    this.lastX = x;
+    this.lastY = y;
+  }
+
+  protected strokeDashValue(): DashStyle {
+    return this.strokeDash;
+  }
+
+  // Re-apply the last-chosen art style (persisted by main.ts) so the connecting
+  // web matches the navbar Connecting combo whenever Round becomes active.
+  onSelect(): void {
+    this.applyArtStylePreset(
+      this.store?.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE,
+    );
+  }
+
+  // Stroke-line opacity for the active connection style, matching its Harmony
+  // counterpart (Airy 0.05, String Art 0.5, Shading 0 = no line). Falls back to
+  // a faint 0.1 for styles that don't pin one. Keeps the line from burying the
+  // connecting web; raise Opacity in Brush settings for a bolder line.
+  getSelectOpacity(): number {
+    return this.connection?.strokeOpacity() ?? 0.1;
+  }
+
+  getSettings(): BrushSetting[] {
+    return this.persistSettings([
+      {
+        kind: "select",
+        key: "strokeDash",
+        label: "Dash",
+        options: DASH_STYLES,
+        icons: DASH_ICONS,
+        value: this.strokeDash,
+        onChange: (v) => {
+          this.strokeDash = v as DashStyle;
+        },
+      },
+      ...(this.connection?.sliders() ?? []),
+    ]);
+  }
+}

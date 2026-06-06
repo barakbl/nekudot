@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>flatten transparency</title></head>
+  <body>
+    <script type="module">
+      // Verifies the export flatten honours a transparent background end-to-end:
+      // draws an opaque mark, flattens via the REAL export.ts, decodes the PNG and
+      // checks the alpha channel (painted px opaque; unpainted px transparent only
+      // when the background is transparent).
+      import { LayerManager } from "/src/layered/manager.ts";
+      import { flattenLayers } from "/src/export.ts";
+
+      const W = 80, H = 60;
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const manager = new LayerManager({ container, size: { width: W, height: H }, dpr: 1 });
+
+      // Opaque horizontal bar across the middle → painted band + clear top/bottom.
+      manager.setStrokeStyle("#000000");
+      manager.drawLine({ id: 0, x: 8, y: 30 }, { id: 0, x: 72, y: 30 },
+        { color: "#000000", width: 10, alpha: 1, cap: "round" });
+
+      async function sample(backgroundColor) {
+        const flat = flattenLayers(manager, { backgroundColor });
+        const blob = await flat.toBlob("image/png");
+        const bmp = await createImageBitmap(blob);
+        const c = document.createElement("canvas");
+        c.width = bmp.width; c.height = bmp.height;
+        const cx = c.getContext("2d");
+        cx.drawImage(bmp, 0, 0);
+        const d = cx.getImageData(0, 0, bmp.width, bmp.height).data;
+        const at = (x, y) => { const i = (y * bmp.width + x) * 4; return [d[i], d[i + 1], d[i + 2], d[i + 3]]; };
+        return { painted: at(bmp.width >> 1, bmp.height >> 1), corner: at(2, 2) };
+      }
+
+      const transparent = await sample("transparent");
+      const white = await sample("#ffffff");
+      window.__result = {
+        transparent, white,
+        // expectations
+        paintedOpaque: transparent.painted[3] === 255,          // mark stays solid
+        cornerTransparent: transparent.corner[3] === 0,         // no bg → alpha 0
+        whiteCornerOpaque: white.corner[3] === 255 && white.corner[0] === 255, // bg fills
+      };
+      window.__done = true;
+    </script>
+  </body>
+</html>

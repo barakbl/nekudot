@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ellipse — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Brushes › Ellipse</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><ellipse cx="8" cy="8" rx="6" ry="3.2" transform="rotate(-30 8 8)"/></svg></span>Ellipse <span class="tag">key 6</span></h1>
+      <p class="lead">A grid-tap brush that stamps ellipses — round to flat, at any angle.</p>
+
+      <h2>What it does</h2>
+      <p>
+        Ellipse stamps an ellipse at each grid intersection within reach (with
+        the same opacity falloff as <a href="/book/brushes/dots.html">Dots</a>).
+        The <em>Ellipse</em> slider morphs the shape from a perfect circle to a
+        thin sliver, and <em>Angle</em> rotates it — handy for scales, petals,
+        leaves and feather textures.
+      </p>
+
+      <h2>How to use</h2>
+      <ul>
+        <li>Press <span class="kbd">8</span> or pick it from the brush menu.</li>
+        <li>Click to stamp a field of ellipses; rotate the Angle between taps for variation.</li>
+        <li>Set <em>Fill</em> to none for outline ellipses, or main/secondary for solid ones.</li>
+      </ul>
+
+      <h2>Settings</h2>
+      <dl class="settings">
+        <dt>Size</dt>
+        <dd>The ellipse's major radius.</dd>
+        <dt>Ellipse</dt>
+        <dd>0 = round circle, up to 1 = flat sliver.</dd>
+        <dt>Angle</dt>
+        <dd>Rotation of each ellipse (0–180°).</dd>
+        <dt>Fill</dt>
+        <dd>None (outline), Main, or Secondary color.</dd>
+        <dt>X spacing / Y spacing / Reach / Tap strength / Opacity falloff</dt>
+        <dd>The shared grid-tap controls (see <a href="/book/brushes/dots.html">Dots</a>). Opacity falloff at <strong>0</strong> stamps every ellipse at full strength; higher fades them toward the edge of the reach.</dd>
+      </dl>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

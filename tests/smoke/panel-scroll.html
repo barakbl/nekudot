@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>connecting panel scroll</title></head>
+  <body>
+    <script type="module">
+      import "/src/styles.css";
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { RoundBrush } from "/src/brushes/round.ts";
+      import { createSettingsPanel } from "/src/settings-panel.ts";
+
+      const cv = document.createElement("canvas");
+      cv.width = 8; cv.height = 8;
+      const renderer = new CanvasRenderer(cv.getContext("2d"), { dpr: 1 });
+      const finder = createNeighborFinder("quadtree", []);
+      const brush = new RoundBrush(renderer, finder, 1234);
+      brush.applyArtStylePreset("fur"); // the tallest connection (many dials)
+
+      const panel = createSettingsPanel({ scope: "connecting" });
+      document.body.appendChild(panel.el);
+      panel.render(brush);
+      panel.el.style.display = ""; // reveal (CSS sets flex)
+
+      // Expand "More" so the panel is at its tallest, then measure.
+      const toggle = panel.el.querySelector(".settings-group-toggle");
+      if (toggle) toggle.click();
+
+      const content = panel.el.querySelector(".panel-content");
+      window.__metrics = {
+        viewportH: window.innerHeight,
+        panelH: panel.el.offsetHeight,
+        contentScrollH: content.scrollHeight,
+        contentClientH: content.clientHeight,
+        scrolls: content.scrollHeight > content.clientHeight + 1,
+        fitsViewport: panel.el.getBoundingClientRect().bottom <= window.innerHeight + 1,
+      };
+      window.__done = true;
+    </script>
+  </body>
+</html>

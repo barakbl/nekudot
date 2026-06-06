@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Memory maps &amp; connecting — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Memory maps</p>
+      <h1>Memory maps &amp; connecting</h1>
+      <p class="lead">
+        The point cloud that turns single strokes into webs — the heart of Nekudot.
+      </p>
+
+      <h2>What a memory map is</h2>
+      <p>
+        A <strong>memory map</strong> is a cloud of points (stored as a
+        quadtree, so neighbour lookups stay fast). It has no pixels of its own —
+        it just remembers <em>where</em> you've drawn. As you draw, each new
+        point is added to a map; this growing record is the map's
+        <strong>trail</strong>.
+      </p>
+      <p>
+        Maps are <strong>top-level</strong> — shared across every layer. You can
+        keep several maps and switch between them in the
+        <a href="/book/">Maps</a> panel (<span class="kbd">m</span>).
+      </p>
+
+      <h2>How connecting works</h2>
+      <p>
+        When a connecting brush lays down a point, it asks a map for the
+        neighbours within a <em>radius</em> and draws a line to some of them
+        (controlled by <em>density</em>). Each line is faint; hundreds of them
+        overlapping build the soft, sketchy texture. Because the map persists,
+        a new stroke connects to where earlier strokes have been.
+      </p>
+      <div class="note">
+        This is the idea behind <a href="https://mrdoob.github.io/harmony/" target="_blank" rel="noopener">Harmony</a>:
+        the magic isn't the line under the cursor, it's the swarm of faint
+        connections between remembered points.
+      </div>
+
+      <h2>The connecting settings</h2>
+      <p>
+        In a connecting brush's settings, the controls are split into two
+        groups, each with its own presets.
+      </p>
+
+      <h3>Connection <span class="tag">where</span></h3>
+      <p>
+        Connection lines always bake onto the
+        <a href="/book/layers.html"><strong>connection layer</strong></a> — the
+        layer marked with the link icon in the Layers panel. Move that marker to
+        send the web to a different layer. Whether to connect at all is the
+        <em>Connect to stroke or map?</em> setting below (<em>None</em> turns it
+        off).
+      </p>
+      <dl class="settings">
+        <dt>Memory Map From</dt>
+        <dd>The map whose neighbours are searched (where lines are pulled <em>from</em>).</dd>
+        <dt>Memory Map trail</dt>
+        <dd>The map this stroke's points are written <em>to</em>. <em>No trail</em> draws connections without recording anything.</dd>
+        <dt>Connect to stroke or map?</dt>
+        <dd>
+          <strong>Both</strong> — connect to old points and this stroke.
+          <strong>Stroke</strong> — only this stroke's own points.
+          <strong>Map</strong> — only points that existed before this stroke.
+          <strong>None</strong> — don't connect at all.
+        </dd>
+      </dl>
+      <p class="muted">Preset: <strong>Classic</strong> (current map · both) and <strong>No connect</strong> (no trail · none).</p>
+
+      <h3>Connection art style <span class="tag">how</span></h3>
+      <p>Pick a preset, then nudge the few core dials; the rest live under <strong>More</strong>.</p>
+      <p class="muted">The core dials:</p>
+      <dl class="settings">
+        <dt>Weight</dt>
+        <dd>How bold the mark is — each connection is drawn as this many thin 1px hairs. More hairs = heavier, but never one fat line. <strong>1</strong> = a single delicate line.</dd>
+        <dt>Spread</dt>
+        <dd>How wide (px) the hairs fan out. Narrow + high Weight = a dense bold mark; wide = an airy band.</dd>
+        <dt>Opacity</dt>
+        <dd>Per-line opacity. Low values let many lines build into soft shading; high looks like ink.</dd>
+        <dt>Density</dt>
+        <dd>Chance each eligible neighbour gets a line. Higher = denser (and heavier).</dd>
+        <dt>Reach</dt>
+        <dd>How far to look for neighbours to connect — larger spans bigger gaps.</dd>
+      </dl>
+      <p class="muted">Under <strong>More</strong>:</p>
+      <dl class="settings">
+        <dt>Fade</dt>
+        <dd>Fade each line with its length: <strong>0</strong> = even; <strong>1</strong> = long lines vanish. High Fade gives <a href="/book/brushes/soft-pencil.html">Soft Pencil</a> its distance-shaded tone.</dd>
+        <dt>Scatter</dt>
+        <dd>Jitter the hairs' ends: <strong>0</strong> = a neat parallel band, <strong>1</strong> = loose crossing hairs (hand-drawn).</dd>
+        <dt>Speed</dt>
+        <dd>Link weight to stroke <em>speed</em>: slow, deliberate passes build richer; fast flicks stay light. <strong>0</strong> = off.</dd>
+        <dt>Min length</dt>
+        <dd>Skip connections shorter than this, avoiding clumps near each point.</dd>
+        <dt>Inset</dt>
+        <dd>Trim both ends of every line so it floats between points — the airy web look.</dd>
+        <dt>Line shape</dt>
+        <dd>Straight, a bulging arc, or a smooth curve.</dd>
+        <dt>Dash</dt>
+        <dd>Solid, dashed or dotted.</dd>
+        <dt>Color</dt>
+        <dd>Draw in the main or secondary toolbar color.</dd>
+      </dl>
+      <p class="muted">Presets: <strong>Classic</strong> (faint, inset, sketchy), <strong>Web</strong> (sparser, stronger), <strong>Arc</strong> (opaque curved arcs).</p>
+
+      <div class="note">
+        Tip: a soft Harmony look comes from <em>low alpha + some inset + brush-matched width</em>.
+        Crisp ink comes from <em>high alpha + zero inset</em>. Try the presets, then nudge.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

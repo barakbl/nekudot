@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Covering bigger areas — Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Covering bigger areas</p>
+      <h1>Covering bigger areas</h1>
+      <p class="lead">Make a single stroke carry more weight — without losing the faint, hairy texture.</p>
+
+      <div class="note">
+        The golden rule: <strong>impact comes from <em>more thin lines</em>, never a
+        fatter or more opaque one.</strong> A thick connection drawn as one bar goes
+        muddy and kills the look; the controls below add weight by fanning each
+        connection into many 1px hairs instead.
+      </div>
+
+      <h2>The controls</h2>
+      <p>
+        In any connecting brush (<a href="/book/brushes/classic-round.html">Classic Round</a>,
+        <a href="/book/brushes/web.html">Web</a>, <a href="/book/brushes/soft-pencil.html">Soft Pencil</a>),
+        open brush settings (<span class="kbd">b</span>) → <em>Connection art style</em>:
+      </p>
+      <dl class="settings">
+        <dt>Weight</dt>
+        <dd>Hairs per connection. This is your main <em>impact</em> dial — raise it for a bolder mark made of many faint lines (1 = a single delicate line).</dd>
+        <dt>Spread</dt>
+        <dd>How wide (px) those hairs fan out. Narrow = a dense ribbon; wide = an airy band that covers ground.</dd>
+        <dt>Scatter</dt>
+        <dd>End-jitter, 0→1: parallel band → loose crossing hairs (hand-drawn). <em>(under More)</em></dd>
+        <dt>Speed</dt>
+        <dd>Links stroke speed to weight: slow, deliberate passes gain hairs and stay strong; fast flicks stay light. Great for shading by feel. <em>(under More)</em></dd>
+      </dl>
+      <p class="muted">Pick a preset first, then nudge these. Full reference: <a href="/book/map.html">Memory maps &amp; connecting</a>.</p>
+
+      <h2>Recipes</h2>
+      <dl class="settings">
+        <dt>Bold confident line</dt>
+        <dd>Weight <strong>8–12</strong>, Spread <strong>4–8</strong>, Scatter <strong>~0.2</strong>. A solid-reading stroke that's still a bundle of hairs up close.</dd>
+        <dt>Soft wide shading</dt>
+        <dd>Weight <strong>4–8</strong>, Spread <strong>20–30</strong>, Scatter <strong>~0.4</strong>, low <em>Opacity</em> (~0.1). Sweep back and forth to fill an area with tone.</dd>
+        <dt>Pencil build-up</dt>
+        <dd><a href="/book/brushes/soft-pencil.html">Soft Pencil</a> + a little Weight + <em>Speed</em> up. Linger to deepen, flick to keep it light — go over an area repeatedly to build value.</dd>
+        <dt>Reach across a gap</dt>
+        <dd>Raise <em>Reach</em> so points connect over a wider span, and <em>Density</em> to fill it in.</dd>
+      </dl>
+
+      <h2>Tips</h2>
+      <ul>
+        <li><strong>If it goes muddy / solid black</strong>, don't lower Weight — lower <em>Opacity</em> and/or <em>Density</em>. Keep many faint hairs; just make each fainter. Saturation is what kills the texture.</li>
+        <li><strong>Build in passes.</strong> Several light passes read richer than one heavy stroke — that's the Harmony way (tone accumulates).</li>
+        <li><strong>Weight, not thickness.</strong> Use Weight + Spread for size, never a fat line. (At Weight 1 it's a single thin, delicate line.)</li>
+        <li><strong>Keep it on its own layer.</strong> Put the web on the <a href="/book/layers.html">connection layer</a> so you can fade its opacity or erase it without touching your strokes.</li>
+        <li><strong>Speed is feel-based</strong> — it reads how fast you move, so the same settings give a lively, varied mark.</li>
+      </ul>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

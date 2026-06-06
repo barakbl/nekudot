@@ -1,0 +1,1262 @@
+:root {
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-text: #ffffff;
+  --panel-bg: #2c2d30;
+  --pill-bg: #3a3b3e;
+  --pill-hover: #45464a;
+  --text-primary: #f0f1f2;
+  --text-body: #e6e7e8;
+  --text-icon: #d4d5d7;
+  --text-muted: #b8b9bb;
+  --text-faint: #888;
+  --text-subtle: #c8c9cb;
+  --drag-dot: #9a9b9d;
+  --chevron: #a0a1a3;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-stronger: rgba(255, 255, 255, 0.15);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --hover-bg-strong: rgba(255, 255, 255, 0.08);
+  --slider-track: #45464a;
+  --slider-thumb-bg: #1c1d20;
+  --slider-thumb-border: #d8d9da;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+  --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.22);
+  --canvas-bg: #ffffff;
+  --canvas-border: #333;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --panel-bg: #ffffff;
+    --pill-bg: #ececef;
+    --pill-hover: #dcdcdf;
+    --text-primary: #1c1d20;
+    --text-body: #2c2d30;
+    --text-icon: #45464a;
+    --text-muted: #6b6c70;
+    --text-faint: #8a8b8e;
+    --text-subtle: #45464a;
+    --drag-dot: #b0b1b3;
+    --chevron: #6b6c70;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-stronger: rgba(0, 0, 0, 0.15);
+    --hover-bg: rgba(0, 0, 0, 0.04);
+    --hover-bg-strong: rgba(0, 0, 0, 0.06);
+    --slider-track: #d0d0d3;
+    --slider-thumb-bg: #ffffff;
+    --slider-thumb-border: #2c2d30;
+    --modal-overlay: rgba(0, 0, 0, 0.25);
+    --shadow: 0 6px 22px rgba(0, 0, 0, 0.15);
+    --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.1);
+    --canvas-border: #bbb;
+  }
+}
+
+[data-theme="dark"] {
+  --panel-bg: #2c2d30;
+  --pill-bg: #3a3b3e;
+  --pill-hover: #45464a;
+  --text-primary: #f0f1f2;
+  --text-body: #e6e7e8;
+  --text-icon: #d4d5d7;
+  --text-muted: #b8b9bb;
+  --text-faint: #888;
+  --text-subtle: #c8c9cb;
+  --drag-dot: #9a9b9d;
+  --chevron: #a0a1a3;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-stronger: rgba(255, 255, 255, 0.15);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --hover-bg-strong: rgba(255, 255, 255, 0.08);
+  --slider-track: #45464a;
+  --slider-thumb-bg: #1c1d20;
+  --slider-thumb-border: #d8d9da;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+  --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.22);
+  --canvas-border: #333;
+}
+
+[data-theme="light"] {
+  --panel-bg: #ffffff;
+  --pill-bg: #ececef;
+  --pill-hover: #dcdcdf;
+  --text-primary: #1c1d20;
+  --text-body: #2c2d30;
+  --text-icon: #45464a;
+  --text-muted: #6b6c70;
+  --text-faint: #8a8b8e;
+  --text-subtle: #45464a;
+  --drag-dot: #b0b1b3;
+  --chevron: #6b6c70;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-stronger: rgba(0, 0, 0, 0.15);
+  --hover-bg: rgba(0, 0, 0, 0.04);
+  --hover-bg-strong: rgba(0, 0, 0, 0.06);
+  --slider-track: #d0d0d3;
+  --slider-thumb-bg: #ffffff;
+  --slider-thumb-border: #2c2d30;
+  --modal-overlay: rgba(0, 0, 0, 0.25);
+  --shadow: 0 6px 22px rgba(0, 0, 0, 0.15);
+  --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.1);
+  --canvas-border: #bbb;
+}
+
+.toolbar {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  background: var(--panel-bg);
+  border-radius: 20px;
+  color: var(--text-body);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: var(--shadow-toolbar);
+  z-index: 10;
+  user-select: none;
+}
+
+.toolbar .divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-subtle);
+}
+
+.toolbar .drag {
+  display: grid;
+  grid-template-columns: repeat(2, 2px);
+  grid-template-rows: repeat(3, 2px);
+  gap: 2px;
+  cursor: grab;
+  padding: 2px 4px;
+  touch-action: none;
+}
+.toolbar .drag.dragging {
+  cursor: grabbing;
+}
+.toolbar .drag span {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--drag-dot);
+}
+
+.toolbar .swatch-wrap {
+  position: relative;
+  width: 18px;
+  height: 18px;
+}
+.toolbar .swatch-back {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 11px;
+  height: 11px;
+  background: #888;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.toolbar .swatch-front {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  background: #000;
+  border-radius: 3px;
+  outline: 1.5px solid #ff7b6b;
+  outline-offset: 1px;
+  cursor: pointer;
+}
+.toolbar .swatch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toolbar .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  background: var(--pill-bg);
+  border-radius: 12px;
+  font-size: 11px;
+}
+
+.toolbar .brush-pill {
+  cursor: pointer;
+  position: relative;
+}
+.toolbar .brush-icon {
+  color: var(--text-icon);
+  font-size: 12px;
+}
+.toolbar .brush-label {
+  font-weight: 500;
+}
+.toolbar .chevron {
+  color: var(--chevron);
+  font-size: 10px;
+}
+.toolbar .brush-gear {
+  display: inline-flex;
+  color: var(--chevron);
+  padding: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.toolbar .brush-gear:hover {
+  background: var(--hover-bg-strong);
+  color: var(--text-icon);
+}
+
+.brush-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  min-width: 170px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  z-index: 11;
+  display: none;
+}
+.canvas-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.canvas-menu-section {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 6px 8px 2px;
+}
+.canvas-menu-sep {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 6px;
+}
+.brush-popover.open {
+  display: block;
+}
+.brush-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-icon);
+}
+.brush-option:hover {
+  background: var(--hover-bg);
+}
+.brush-option.active {
+  background: var(--hover-bg-strong);
+  color: var(--text-primary);
+}
+.brush-option .opt-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+.brush-option .opt-label {
+  flex: 1;
+  font-size: 12px;
+}
+.brush-option .opt-shortcut {
+  font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 1px 5px;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+.brush-group-header {
+  padding: 6px 8px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: default;
+  user-select: none;
+}
+.brush-option.in-group {
+  padding-left: 22px;
+}
+
+/* Collapsible submenu (e.g. Theme): the current row shows a chevron that flips
+   when its submenu is open; the submenu itself is hidden until then. */
+.canvas-menu-current .chevron {
+  transition: transform 0.15s ease;
+}
+.canvas-menu-current.open .chevron {
+  transform: rotate(180deg);
+}
+.canvas-menu-sub {
+  display: none;
+}
+.canvas-menu-sub.open {
+  display: block;
+}
+
+.toolbar .icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text-icon);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.toolbar .icon-btn:hover {
+  background: var(--hover-bg-strong);
+}
+
+.tool-toggles {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+}
+.toolbar .tool-toggle.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+.toolbar .tool-toggle.active:hover {
+  background: var(--accent-hover);
+}
+
+.toolbar .zoom-pill {
+  color: var(--text-muted);
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
+.shortcuts-panel {
+  position: fixed;
+  top: 64px;
+  left: 96px;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  z-index: 20;
+}
+.shortcuts-body {
+  overflow: auto;
+}
+.shortcuts-panel h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.shortcuts-hint {
+  margin: 0 0 12px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.shortcuts-group {
+  margin-bottom: 14px;
+}
+.shortcuts-group:last-child {
+  margin-bottom: 0;
+}
+.shortcuts-group-title {
+  margin: 0 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.shortcuts-table {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  row-gap: 2px;
+  column-gap: 12px;
+}
+.shortcuts-row {
+  display: contents;
+  cursor: pointer;
+}
+.shortcuts-row > .shortcuts-desc,
+.shortcuts-row > .shortcuts-keys,
+.shortcuts-row > .shortcuts-touch {
+  padding: 5px 8px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.shortcuts-row > .shortcuts-desc {
+  color: var(--text-body);
+  font-weight: 500;
+}
+.shortcuts-row > .shortcuts-keys,
+.shortcuts-row > .shortcuts-touch {
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+.shortcuts-row:hover > .shortcuts-desc,
+.shortcuts-row:hover > .shortcuts-keys,
+.shortcuts-row:hover > .shortcuts-touch {
+  background: var(--hover-bg-strong);
+}
+.shortcuts-row:focus {
+  outline: none;
+}
+.shortcuts-row:focus > .shortcuts-desc,
+.shortcuts-row:focus > .shortcuts-keys,
+.shortcuts-row:focus > .shortcuts-touch {
+  background: var(--hover-bg-strong);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.shortcuts-card kbd {
+  min-width: 22px;
+  padding: 1px 6px;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  color: var(--text-primary);
+}
+.shortcuts-card kbd.kbd-gesture {
+  font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 500;
+  background: transparent;
+  border-color: var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.settings-panel {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  min-width: 220px;
+  /* Cap to the viewport so a tall panel (e.g. Fur, with many dials) never runs
+     off-screen; the header stays put and the body scrolls (see .panel-content).
+     border-box so the cap includes our padding (else it overflows by 24px). */
+  box-sizing: border-box;
+  max-height: calc(100vh - 76px);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  z-index: 15;
+}
+/* Header (drag handle + close) is fixed; the dials scroll under it. */
+.settings-panel > .panel-header {
+  flex: 0 0 auto;
+}
+.settings-panel > .panel-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.settings-panel h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.panel-header.drag-handle {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.panel-header.drag-handle.dragging {
+  cursor: grabbing;
+}
+.panel-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+.panel-close-btn:hover {
+  background: var(--hover-bg-strong);
+  color: var(--text-primary);
+}
+.settings-empty {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.settings-section {
+  margin: 10px 0 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.settings-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+}
+.settings-row label {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.settings-number {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-number input[type="range"] {
+  width: 100px;
+}
+.settings-value {
+  min-width: 28px;
+  text-align: right;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-icon);
+}
+.settings-color {
+  width: 28px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-stronger);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.settings-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+/* Force a wrap so a group of pills starts on a fresh line. */
+.settings-preset-break {
+  flex-basis: 100%;
+  height: 0;
+  margin: 0;
+}
+.settings-preset-btn {
+  padding: 4px 12px;
+  background: var(--pill-bg);
+  color: var(--text-body);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+}
+.settings-preset-btn:hover {
+  background: var(--pill-hover);
+}
+.settings-preset-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+/* Distinct boxes for the two connecting groups. */
+.settings-group {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+.settings-group-routing {
+  background: var(--hover-bg);
+}
+.settings-group-style {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+}
+.settings-group-title {
+  margin: 0 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.settings-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  outline: none;
+}
+.settings-group-toggle:hover {
+  color: var(--text-primary);
+}
+.settings-chevron {
+  transition: transform 0.12s ease;
+}
+.settings-group-toggle.open .settings-chevron {
+  transform: rotate(90deg);
+}
+.settings-group-body {
+  margin-top: 4px;
+}
+/* Keep a setting's label and its "?" together on the left of the row. */
+.settings-label-help {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.canvas-action {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--pill-bg);
+  color: var(--text-body);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+.canvas-action:hover:not(:disabled) {
+  background: var(--pill-hover);
+}
+.canvas-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.settings-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  padding: 3px 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.settings-select-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-select-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.layers-box {
+  position: fixed;
+  top: 60px;
+  left: 16px;
+  min-width: 240px;
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  z-index: 15;
+}
+.layers-box h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.layer-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr 90px 36px auto auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--pill-bg);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.layer-row.active {
+  border-color: var(--border-subtle);
+  outline: 1px solid currentColor;
+}
+/* Drag handle: only this starts a layer reorder. touch-action:none so a touch
+   drag doesn't scroll the panel. */
+.layer-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  padding: 2px 1px;
+  border-radius: 3px;
+}
+.layer-grip:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg-strong);
+}
+.layer-grip.disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+.layer-block.dragging {
+  opacity: 0.6;
+}
+.layer-block.dragging .layer-row {
+  cursor: grabbing;
+  border-color: var(--border-subtle);
+  outline: 1px dashed currentColor;
+}
+.layer-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.layer-action-btn:hover:not(:disabled) {
+  background: var(--hover-bg-strong);
+  color: var(--text-primary);
+}
+.layer-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+/* Connection-layer marker. Idle = faint, desaturated and thin so it recedes;
+   active = bold accent with thicker strokes so the current connection layer is
+   unmistakable (and reads distinctly from the selected-row outline). */
+.layer-conn-btn {
+  color: var(--text-faint);
+  opacity: 0.6;
+}
+.layer-conn-btn svg {
+  stroke-width: 1.8;
+}
+.layer-conn-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  opacity: 1;
+  background: var(--hover-bg-strong);
+}
+.layer-conn-btn.active {
+  color: var(--accent);
+  opacity: 1;
+}
+.layer-conn-btn.active svg {
+  stroke-width: 2.4;
+}
+.layer-conn-btn.active:hover:not(:disabled) {
+  color: var(--accent-hover);
+  background: transparent;
+}
+.layer-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layer-opacity {
+  width: 100%;
+}
+.layer-opacity-value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 11px;
+  opacity: 0.7;
+}
+.layers-add-btn {
+  width: 100%;
+  background: var(--pill-bg);
+  color: inherit;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font: inherit;
+}
+.layers-add-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Special "Background" row at the bottom of the layers list. */
+.layer-row-background {
+  grid-template-columns: auto 1fr auto;
+  cursor: default;
+}
+.bg-transparent-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.bg-transparent-toggle input {
+  cursor: pointer;
+  margin: 0;
+}
+.layer-row-background:hover {
+  background: var(--pill-bg);
+}
+.bg-swatch {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid var(--border-stronger);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bg-color-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.layer-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Neighbors-map rows: taller layout with a placeholder options slot
+   next to the preview (reserved for future per-map controls). */
+.neighbors-map-box .layer-row {
+  grid-template-columns: auto auto 1fr auto;
+  padding: 12px 8px;
+}
+.nm-options-slot {
+  min-width: 64px;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+}
+.nm-flash-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nm-flash-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg-strong);
+  border-color: var(--border-stronger);
+}
+.layer-preview {
+  display: block;
+  background: var(--hover-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.editable-name {
+  cursor: text;
+  border-radius: 3px;
+  padding: 1px 3px;
+  outline: none;
+}
+.editable-name[contenteditable="true"] {
+  background: var(--panel-bg);
+  box-shadow: 0 0 0 1px var(--accent);
+  cursor: text;
+}
+
+/* Help framework: ? icons + tooltip popover */
+.help-icon {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: help;
+  user-select: none;
+  vertical-align: middle;
+}
+body.help-mode .help-icon {
+  display: inline-flex;
+}
+.help-icon:hover {
+  background: var(--accent-hover);
+}
+
+/* Undo/redo chip */
+.undo-chip {
+  position: fixed;
+  top: 58%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border: 1px solid var(--border-stronger);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  z-index: 200;
+  cursor: pointer;
+  user-select: none;
+  animation: undo-chip-in 0.18s ease-out;
+}
+@keyframes undo-chip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.undo-chip-out {
+  animation: undo-chip-out 0.18s ease-out forwards;
+}
+@keyframes undo-chip-out {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+.help-tooltip {
+  position: fixed;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border: 1px solid var(--border-stronger);
+  border-radius: 6px;
+  padding: 6px 10px;
+  max-width: 240px;
+  font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.4;
+  box-shadow: var(--shadow);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.size-picker-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+.size-picker-card {
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px 14px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.size-picker-card h3 {
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+.size-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.size-option {
+  padding: 10px 8px 12px;
+  background: var(--pill-bg);
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.size-option:hover {
+  background: var(--pill-hover);
+}
+.size-option.selected {
+  border-color: var(--accent);
+  background: var(--pill-hover);
+}
+.size-preview-area {
+  width: 120px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hover-bg);
+  border-radius: 4px;
+}
+.size-preview-rect {
+  background: var(--text-icon);
+  border-radius: 2px;
+}
+.size-option.selected .size-preview-rect {
+  background: var(--accent);
+}
+.size-option-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+.size-option-dims {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.size-option-body:empty {
+  display: none;
+}
+.size-manual-inputs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.size-num-input {
+  width: 56px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 3px 6px;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.size-num-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.size-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.size-picker-actions .canvas-action {
+  width: auto;
+  margin-top: 0;
+  padding: 7px 14px;
+  text-align: center;
+  font-weight: 500;
+}
+.size-picker-actions .canvas-action:not(.primary) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.size-picker-actions .canvas-action:not(.primary):hover {
+  background: var(--hover-bg);
+  color: var(--text-body);
+}
+.size-picker-actions .canvas-action.primary {
+  min-width: 96px;
+}
+.canvas-action.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+.canvas-action.primary:hover {
+  background: var(--accent-hover);
+}
+
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+.confirm-card {
+  min-width: 240px;
+  max-width: 360px;
+  padding: 16px 18px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.confirm-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.confirm-card h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.confirm-card p {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.confirm-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+.confirm-btn-cancel {
+  background: transparent;
+  color: var(--text-subtle);
+  border: 1px solid var(--border-stronger);
+}
+.confirm-btn-cancel:hover {
+  background: var(--hover-bg);
+}
+.confirm-btn-primary {
+  background: #4c6ef5;
+  color: white;
+}
+.confirm-btn-destructive {
+  background: #d9534f;
+  color: white;
+}
+.confirm-btn-primary:hover,
+.confirm-btn-destructive:hover {
+  filter: brightness(1.1);
+}

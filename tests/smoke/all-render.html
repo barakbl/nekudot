@@ -1,0 +1,242 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>All brushes & presets — regression render</title>
+    <style>
+      body {
+        margin: 0;
+        background: #2b2b2b;
+        font: 12px system-ui, sans-serif;
+        color: #ddd;
+      }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(4, max-content);
+        gap: 14px;
+        padding: 16px;
+      }
+      figure { margin: 0; text-align: center; }
+      figure canvas { display: block; border: 1px solid #555; background: #fff; }
+      figcaption { margin-top: 4px; }
+      figcaption.err { color: #ff6b6b; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module">
+      // Renders every brush and every connecting preset deterministically so the
+      // output can be pixel-diffed against a frozen baseline across the
+      // brushes/presets refactor. Each cell keeps its canvas so the runner can
+      // read pixels (window.__cells / window.__diff) — no screenshot needed.
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { RoundBrush } from "/src/brushes/round.ts";
+      import { HandfreeBrush } from "/src/brushes/handfree.ts";
+      import { MarkerBrush } from "/src/brushes/marker.ts";
+      import { SquaresBrush } from "/src/brushes/squares.ts";
+      import { CirclesBrush } from "/src/brushes/circles.ts";
+      import { DotsBrush } from "/src/brushes/dots.ts";
+      import { LinesBrush } from "/src/brushes/lines.ts";
+      import { EllipseBrush } from "/src/brushes/ellipse.ts";
+
+      const W = 240;
+      const H = 200;
+      const SEED = 1234;
+
+      // Deterministic clock — ShapesStrokeBrush (Squares/Circles) sizes shapes by
+      // stroke speed via performance.now(), so freeze it to a controlled counter.
+      let CLOCK = 1000;
+      performance.now = () => CLOCK;
+
+      // Test-gesture jitter RNG (separate from each brush's own seeded engine).
+      function mulberry32(seed) {
+        let s = seed >>> 0;
+        return () => {
+          s = (s + 0x6d2b79f5) >>> 0;
+          let t = Math.imul(s ^ (s >>> 15), 1 | s);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      // Two sparse, gently curved strokes with whitespace — a real gesture, so
+      // textures (wisps, hairs, scallops) read instead of saturating.
+      function gestureStrokes() {
+        const rnd = mulberry32(99);
+        const jit = (v) => v + (rnd() - 0.5) * 5;
+        const a = [], b = [];
+        for (let x = 34; x <= W - 34; x += 7)
+          a.push([jit(x), jit(H * 0.42 + 26 * Math.sin(x / 28))]);
+        for (let x = 40; x <= W - 30; x += 7)
+          b.push([jit(x), jit(H * 0.66 + 18 * Math.sin(x / 22 + 1.7))]);
+        return [a, b];
+      }
+
+      // Tap targets for the grid-tap brushes (Dots/Lines/Ellipse): one tap each.
+      const TAPS = [[80, 70], [165, 110], [110, 150]];
+
+      function newCell() {
+        const canvas = document.createElement("canvas");
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const renderer = new CanvasRenderer(ctx, { dpr: 1 });
+        renderer.fillBackground("#ffffff");
+        renderer.setStrokeStyle("#111111");
+        const finder = createNeighborFinder("quadtree", []);
+        return { canvas, renderer, finder };
+      }
+
+      function runStroke(brush, pts) {
+        brush.strokeStart(pts[0][0], pts[0][1]);
+        for (const [x, y] of pts) {
+          CLOCK += 16;
+          brush.stroke(x, y);
+        }
+        brush.strokeEnd();
+      }
+
+      function runTaps(brush, pts) {
+        for (const [x, y] of pts) {
+          brush.strokeStart(x, y);
+          brush.stroke(x, y);
+          brush.strokeEnd();
+        }
+      }
+
+      // name -> render fn (returns the cell's canvas). Each isolates its own
+      // renderer/finder so cells never bleed into each other.
+      const RENDERERS = {
+        Squares: () => {
+          const c = newCell();
+          const brush = new SquaresBrush(c.renderer, c.finder, SEED);
+          for (const s of gestureStrokes()) runStroke(brush, s);
+          return c.canvas;
+        },
+        Circles: () => {
+          const c = newCell();
+          const brush = new CirclesBrush(c.renderer, c.finder, SEED);
+          for (const s of gestureStrokes()) runStroke(brush, s);
+          return c.canvas;
+        },
+        Dots: () => {
+          const c = newCell();
+          const brush = new DotsBrush(c.renderer, c.finder, SEED);
+          runTaps(brush, TAPS);
+          return c.canvas;
+        },
+        Lines: () => {
+          const c = newCell();
+          const brush = new LinesBrush(c.renderer, c.finder, SEED);
+          runTaps(brush, TAPS);
+          return c.canvas;
+        },
+        Ellipse: () => {
+          const c = newCell();
+          const brush = new EllipseBrush(c.renderer, c.finder, SEED);
+          runTaps(brush, TAPS);
+          return c.canvas;
+        },
+        Marker: () => {
+          const c = newCell();
+          const brush = new MarkerBrush(c.renderer, c.finder, SEED);
+          for (const s of gestureStrokes()) runStroke(brush, s);
+          return c.canvas;
+        },
+        Handfree: () => {
+          const c = newCell();
+          const brush = new HandfreeBrush(c.renderer, c.finder, SEED);
+          brush.applyArtStylePreset("classic");
+          for (const s of gestureStrokes()) runStroke(brush, s);
+          return c.canvas;
+        },
+      };
+
+      // Round + every connecting preset. Names are fixed (stable across refactor).
+      const PRESETS = ["classic", "web", "arc", "shaded", "fur", "lace"];
+      for (const name of PRESETS) {
+        RENDERERS["preset-" + name] = () => {
+          const c = newCell();
+          const brush = new RoundBrush(c.renderer, c.finder, SEED);
+          brush.applyArtStylePreset(name);
+          for (const s of gestureStrokes()) runStroke(brush, s);
+          return c.canvas;
+        };
+      }
+
+      const cellCanvases = {};
+      const grid = document.getElementById("grid");
+      for (const [name, fn] of Object.entries(RENDERERS)) {
+        const fig = document.createElement("figure");
+        const cap = document.createElement("figcaption");
+        try {
+          const canvas = fn();
+          cellCanvases[name] = canvas;
+          fig.appendChild(canvas);
+          cap.textContent = name;
+        } catch (e) {
+          cap.className = "err";
+          cap.textContent = name + " — ERROR: " + (e?.message || e);
+        }
+        fig.appendChild(cap);
+        grid.appendChild(fig);
+      }
+
+      function loadImage(url) {
+        return new Promise((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = rej;
+          im.src = url;
+        });
+      }
+
+      // --update path: hand the runner each cell as a PNG data URL.
+      window.__cells = Object.fromEntries(
+        Object.entries(cellCanvases).map(([n, cv]) => [n, { png: cv.toDataURL("image/png") }]),
+      );
+
+      // default path: diff each cell against a baseline PNG (data URL), counting
+      // pixels whose channels differ by more than TOL. Returns per-cell stats.
+      window.__diff = async (baselines, TOL = 8) => {
+        const out = [];
+        for (const [name, cv] of Object.entries(cellCanvases)) {
+          if (!(name in baselines)) {
+            out.push({ name, missing: true });
+            continue;
+          }
+          const cur = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+          const img = await loadImage(baselines[name]);
+          const tmp = document.createElement("canvas");
+          tmp.width = cv.width;
+          tmp.height = cv.height;
+          const tctx = tmp.getContext("2d");
+          tctx.drawImage(img, 0, 0);
+          const base = tctx.getImageData(0, 0, cv.width, cv.height).data;
+          let mismatch = 0;
+          for (let i = 0; i < cur.length; i += 4) {
+            if (
+              Math.abs(cur[i] - base[i]) > TOL ||
+              Math.abs(cur[i + 1] - base[i + 1]) > TOL ||
+              Math.abs(cur[i + 2] - base[i + 2]) > TOL ||
+              Math.abs(cur[i + 3] - base[i + 3]) > TOL
+            )
+              mismatch++;
+          }
+          const total = cur.length / 4;
+          out.push({ name, mismatch, total, frac: mismatch / total });
+        }
+        for (const name of Object.keys(baselines))
+          if (!(name in cellCanvases)) out.push({ name, orphan: true });
+        return out;
+      };
+
+      // Report cells that errored so the runner can fail loudly.
+      window.__errors = [...document.querySelectorAll("figcaption.err")].map(
+        (c) => c.textContent,
+      );
+      window.__renderDone = true;
+    </script>
+  </body>
+</html>
