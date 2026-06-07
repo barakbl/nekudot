@@ -380,11 +380,11 @@ function makeMapsMenu(control: MapsControl): { el: HTMLElement; toggle: () => vo
       dotsU.className = "maps-menu-dots-unit";
       dotsU.textContent = m.dots === 1 ? " dot" : " dots";
       dots.append(dotsN, dotsU);
-      row.append(middle, flash, name, dots);
-      // Delete is only offered when there's more than one map (at least one must
-      // remain). The app shows a confirm modal before actually removing it.
+      // Delete (offered only when >1 map, since one must remain) sits on the far
+      // left; clicking closes the popover and the app confirms before removing.
+      let del: HTMLButtonElement | null = null;
       if (maps.length > 1) {
-        const del = document.createElement("button");
+        del = document.createElement("button");
         del.type = "button";
         del.className = "maps-menu-delete";
         del.title = `Delete ${m.name}`;
@@ -396,8 +396,9 @@ function makeMapsMenu(control: MapsControl): { el: HTMLElement; toggle: () => vo
           popover.classList.remove("open"); // close behind the confirm modal
           control.onDeleteMap(i);
         });
-        row.append(del);
       }
+      if (del) row.append(del);
+      row.append(middle, flash, name, dots);
       listEl.appendChild(row);
     });
   };
