@@ -119,6 +119,9 @@ export type BrushControls = { size: BrushControl; opacity: BrushControl };
 export type SettingsPanelOpts = {
   scope: "brush" | "connecting";
   brushControls?: BrushControls; // brush scope only
+  onSavePreset?: () => void; // connecting: save the dials as a new custom preset
+  onUpdatePreset?: () => void; // connecting: overwrite the active custom preset
+  activeCustomName?: () => string | null; // the active custom preset's name, or null
 };
 
 const isConnectingSetting = (s: BrushSetting): boolean =>
@@ -216,6 +219,31 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
       } else {
         if (section) content.appendChild(makeSectionHeader(section));
         for (const s of run) content.appendChild(makeRow(s));
+      }
+    }
+
+    // Connecting box: save the current dials as a Custom preset. When a custom
+    // preset is already active, offer to update it in place or save a new one.
+    if (opts.scope === "connecting" && opts.onSavePreset && brush.supportsConnecting()) {
+      const mkBtn = (label: string, fn?: () => void) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "settings-save-preset";
+        b.textContent = label;
+        b.addEventListener("click", () => fn?.());
+        return b;
+      };
+      const customName = opts.activeCustomName?.() ?? null;
+      if (customName && opts.onUpdatePreset) {
+        const row = document.createElement("div");
+        row.className = "settings-preset-actions";
+        row.append(
+          mkBtn(`Update “${customName}”`, opts.onUpdatePreset),
+          mkBtn("Save as new…", opts.onSavePreset),
+        );
+        content.appendChild(row);
+      } else {
+        content.appendChild(mkBtn("＋ Save as preset…", opts.onSavePreset));
       }
     }
   };

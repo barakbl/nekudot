@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Eraser — Nekudot book</title>
+    <title>Eraser - Nekudot book</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -18,7 +18,7 @@
     <main>
       <p class="crumbs"><a href="/book/">Book</a> › Utilities › Eraser</p>
       <h1>Eraser</h1>
-      <p class="lead">Rubs out pixels — without forgetting anything.</p>
+      <p class="lead">Rubs out pixels - without forgetting anything.</p>
 
       <h2>What it is</h2>
       <p>
@@ -32,7 +32,7 @@
       <h2>How it works with brushes</h2>
       <p>
         The eraser borrows the <strong>currently selected brush's shape and
-        size</strong> — it doesn't have its own. A fat round brush erases in fat
+        size</strong> - it doesn't have its own. A fat round brush erases in fat
         round dabs; a Squares brush erases square chunks; making the brush bigger
         makes the eraser bigger. Under the hood it just switches the brush to
         "remove" mode, so everything you know about the brush still applies.
@@ -48,22 +48,22 @@
         This is the important part: <strong>erasing is purely visual.</strong> It
         clears pixels on the canvas but does <em>not</em> touch the
         <a href="/book/map.html">memory maps</a>. While erasing, no points are
-        added to the point cloud and none are removed — the remembered points
+        added to the point cloud and none are removed - the remembered points
         behind the paint stay exactly where they were.
       </p>
       <div class="note">
         So if you erase a stroke and then draw with a connecting brush, its web
-        will still reach toward the points you "erased" — they're invisible but
+        will still reach toward the points you "erased" - they're invisible but
         not forgotten. To actually forget points (and stop them attracting
-        connections), <em>clear the memory map</em> instead — that's a separate
+        connections), <em>clear the memory map</em> instead - that's a separate
         action from erasing.
       </div>
 
       <h2>When to use which</h2>
       <ul>
-        <li><strong>Eraser</strong> — remove paint you don't want, while keeping the structure the web is built on.</li>
-        <li><strong>Clear the map</strong> — forget the remembered points so new connections start fresh.</li>
-        <li><strong>Layer opacity / delete</strong> — fade or drop a whole layer at once (see <a href="/book/layers.html">Layers</a>).</li>
+        <li><strong>Eraser</strong> - remove paint you don't want, while keeping the structure the web is built on.</li>
+        <li><strong>Clear the map</strong> - forget the remembered points so new connections start fresh.</li>
+        <li><strong>Layer opacity / delete</strong> - fade or drop a whole layer at once (see <a href="/book/layers.html">Layers</a>).</li>
       </ul>
     </main>
 

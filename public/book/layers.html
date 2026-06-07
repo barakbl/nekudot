@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Layers — Nekudot book</title>
+    <title>Layers - Nekudot book</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -24,16 +24,16 @@
       <p>
         Open it from the <strong>Windows</strong> menu or with <span class="kbd">l</span>.
         Each layer is its own canvas. Strokes land on the <strong>active</strong>
-        layer — click a layer row to make it active. Connecting lines are baked
+        layer - click a layer row to make it active. Connecting lines are baked
         onto the <strong>connection layer</strong> instead (see below), which can
         be a different layer. The panel lists layers top-down in the same order
-        they stack on screen — drag a row by its grip handle to reorder them
+        they stack on screen - drag a row by its grip handle to reorder them
         (see below).
       </p>
       <div class="note">
         New artwork starts with two layers: <strong>layer-2</strong> active for
         painting on top, and <strong>layer-1</strong> as the connection layer
-        beneath — so the web builds under your strokes by default.
+        beneath - so the web builds under your strokes by default.
       </div>
 
       <h2>The connection layer</h2>
@@ -45,7 +45,7 @@
         Click another row's link to move it there; it's independent of the
         active layer, so you can paint on one layer while the web accumulates on
         another. Whether a brush connects at all is its
-        <em>Connect to stroke or map?</em> setting — see
+        <em>Connect to stroke or map?</em> setting - see
         <a href="/book/map.html">connecting</a>.
       </p>
 
@@ -75,18 +75,18 @@
         <dt>Opacity</dt>
         <dd>Blend the whole layer over the ones beneath it (0–100%).</dd>
         <dt>Connection layer (link button)</dt>
-        <dd>Make this the connection layer — the target for baked connecting lines. Always exactly one; click to move it here.</dd>
+        <dd>Make this the connection layer - the target for baked connecting lines. Always exactly one; click to move it here.</dd>
         <dt>Duplicate</dt>
         <dd>Copy the layer and its pixels into a new layer above. Duplicating the connection layer hands the marker to the copy.</dd>
         <dt>Delete</dt>
         <dd>Remove the layer (at least one must remain). Deleting the connection layer passes the connection to the layer beneath it.</dd>
         <dt>Background</dt>
-        <dd>The bottom row sets the canvas background color.</dd>
+        <dd>The bottom row sets the canvas background colour, or tick <strong>Transparent</strong> for no background - the canvas shows a checkerboard and exports to a transparent PNG. (Picking a colour turns transparency back off.)</dd>
       </dl>
 
       <div class="note">
         Layers are about <em>pixels</em>. The point clouds that drive connecting
-        lines are separate, shared <a href="/book/map.html">memory maps</a> — so
+        lines are separate, shared <a href="/book/map.html">memory maps</a> - so
         you can paint on different layers while feeding (or reading from) the
         same cloud.
       </div>
@@ -94,8 +94,8 @@
       <h2>Tips</h2>
       <ul>
         <li>Keep the connecting web on its own layer (the default connection layer) so you can fade or delete it without touching the strokes.</li>
-        <li>Duplicate a layer before a risky pass — it's a cheap snapshot.</li>
-        <li>Reorder by the grip, not the row — dragging elsewhere selects or edits the layer instead.</li>
+        <li>Duplicate a layer before a risky pass - it's a cheap snapshot.</li>
+        <li>Reorder by the grip, not the row - dragging elsewhere selects or edits the layer instead.</li>
         <li>Drag any panel by its title bar to get it out of the way.</li>
       </ul>
     </main>

@@ -258,7 +258,7 @@ export abstract class BrushBase {
 
   // --- connection wiring -----------------------------------------------------
 
-  // Connecting brushes (Round, Soft Pencil) call this from their constructor to
+  // Connecting brushes (Round) call this from their constructor to
   // attach a default connection. Non-connecting brushes never do, so
   // `connection` stays null and the connecting UI/engine never engages for them.
   protected initConnection(name: string): void {

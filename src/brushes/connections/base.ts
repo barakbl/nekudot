@@ -324,6 +324,52 @@ export class ConnectionBase {
 
   // --- presets / flat application --------------------------------------------
 
+  // Serialize the current art-style dial values (the look — not the memory-map
+  // routing). Mirrors a spec's `defaults`, so it round-trips through applyFlat
+  // and can be stored as a custom preset.
+  toFlat(): ConnectingFlat {
+    return {
+      alpha: this.connectionStyle.alpha ?? 0.2,
+      color: this.connectionColorSource,
+      connect: this.connectType,
+      dash: this.connectionDash,
+      density: this.connectDensity,
+      radius: this.searchRadius,
+      minDist: this.minConnectDist,
+      inset: this.connectInset,
+      fade: this.connectAlphaFade,
+      strands: this.connectStrands,
+      spread: this.connectSpread,
+      scatter: this.connectScatter,
+      taper: this.connectTaper,
+      flow: this.connectFlow,
+      fray: this.connectFray,
+      length: this.connectLength,
+      wave: this.connectWave,
+      dynamics: this.connectDynamics,
+      curl: this.connectCurl,
+      grainStrength: this.connectGrainStrength,
+      grainAngle: this.connectGrainAngle,
+      grainCross: this.connectGrainCross,
+      sampleSpacing: this.connectSampleSpacing,
+    };
+  }
+
+  // Build a Custom-group spec from the current dials + the given stroke-line
+  // opacity, reusing this style's class (file) and glyph. Stored in IndexedDB
+  // and re-instantiated via createConnection().
+  toCustomSpec(name: string, strokeAlpha: number): ConnectionSpec {
+    return {
+      name,
+      label: name,
+      file: this.spec.file,
+      icon: this.spec.icon,
+      strokeAlpha,
+      info: `Custom preset based on ${this.spec.label ?? this.spec.name}`,
+      defaults: this.toFlat(),
+    };
+  }
+
   // Apply a flat key→value map (a preset, a routing preset, or a loaded artwork)
   // by routing every key through setKey. Order follows the map, so radius lands
   // before minDist (radius clamps minDist).

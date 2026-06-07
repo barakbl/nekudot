@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Memory maps &amp; connecting — Nekudot book</title>
+    <title>Memory maps &amp; connecting - Nekudot book</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -19,21 +19,24 @@
       <p class="crumbs"><a href="/book/">Book</a> › Memory maps</p>
       <h1>Memory maps &amp; connecting</h1>
       <p class="lead">
-        The point cloud that turns single strokes into webs — the heart of Nekudot.
+        The point cloud that turns single strokes into webs - the heart of Nekudot.
       </p>
 
       <h2>What a memory map is</h2>
       <p>
         A <strong>memory map</strong> is a cloud of points (stored as a
-        quadtree, so neighbour lookups stay fast). It has no pixels of its own —
+        quadtree, so neighbour lookups stay fast). It has no pixels of its own -
         it just remembers <em>where</em> you've drawn. As you draw, each new
         point is added to a map; this growing record is the map's
         <strong>trail</strong>.
       </p>
       <p>
-        Maps are <strong>top-level</strong> — shared across every layer. You can
+        Maps are <strong>top-level</strong> - shared across every layer. You can
         keep several maps and switch between them in the
-        <a href="/book/">Maps</a> panel (<span class="kbd">m</span>).
+        <a href="/book/">Maps</a> panel (<span class="kbd">m</span>). Each map row
+        has a <strong>Flash</strong> button that briefly lights up that map's
+        points on the canvas (glowing dots that pulse, then fade) so you can see
+        where they sit.
       </p>
 
       <h2>How connecting works</h2>
@@ -59,7 +62,7 @@
       <h3>Connection <span class="tag">where</span></h3>
       <p>
         Connection lines always bake onto the
-        <a href="/book/layers.html"><strong>connection layer</strong></a> — the
+        <a href="/book/layers.html"><strong>connection layer</strong></a> - the
         layer marked with the link icon in the Layers panel. Move that marker to
         send the web to a different layer. Whether to connect at all is the
         <em>Connect to stroke or map?</em> setting below (<em>None</em> turns it
@@ -72,10 +75,10 @@
         <dd>The map this stroke's points are written <em>to</em>. <em>No trail</em> draws connections without recording anything.</dd>
         <dt>Connect to stroke or map?</dt>
         <dd>
-          <strong>Both</strong> — connect to old points and this stroke.
-          <strong>Stroke</strong> — only this stroke's own points.
-          <strong>Map</strong> — only points that existed before this stroke.
-          <strong>None</strong> — don't connect at all.
+          <strong>Both</strong> - connect to old points and this stroke.
+          <strong>Stroke</strong> - only this stroke's own points.
+          <strong>Map</strong> - only points that existed before this stroke.
+          <strong>None</strong> - don't connect at all.
         </dd>
       </dl>
       <p class="muted">Preset: <strong>Classic</strong> (current map · both) and <strong>No connect</strong> (no trail · none).</p>
@@ -85,7 +88,7 @@
       <p class="muted">The core dials:</p>
       <dl class="settings">
         <dt>Weight</dt>
-        <dd>How bold the mark is — each connection is drawn as this many thin 1px hairs. More hairs = heavier, but never one fat line. <strong>1</strong> = a single delicate line.</dd>
+        <dd>How bold the mark is - each connection is drawn as this many thin 1px hairs. More hairs = heavier, but never one fat line. <strong>1</strong> = a single delicate line.</dd>
         <dt>Spread</dt>
         <dd>How wide (px) the hairs fan out. Narrow + high Weight = a dense bold mark; wide = an airy band.</dd>
         <dt>Opacity</dt>
@@ -93,12 +96,12 @@
         <dt>Density</dt>
         <dd>Chance each eligible neighbour gets a line. Higher = denser (and heavier).</dd>
         <dt>Reach</dt>
-        <dd>How far to look for neighbours to connect — larger spans bigger gaps.</dd>
+        <dd>How far to look for neighbours to connect - larger spans bigger gaps.</dd>
       </dl>
       <p class="muted">Under <strong>More</strong>:</p>
       <dl class="settings">
         <dt>Fade</dt>
-        <dd>Fade each line with its length: <strong>0</strong> = even; <strong>1</strong> = long lines vanish. High Fade gives <a href="/book/brushes/soft-pencil.html">Soft Pencil</a> its distance-shaded tone.</dd>
+        <dd>Fade each line with its length: <strong>0</strong> = even; <strong>1</strong> = long lines vanish. High Fade gives the <a href="/book/connections.html#shaded">Shading</a> style its distance-shaded tone.</dd>
         <dt>Scatter</dt>
         <dd>Jitter the hairs' ends: <strong>0</strong> = a neat parallel band, <strong>1</strong> = loose crossing hairs (hand-drawn).</dd>
         <dt>Speed</dt>
@@ -106,7 +109,7 @@
         <dt>Min length</dt>
         <dd>Skip connections shorter than this, avoiding clumps near each point.</dd>
         <dt>Inset</dt>
-        <dd>Trim both ends of every line so it floats between points — the airy web look.</dd>
+        <dd>Trim both ends of every line so it floats between points - the airy web look.</dd>
         <dt>Line shape</dt>
         <dd>Straight, a bulging arc, or a smooth curve.</dd>
         <dt>Dash</dt>

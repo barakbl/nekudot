@@ -60,6 +60,178 @@ export function showError(message: string, title = "Couldn't load"): void {
   ok.focus();
 }
 
+export type PromptOptions = {
+  title?: string;
+  message?: string;
+  placeholder?: string;
+  initial?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: (value: string) => void;
+  onCancel?: () => void;
+};
+
+// Single-line text prompt modal (the styled replacement for window.prompt).
+// onConfirm fires with the trimmed value; an empty value keeps the modal open.
+export function showPrompt(opts: PromptOptions): void {
+  const backdrop = document.createElement("div");
+  backdrop.className = "confirm-modal";
+  const card = document.createElement("div");
+  card.className = "confirm-card";
+
+  if (opts.title) {
+    const header = document.createElement("div");
+    header.className = "confirm-header";
+    const title = document.createElement("h3");
+    title.textContent = opts.title;
+    header.appendChild(title);
+    card.appendChild(header);
+  }
+  if (opts.message) {
+    const msg = document.createElement("p");
+    msg.textContent = opts.message;
+    card.appendChild(msg);
+  }
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "confirm-input";
+  if (opts.placeholder) input.placeholder = opts.placeholder;
+  input.value = opts.initial ?? "";
+  card.appendChild(input);
+
+  const actions = document.createElement("div");
+  actions.className = "confirm-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "confirm-btn confirm-btn-cancel";
+  cancel.textContent = opts.cancelLabel ?? "Cancel";
+  const confirm = document.createElement("button");
+  confirm.className = "confirm-btn confirm-btn-primary";
+  confirm.textContent = opts.confirmLabel ?? "Save";
+  actions.append(cancel, confirm);
+  card.appendChild(actions);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  const close = (then?: () => void) => {
+    document.removeEventListener("keydown", onKey);
+    backdrop.remove();
+    then?.();
+  };
+  const submit = () => {
+    const value = input.value.trim();
+    if (!value) {
+      input.focus();
+      return;
+    }
+    close(() => opts.onConfirm(value));
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close(opts.onCancel);
+    else if (e.key === "Enter") submit();
+  };
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", submit);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close(opts.onCancel);
+  });
+  document.addEventListener("keydown", onKey);
+  input.focus();
+  input.select();
+}
+
+export type ChecklistItem = { id: string; label: string; checked?: boolean };
+export type ChecklistOptions = {
+  title?: string;
+  message?: string;
+  items: ChecklistItem[];
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: (selectedIds: string[]) => void;
+  onCancel?: () => void;
+};
+
+// A modal list of checkboxes (the styled replacement for ad-hoc pickers).
+// onConfirm fires with the ids of the ticked items; Confirm is disabled when
+// nothing is ticked. Items default to ticked unless `checked: false`.
+export function showChecklist(opts: ChecklistOptions): void {
+  const backdrop = document.createElement("div");
+  backdrop.className = "confirm-modal";
+  const card = document.createElement("div");
+  card.className = "confirm-card";
+
+  if (opts.title) {
+    const header = document.createElement("div");
+    header.className = "confirm-header";
+    const title = document.createElement("h3");
+    title.textContent = opts.title;
+    header.appendChild(title);
+    card.appendChild(header);
+  }
+  if (opts.message) {
+    const msg = document.createElement("p");
+    msg.textContent = opts.message;
+    card.appendChild(msg);
+  }
+
+  const list = document.createElement("div");
+  list.className = "confirm-checklist";
+  const boxes: HTMLInputElement[] = [];
+  for (const item of opts.items) {
+    const row = document.createElement("label");
+    row.className = "confirm-check";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = item.checked !== false;
+    box.dataset.id = item.id;
+    const span = document.createElement("span");
+    span.textContent = item.label;
+    row.append(box, span);
+    list.appendChild(row);
+    boxes.push(box);
+  }
+  card.appendChild(list);
+
+  const actions = document.createElement("div");
+  actions.className = "confirm-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "confirm-btn confirm-btn-cancel";
+  cancel.textContent = opts.cancelLabel ?? "Cancel";
+  const confirm = document.createElement("button");
+  confirm.className = "confirm-btn confirm-btn-primary";
+  confirm.textContent = opts.confirmLabel ?? "Export";
+  actions.append(cancel, confirm);
+  card.appendChild(actions);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  const selected = () => boxes.filter((b) => b.checked).map((b) => b.dataset.id ?? "");
+  const sync = () => {
+    confirm.disabled = selected().length === 0;
+  };
+  for (const b of boxes) b.addEventListener("change", sync);
+  sync();
+
+  const close = (then?: () => void) => {
+    document.removeEventListener("keydown", onKey);
+    backdrop.remove();
+    then?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close(opts.onCancel);
+  };
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", () => {
+    if (selected().length === 0) return;
+    const ids = selected();
+    close(() => opts.onConfirm(ids));
+  });
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close(opts.onCancel);
+  });
+  document.addEventListener("keydown", onKey);
+}
+
 export function showConfirm(opts: ConfirmOptions): void {
   const backdrop = document.createElement("div");
   backdrop.className = "confirm-modal";

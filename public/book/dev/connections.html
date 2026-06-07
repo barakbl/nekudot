@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Writing a connection — Nekudot developer docs</title>
+    <title>Writing a connection - Nekudot developer docs</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -25,21 +25,20 @@
         The connecting half of the app lives in
         <code>src/brushes/connections/</code>.
         <code>ConnectionBase</code> owns all connecting state and the engine that
-        weaves the web — finding neighbours, drawing the lines, and fanning each
+        weaves the web - finding neighbours, drawing the lines, and fanning each
         one into <em>Weight</em>×1px hairs. A <strong>connection style</strong>
         is a subclass that just declares its <em>defaults</em>, the extra dials it
         exposes, and (optionally) a custom texture hook. It then shows up
         automatically in the navbar <strong>Connecting</strong> combo, and every
         connecting brush (<a href="/book/brushes/classic-round.html">Round</a>,
-        <a href="/book/brushes/handfree.html">Handfree</a>,
-        <a href="/book/brushes/soft-pencil.html">Soft Pencil</a>) can wear it.
+        <a href="/book/brushes/handfree.html">Handfree</a>) can wear it.
       </p>
 
       <h2>1. A minimal connection</h2>
       <p>
         Default-export a <code>ConnectionBase</code> subclass and name its menu
         glyph. <code>defaults()</code> returns the full flat set of connecting
-        values (the same keys the settings panel shows) — everything the engine
+        values (the same keys the settings panel shows) - everything the engine
         needs to draw.
       </p>
       <pre><code>// src/brushes/connections/hatch.ts
@@ -61,7 +60,7 @@ export default class HatchConnection extends ConnectionBase {
 }</code></pre>
       <p class="muted">
         Routing (which map a stroke reads/stores, and whether it connects) keeps
-        the shared defaults — a connection only sets art style. See
+        the shared defaults - a connection only sets art style. See
         <a href="/book/map.html">Memory maps &amp; connecting</a> for what each
         key does.
       </p>
@@ -70,7 +69,7 @@ export default class HatchConnection extends ConnectionBase {
       <p>
         Every connection shows the universal dials (Weight, Spread, Opacity,
         Density, Reach, Grain, Line shape, Dash, Color…). Override
-        <code>extraSliders()</code> to surface the ones specific to your style —
+        <code>extraSliders()</code> to surface the ones specific to your style -
         use the <code>numStyle()</code> helper so they read the live value.
       </p>
       <pre><code>protected extraSliders(): BrushSetting[] {
@@ -90,7 +89,7 @@ export default class HatchConnection extends ConnectionBase {
         For multi-strand styles, each connection fans into hairs via
         <code>drawFanned()</code>, which calls <code>drawHair()</code> per hair.
         The base draws a straight 1px line; override <code>drawHair()</code> to
-        shape it — exactly how <code>FurConnection</code> gets its tapering,
+        shape it - exactly how <code>FurConnection</code> gets its tapering,
         combed, wavy pelt. Draw with <code>this.drawConnection()</code> and pull
         randomness from <code>this.random()</code> (the brush's seeded RNG, so a
         redraw is reproducible).
@@ -116,13 +115,29 @@ export default class HatchConnection extends ConnectionBase {
 
       <h2>5. Register the connection</h2>
       <p>
-        Add one row to <code>src/brushes/connections/connections.json</code>
-        (order = the navbar combo order). The combo, its icons and
-        <code>createConnection()</code> are all generated from it via
-        <code>import.meta.glob</code> — nothing else to touch.
+        <code>connections.json</code> is grouped - <code>"Classic"</code>,
+        <code>"More"</code> and <code>"Custom"</code> (empty; user presets are
+        injected at runtime). Add one row to a group array (its position is the
+        combo order). The grouped combo, icons and <code>createConnection()</code>
+        are generated from it via <code>import.meta.glob</code> - nothing else to
+        touch. <code>strokeAlpha</code> is optional: the owning brush's stroke-line
+        opacity for this style (Harmony's sketchy 0.05 / web 0.5 / shaded 0).
       </p>
       <pre><code>// src/brushes/connections/connections.json
-{ "name": "hatch", "file": "hatch.ts", "info": "Combed straight hatching." }</code></pre>
+{
+  "More": [
+    { "name": "hatch", "file": "hatch.ts", "info": "Combed straight hatching.",
+      "strokeAlpha": 0.1 }
+  ]
+}</code></pre>
+      <p class="muted">
+        A data-only style (Airy, Arc, Lace…) skips the subclass entirely: its row
+        carries <code>"file": "classic.ts"</code> + a <code>"defaults"</code> object
+        and runs on the generic class. <strong>Custom presets</strong> the artist
+        saves are just rows persisted to IndexedDB
+        (<code>custom-store.ts</code>) and merged into the registry via
+        <code>setCustomPresets()</code>.
+      </p>
 
       <h2>Hooks on <code>ConnectionBase</code></h2>
       <dl class="settings">
@@ -140,7 +155,7 @@ export default class HatchConnection extends ConnectionBase {
 
       <div class="note">
         Adding a connecting <em>brush</em> instead? See
-        <a href="/book/dev/brushes.html">Writing a brush</a> — a brush opts into
+        <a href="/book/dev/brushes.html">Writing a brush</a> - a brush opts into
         connecting with <code>this.initConnection("classic")</code>.
       </div>
     </main>

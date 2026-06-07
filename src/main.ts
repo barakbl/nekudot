@@ -13,10 +13,23 @@ import {
   type Shortcut,
 } from "./shortcuts";
 import { createSettingsPanel } from "./settings-panel";
-import { CONNECTION_DEFS } from "./brushes/connections/registry";
+import {
+  connectionGroups,
+  setCustomPresets,
+  hasConnection,
+} from "./brushes/connections/registry";
+import {
+  loadCustomPresets,
+  saveCustomPresets,
+} from "./brushes/connections/custom-store";
+import {
+  parsePresetFile,
+  downloadPresets,
+} from "./brushes/connections/preset-io";
+import type { ConnectionSpec } from "./brushes/connections/base";
 import { DEFAULT_ART_STYLE } from "./brushes/round";
 import { type Theme } from "./menu";
-import { showConfirm, showError } from "./confirm";
+import { showConfirm, showError, showPrompt, showChecklist } from "./confirm";
 import { loadArtworkFile, applyArtwork } from "./load-artwork";
 import { LocalStorageStore } from "./store/local_storage";
 import type { BrushBase } from "./base";
@@ -315,7 +328,13 @@ document.body.appendChild(brushSettings.el);
 
 // The Connecting box holds the routing + art-style dials; it's opened from the
 // navbar Connecting combo's gear (only Round connects).
-const connectingSettings = createSettingsPanel({ scope: "connecting" });
+const connectingSettings = createSettingsPanel({
+  scope: "connecting",
+  onSavePreset: () => savePresetFn(),
+  onUpdatePreset: () => updatePresetFn(),
+  activeCustomName: () =>
+    customPresets.some((s) => s.name === currentArtStyle) ? currentArtStyle : null,
+});
 document.body.appendChild(connectingSettings.el);
 
 const toggleSettings = () => {
@@ -330,6 +349,31 @@ const toggleConnecting = () => {
 // The connection art style is chosen from the navbar Connecting combo and
 // persisted; Round applies it on select (see RoundBrush.onSelect).
 let currentArtStyle = store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
+
+// User-saved Custom connection presets — the source of truth here, mirrored into
+// the registry (createConnection/combo) and persisted to IndexedDB. Loaded async.
+let customPresets: ConnectionSpec[] = [];
+
+// Registry groups → navbar combo option groups, flagging Custom rows (which get
+// a delete ×). Rebuilt whenever the custom set changes.
+const connectingComboGroups = () =>
+  connectionGroups().map((g) => ({
+    group: g.group,
+    items: g.defs.map((d) => ({
+      value: d.name,
+      label: d.label,
+      icon: d.icon,
+      title: d.info,
+      custom: g.group === "Custom",
+    })),
+  }));
+
+// Late-bound: these handlers need `menu` + setArtStyle (defined below).
+let savePresetFn: () => void = () => {};
+let updatePresetFn: () => void = () => {};
+let deleteCustomFn: (name: string) => void = () => {};
+let importPresetsFn: () => void = () => {};
+let exportPresetsFn: () => void = () => {};
 
 // Render both boxes for the active brush and sync the Connecting combo's
 // visibility + value. `menu` is defined below; this only runs after it exists.
@@ -761,15 +805,13 @@ const menu = createMenu(
     { label: "Shortcuts", shortcut: "/", toggle: () => toggleShortcuts() },
   ],
   {
-    options: CONNECTION_DEFS.map((d) => ({
-      value: d.name,
-      label: d.label,
-      icon: d.icon,
-      title: d.info,
-    })),
+    groups: connectingComboGroups(),
     initial: currentArtStyle,
     onChange: (name) => setArtStyle(name),
     onSettings: () => toggleConnecting(),
+    onDeleteCustom: (name) => deleteCustomFn(name),
+    onImport: () => importPresetsFn(),
+    onExport: () => exportPresetsFn(),
   },
 );
 undoManager.subscribe(() => menu.refreshHistoryState());
@@ -792,10 +834,113 @@ document.body.appendChild(menu.el);
 // opacity on first load (selectBrush() does this on later switches) so the main
 // line doesn't paint opaque over the connecting web — the cause of the canvas
 // darkening far faster than Harmony.
-brushes["Round"]?.applyArtStylePreset(currentArtStyle);
+// Custom presets load async (below), so a persisted custom name isn't known yet
+// — fall back to the default until loadCustomPresets() restores it.
+brushes["Round"]?.applyArtStylePreset(
+  hasConnection(currentArtStyle) ? currentArtStyle : DEFAULT_ART_STYLE,
+);
 applyBrushStrokeOpacity(false);
 renderActiveBrush();
 onBrushChanged();
+
+// --- custom connection presets: save / delete / load ------------------------
+savePresetFn = () => {
+  const conn = brush.activeConnection();
+  if (!conn) return;
+  // Branching off an active custom preset suggests "<name> copy" so it won't clash.
+  const active = customPresets.find((s) => s.name === currentArtStyle);
+  showPrompt({
+    title: "Save connection preset",
+    placeholder: "Preset name",
+    initial: active ? `${active.name} copy` : "",
+    confirmLabel: "Save",
+    onConfirm: (name) => {
+      // Capture the dials + the current main-line opacity (the slider value).
+      const strokeAlpha = store.get<number>("app.opacity") ?? 1;
+      const spec = conn.toCustomSpec(name, strokeAlpha);
+      customPresets = [...customPresets.filter((s) => s.name !== name), spec]; // overwrite by name
+      setCustomPresets(customPresets);
+      void saveCustomPresets(customPresets);
+      menu.setConnectingOptions(connectingComboGroups());
+      setArtStyle(name); // apply + select the new preset
+      showChip(`Saved preset “${name}”`);
+    },
+  });
+};
+
+updatePresetFn = () => {
+  const conn = brush.activeConnection();
+  const name = currentArtStyle;
+  if (!conn || !customPresets.some((s) => s.name === name)) return;
+  const strokeAlpha = store.get<number>("app.opacity") ?? 1;
+  const spec = conn.toCustomSpec(name, strokeAlpha);
+  customPresets = customPresets.map((s) => (s.name === name ? spec : s)); // overwrite in place
+  setCustomPresets(customPresets);
+  void saveCustomPresets(customPresets);
+  menu.setConnectingOptions(connectingComboGroups());
+  showChip(`Updated preset “${name}”`);
+};
+
+deleteCustomFn = (name: string) => {
+  customPresets = customPresets.filter((s) => s.name !== name);
+  setCustomPresets(customPresets);
+  void saveCustomPresets(customPresets);
+  menu.setConnectingOptions(connectingComboGroups());
+  if (currentArtStyle === name) setArtStyle(DEFAULT_ART_STYLE);
+  showChip(`Deleted preset “${name}”`);
+};
+
+importPresetsFn = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".preset,application/json";
+  input.style.display = "none";
+  document.body.appendChild(input); // connected so the file chooser opens reliably
+  input.addEventListener("change", async () => {
+    const file = input.files?.[0];
+    input.remove();
+    if (!file) return;
+    const res = parsePresetFile(await file.text()); // zod-validated, all-or-nothing
+    if (!res.ok) {
+      showError(res.error, "Couldn't import presets");
+      return;
+    }
+    // Merge into the current set, overwriting any with the same name.
+    const byName = new Map(customPresets.map((s) => [s.name, s]));
+    for (const p of res.presets) byName.set(p.name, p);
+    customPresets = [...byName.values()];
+    setCustomPresets(customPresets);
+    void saveCustomPresets(customPresets);
+    menu.setConnectingOptions(connectingComboGroups());
+    const n = res.presets.length;
+    showChip(`Imported ${n} preset${n === 1 ? "" : "s"}`);
+  });
+  input.click();
+};
+
+exportPresetsFn = () => {
+  if (!customPresets.length) return;
+  showChecklist({
+    title: "Export presets",
+    message: "Choose which custom presets to export.",
+    confirmLabel: "Export",
+    items: customPresets.map((s) => ({ id: s.name, label: s.name, checked: true })),
+    onConfirm: (ids) => {
+      const chosen = customPresets.filter((s) => ids.includes(s.name));
+      if (!chosen.length) return;
+      downloadPresets(chosen);
+      showChip(`Exported ${chosen.length} preset${chosen.length === 1 ? "" : "s"}`);
+    },
+  });
+};
+
+void loadCustomPresets().then((loaded) => {
+  if (!loaded.length) return;
+  customPresets = loaded;
+  setCustomPresets(customPresets);
+  menu.setConnectingOptions(connectingComboGroups());
+  if (hasConnection(currentArtStyle)) setArtStyle(currentArtStyle);
+});
 
 let savedPanelState: boolean[] | null = null;
 

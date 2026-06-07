@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Connections — Nekudot book</title>
+    <title>Connections - Nekudot book</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -19,75 +19,134 @@
       <p class="crumbs"><a href="/book/">Book</a> › Connections</p>
       <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>Connections</h1>
       <p class="lead">
-        A connection is the web a brush weaves between nearby points — the styles
-        that used to be called “presets.” Pick one and any connecting brush wears
-        it.
+        A connection is the web a brush weaves between nearby points. Pick one
+        from the navbar <strong>Connecting</strong> combo and any connecting brush
+        wears it. The styles are grouped into <strong>Classic</strong>,
+        <strong>More</strong> and your own <strong>Custom</strong> presets.
       </p>
 
       <h2>What they are</h2>
       <p>
         Some brushes (<a href="/book/brushes/classic-round.html">Round</a>,
-        <a href="/book/brushes/handfree.html">Handfree</a>,
-        <a href="/book/brushes/soft-pencil.html">Soft Pencil</a>) don't just lay a
-        stroke — they look up neighbouring points in the
+        <a href="/book/brushes/handfree.html">Handfree</a>) don't just lay a
+        stroke - they look up neighbouring points in the
         <a href="/book/map.html">memory map</a> and draw lines between them. A
         <strong>connection</strong> is a named bundle of settings for those lines:
         their density, reach, opacity, line shape, grain and texture. The mark is
         made of many faint lines, so the look <strong>builds up as you cover an
-        area</strong>.
+        area</strong> - at a steady rate however fast you draw (tuned to match
+        mrdoob's Harmony).
       </p>
       <div class="note">
-        Choose a connection from the navbar <strong>Connecting</strong> combo
-        (next to the brush selector); open its gear for the dials. The dials a
-        style actually uses show by default — the rest fold under <em>More</em>.
-        See <a href="/book/map.html">Memory maps &amp; connecting</a> for every
-        dial and <a href="/book/bigger-areas.html">Covering bigger areas</a> for
-        Weight, Spread &amp; Dynamics.
-      </p>
+        Open the navbar <strong>Connecting</strong> combo (next to the brush
+        selector) for a grouped list - <em>Classic</em>, <em>More</em>, and a
+        <em>Custom</em> group that appears on top once you save your own. The gear
+        opens the dials; the ones a style actually uses show by default, the rest
+        fold under <em>More</em>. See <a href="/book/map.html">Memory maps &amp;
+        connecting</a> for every dial and <a href="/book/bigger-areas.html">Covering
+        bigger areas</a> for Weight, Spread &amp; Dynamics.
+      </div>
 
-      <h2 id="classic"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 6 L12 11 M4 11.5 L13 5 M3 9 L11 9"/></svg></span>Classic</h2>
+      <h2>Classic</h2>
+      <p>The everyday connecting looks, after the three classic Harmony brushes.</p>
+
+      <h3 id="classic"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 6 L12 11 M4 11.5 L13 5 M3 9 L11 9"/></svg></span>Airy</h3>
       <p>
-        The default sketchy web (after mrdoob's Harmony “sketchy” brush): faint,
+        The default sketchy web (after Harmony's “sketchy” brush): faint,
         brush-width lines, slightly inset so they float between points rather than
-        piling up on the dots. The everyday connecting look — start here, then
-        raise <em>Weight</em> for a bolder mark made of more thin hairs.
+        piling up on the dots. Start here, then raise <em>Weight</em> for a bolder
+        mark made of more thin hairs.
       </p>
 
-      <h2><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 3 V21 M3 12 H21 M6 6 L18 18 M18 6 L6 18"/><path d="M12 6 A6 6 0 0 1 18 12 M12 6 A6 6 0 0 0 6 12"/></svg></span><a href="/book/brushes/web.html">Web →</a></h2>
+      <h3><span class="section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 3 V21 M3 12 H21 M6 6 L18 18 M18 6 L6 18"/><path d="M12 6 A6 6 0 0 1 18 12 M12 6 A6 6 0 0 0 6 12"/></svg></span><a href="/book/brushes/web.html">String Art →</a></h3>
       <p>
         A sparser, slightly stronger net of full-length lines (Harmony's “web”):
-        distinct strands stretched between points. Great for spider-webs, nets and
-        wireframe-like fills.
+        distinct strands stretched between points over a bolder core line. Great
+        for spider-webs, nets and wireframe-like fills.
       </p>
 
-      <h2 id="arc"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M2 12 A6 6 0 0 1 14 12"/><circle cx="2" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>Arc</h2>
-      <p>
-        Bulging arcs between points instead of straight lines — each connection
-        bows outward into a curve. Reads as scallops, petals and looping ribbon;
-        pairs well with a dotted dash and some inset (the basis of
-        <a href="/book/textures.html#lace">Lace</a>).
-      </p>
-
-      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 10 L8 5 M5 12.5 L11 6 M8 13 L13 8"/></svg></span><a href="/book/brushes/soft-pencil.html">Shaded →</a></h2>
+      <h3 id="shaded"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 10 L8 5 M5 12.5 L11 6 M8 13 L13 8"/></svg></span>Shading</h3>
       <p>
         Dense, short, full-length lines whose opacity fades with distance
-        (Harmony's soft-pencil): scribble back and forth to build smooth, soft
-        tone. The <a href="/book/brushes/soft-pencil.html">Soft Pencil</a> brush is
-        this style on a brush with no solid core.
+        (Harmony's “shaded”): scribble back and forth to build smooth, soft tone.
+        It draws no solid core line, so the web <em>is</em> the mark.
       </p>
 
-      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 13 Q4 7 5 4 M6 13 Q7 7 8 4 M9 13 Q10 7 11 4 M12 13 Q12.5 8 13 5"/></svg></span><a href="/book/textures.html#fur">Fur →</a></h2>
+      <h2>More</h2>
+      <p>The expressive and decorative styles.</p>
+
+      <h3><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M3 13 Q4 7 5 4 M6 13 Q7 7 8 4 M9 13 Q10 7 11 4 M12 13 Q12.5 8 13 5"/></svg></span><a href="/book/textures.html#fur">Fur →</a></h3>
       <p>
         A combed pelt of soft, flowing guard hairs that lie along a grain, taper
         to wispy tips and fray at the edges. See
         <a href="/book/textures.html">Texture connections</a>.
       </p>
 
-      <h2><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 8 A2 2 0 0 1 6 8 A2 2 0 0 1 10 8 A2 2 0 0 1 14 8"/><circle cx="2" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="6" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg></span><a href="/book/textures.html#lace">Lace →</a></h2>
+      <h3><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true"><path d="M2 8 A2 2 0 0 1 6 8 A2 2 0 0 1 10 8 A2 2 0 0 1 14 8"/><circle cx="2" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="6" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg></span><a href="/book/textures.html#lace">Lace →</a></h3>
       <p>
         A fine crossing net of floating, dotted scallops (arc connections + a
         dotted dash + inset ends). Best for filling a shape with lace. See
         <a href="/book/textures.html">Texture connections</a>.
+      </p>
+
+      <h3 id="arc"><span class="section-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M2 12 A6 6 0 0 1 14 12"/><circle cx="2" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></span>Arc</h3>
+      <p>
+        Bulging arcs between points instead of straight lines - each connection
+        bows outward into a curve. Reads as scallops, petals and looping ribbon;
+        pairs well with a dotted dash and some inset (the basis of
+        <a href="/book/textures.html#lace">Lace</a>).
+      </p>
+
+      <h2 id="custom">Custom presets</h2>
+      <p>
+        Made a look you like? Save it as your own preset. Tweak any connection's
+        dials (and the brush's Opacity), open the <strong>Connecting</strong> box
+        with the gear, and click <strong>＋ Save as preset…</strong> - name it in
+        the dialog. It captures the art-style dials plus the current line opacity
+        (not the memory-map routing). Saved presets live in a <strong>Custom</strong>
+        group shown first in the combo and persist in your browser between sessions.
+      </p>
+      <dl class="settings">
+        <dt>Update or branch off</dt>
+        <dd>
+          When a custom preset is the active style, the box shows two buttons:
+          <strong>Update “name”</strong> overwrites it in place, or
+          <strong>Save as new…</strong> saves a copy (the name is pre-filled
+          “name copy”).
+        </dd>
+        <dt>Delete</dt>
+        <dd>The <strong>×</strong> on a custom entry in the combo removes it.</dd>
+        <dt>Import / Export</dt>
+        <dd>
+          The Custom group header carries two icons: <strong>Import</strong> (↓,
+          always) and <strong>Export</strong> (↑, once you have presets).
+          Export opens a checklist (all ticked) and downloads the chosen presets
+          as a <code>.preset</code> file; Import reads a <code>.preset</code> file
+          back (validated - a malformed file imports nothing) and merges it in,
+          overwriting any with the same name. Handy for sharing or backing up your
+          looks.
+        </dd>
+      </dl>
+      <div class="note">
+        <strong>Made something lovely? Share it.</strong> If you craft a custom
+        look you're proud of, we'd genuinely love to see it - and maybe ship it
+        as a built-in style. Export it to a <code>.preset</code> file and either
+        email it to
+        <a href="mailto:barak.bloch@gmail.com">barak.bloch@gmail.com</a> or open a
+        <a href="https://github.com/barakbl/nekudot/pulls" target="_blank" rel="noopener">pull
+        request</a> on GitHub. Questions and ideas are just as welcome - if a dial
+        or slider you need is missing, ask and we'll see what's possible. A
+        gentle heads-up: we can't promise to act on every preset, idea or PR;
+        whether something lands depends on the idea and on what's feasible to
+        build. Thank you for sharing either way.<svg class="note-icon" width="14" height="14" viewBox="0 0 24 24" fill="#e0556b" style="vertical-align:-2px;margin-left:5px" aria-hidden="true"><path d="M12 21s-7.5-4.7-10-9.3C.6 8.9 2 5.6 5.2 5.1 7.1 4.8 8.9 5.7 12 8.6c3.1-2.9 4.9-3.8 6.8-3.5C22 5.6 23.4 8.9 22 11.7 19.5 16.3 12 21 12 21z"/></svg>
+      </div>
+
+      <h2>Stipple</h2>
+      <p>
+        Every style has a <em>Stipple</em> dial (folded under <em>More</em>). At
+        <strong>0</strong> (default) the web is smooth; raise it to break the web
+        into evenly spaced tufts or dots - a hand-stamped, textured feel. Purely
+        artistic: it doesn't change how fast the mark builds up.
       </p>
     </main>
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Architecture — Nekudot developer docs</title>
+    <title>Architecture - Nekudot developer docs</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -23,7 +23,7 @@
       <h2>Stack</h2>
       <p>
         Vanilla <strong>TypeScript</strong> + the Canvas 2D API, bundled by
-        <strong>Vite</strong>. No UI framework — the DOM is built by hand.
+        <strong>Vite</strong>. No UI framework - the DOM is built by hand.
         <a href="https://github.com/d3/d3-quadtree" target="_blank" rel="noopener">d3-quadtree</a>
         powers neighbour lookups, <strong>zod</strong> validates all persisted
         data, and <strong>fflate</strong> zips the <code>.nekudot</code> archive.
@@ -32,7 +32,7 @@
       <h2>Module map</h2>
       <pre class="filetree"><code>src/
   main.ts              app wiring: brushes, toolbar, panels, pointer loop, undo
-  base.ts              BrushBase — the brush template; delegates connecting to a Connection
+  base.ts              BrushBase - the brush template; delegates connecting to a Connection
   renderer.ts          IRenderer + CanvasRenderer (Canvas2D, dpr-scaled)
   neighbor-finder.ts   NeighborFinder + quadtree (capped point cloud)
   connecting-types.ts  shared types: ConnectMap/Mode, ConnectRouter, dash
@@ -42,12 +42,12 @@
   export.ts            flatten layers to a PNG
   brushes/             one file per brush (+ grid.ts, shapes-stroke.ts bases)
     brushes.json       ordered brush index (name/file/shortcut/group/connections)
-    registry.ts        builds BRUSH_DEFS from brushes.json — map, menu, shortcuts, names
+    registry.ts        builds BRUSH_DEFS from brushes.json - map, menu, shortcuts, names
     connections/       the connecting engine + art-style "connections"
-      base.ts          ConnectionBase — connecting state + the web/fan engine
+      base.ts          ConnectionBase - connecting state + the web/fan engine
       registry.ts      builds the connection list from connections.json
       connections.json ordered index of connection styles
-      routing.ts       ROUTING_PRESETS — where a stroke reads/stores neighbours
+      routing.ts       ROUTING_PRESETS - where a stroke reads/stores neighbours
       classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
   layered/
     manager.ts         LayerManager: IRenderer + NeighborFinder + ConnectRouter
@@ -62,7 +62,7 @@
       <h2>The rendering seam: <code>IRenderer</code></h2>
       <p>
         Everything that draws goes through <code>IRenderer</code>
-        (<code>renderer.ts</code>) — <code>drawLine</code>, <code>fillCircle</code>,
+        (<code>renderer.ts</code>) - <code>drawLine</code>, <code>fillCircle</code>,
         <code>strokeEllipse</code>, <code>drawChisel</code>, etc.
         <code>CanvasRenderer</code> wraps a single <code>CanvasRenderingContext2D</code>
         and is scaled by the device pixel ratio once at construction, so brushes
@@ -84,7 +84,7 @@
       <p>
         Point clouds are separate and <strong>top-level</strong>: each
         <strong>NeighborsMap</strong> owns a <code>NeighborFinder</code> (a
-        d3-quadtree) — see the <a href="/book/map.html">Memory maps</a> page.
+        d3-quadtree) - see the <a href="/book/map.html">Memory maps</a> page.
         The manager implements <code>NeighborFinder</code> too, routing
         <code>addPixel</code>/<code>findNeighbors</code> to the selected map.
         The cloud is capped (<code>MAX_PIXELS</code>) with oldest-eviction so
@@ -108,8 +108,8 @@ stage.addEventListener("pointermove", (e) => {
       <p>
         <code>BrushBase.stroke()</code> is a <em>template method</em>: it
         deposits the point into the trail map, calls the subclass's
-        <code>onStroke()</code> to paint the mark, then — if the brush has a
-        <code>Connection</code> attached — lets it weave the web via
+        <code>onStroke()</code> to paint the mark, then - if the brush has a
+        <code>Connection</code> attached - lets it weave the web via
         <code>connection.connect()</code>.
       </p>
 
@@ -128,8 +128,8 @@ stage.addEventListener("pointermove", (e) => {
         <code>src/brushes/connections/</code>. <code>ConnectionBase</code> holds
         all connecting state and the web/fan engine
         (<code>connectingNeighbors</code>, <code>drawFanned</code>,
-        <code>drawHair</code>); each art style — <em>Classic, Web, Arc, Shaded,
-        Fur, Lace</em> — is a subclass that just sets defaults, names the dials it
+        <code>drawHair</code>); each art style - <em>Classic, Web, Arc, Shaded,
+        Fur, Lace</em> - is a subclass that just sets defaults, names the dials it
         exposes, and may override a texture hook (Fur's <code>drawHair</code>).
         A connecting brush attaches one with <code>initConnection("classic")</code>
         and the navbar combo swaps it via <code>applyArtStylePreset</code>;

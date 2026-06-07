@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>preset import/export io</title></head>
+  <body>
+    <script type="module">
+      // Unit test of the .preset file io: serialize → parse round-trips, and zod
+      // rejects malformed files (all-or-nothing) including unknown base styles.
+      import { parsePresetFile, serializePresets } from "/src/brushes/connections/preset-io.ts";
+
+      const s1 = { name: "P1", label: "P1", file: "classic.ts", strokeAlpha: 0.1, info: "x", defaults: { alpha: 0.05, density: 45, grainCross: false } };
+      const s2 = { name: "P2", file: "fur.ts" };
+
+      const text = serializePresets([s1, s2]);
+      const round = parsePresetFile(text);
+
+      const reject = (json) => !parsePresetFile(json).ok;
+
+      window.__result = {
+        roundtrip: round.ok && round.presets.length === 2 && round.presets[0].name === "P1" && round.presets[1].file === "fur.ts" && round.presets[0].defaults.density === 45,
+        rejectBadJson: reject("{ not json"),
+        rejectNoVersion: reject(JSON.stringify({ presets: [s1] })),
+        rejectEmpty: reject(JSON.stringify({ version: 1, presets: [] })),
+        rejectUnknownFile: reject(JSON.stringify({ version: 1, presets: [{ name: "X", file: "nope.ts" }] })),
+        rejectNoName: reject(JSON.stringify({ version: 1, presets: [{ file: "classic.ts" }] })),
+        acceptValid: parsePresetFile(JSON.stringify({ version: 1, presets: [{ name: "X", file: "classic.ts" }] })).ok,
+      };
+      window.__done = true;
+    </script>
+  </body>
+</html>

@@ -40,13 +40,25 @@ export type WindowToggle = {
   toggle: () => void;
 };
 
-// The navbar Connecting combo: a dropdown of art-style presets plus a gear that
-// opens the Connecting settings box. Mirrors the brush selector.
+// The navbar Connecting combo: a grouped dropdown of art-style presets plus a
+// gear that opens the Connecting settings box. Mirrors the brush selector, with
+// group headers (Custom / Classic / More) shown as a tree.
+export type ConnectionOption = {
+  value: string;
+  label: string;
+  icon?: string;
+  title?: string;
+  custom?: boolean; // a user preset → gets a delete (×)
+};
+export type ConnectionOptionGroup = { group: string; items: ConnectionOption[] };
 export type ConnectingControl = {
-  options: { value: string; label: string; icon?: string; title?: string }[];
+  groups: ConnectionOptionGroup[];
   initial: string;
   onChange: (value: string) => void; // pick an art-style preset
   onSettings: () => void; // gear → open the Connecting box
+  onDeleteCustom?: (value: string) => void; // × on a custom preset
+  onImport?: () => void; // import (↓) on the Custom group header
+  onExport?: () => void; // export (↑) on the Custom group header
 };
 
 export function createMenu<T extends string>(
@@ -66,6 +78,7 @@ export function createMenu<T extends string>(
   setBrushValue: (value: T) => void;
   setConnectingValue: (v: string) => void;
   setConnectingVisible: (v: boolean) => void;
+  setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
   refreshHistoryState: () => void;
   toggleCanvasMenu: () => void;
 } {
@@ -94,10 +107,12 @@ export function createMenu<T extends string>(
   // brushes that support connecting (toggled via setConnectingVisible).
   let setConnectingValue = (_v: string) => {};
   let setConnectingVisible = (_v: boolean) => {};
+  let setConnectingOptions = (_g: ConnectionOptionGroup[]) => {};
   if (connecting) {
     const combo = makeConnectingCombo(connecting);
     setConnectingValue = combo.setValue;
     setConnectingVisible = combo.setVisible;
+    setConnectingOptions = combo.setOptions;
     bar.appendChild(combo.el);
   }
   bar.appendChild(makeToolToggles(onToolChange));
@@ -113,7 +128,6 @@ export function createMenu<T extends string>(
   };
   refreshHistoryState();
   bar.appendChild(makeDivider());
-  bar.appendChild(makeZoomPill("1.0×"));
 
   for (const action of actions) {
     const btn = document.createElement("button");
@@ -130,6 +144,7 @@ export function createMenu<T extends string>(
     setBrushValue: setValue,
     setConnectingValue,
     setConnectingVisible,
+    setConnectingOptions,
     refreshHistoryState,
     toggleCanvasMenu,
   };
@@ -672,6 +687,14 @@ function makeGear(title: string, onClick: () => void): HTMLElement {
   return gear;
 }
 
+// ↓ into tray = import from a file; ↑ out of tray = export to a file.
+const IMPORT_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 13 v5 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1 -1 v-5"/><path d="M12 3 V15"/><path d="M8 11 L12 15 L16 11"/></svg>';
+const EXPORT_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 13 v5 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1 -1 v-5"/><path d="M12 15 V3"/><path d="M8 7 L12 3 L16 7"/></svg>';
+
 const CONNECT_ICON =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">' +
   '<circle cx="12" cy="12" r="2"/>' +
@@ -686,6 +709,7 @@ function makeConnectingCombo(control: ConnectingControl): {
   el: HTMLElement;
   setValue: (v: string) => void;
   setVisible: (v: boolean) => void;
+  setOptions: (groups: ConnectionOptionGroup[]) => void;
 } {
   const pill = document.createElement("span");
   pill.className = "pill brush-pill connect-pill";
@@ -709,10 +733,14 @@ function makeConnectingCombo(control: ConnectingControl): {
   popover.className = "brush-popover";
   pill.appendChild(popover);
 
+  let groups = control.groups;
   const optionEls = new Map<string, HTMLElement>();
+  const flat = () => groups.flatMap((g) => g.items);
+  let current = control.initial;
 
   const setValue = (v: string) => {
-    const opt = control.options.find((o) => o.value === v);
+    current = v;
+    const opt = flat().find((o) => o.value === v);
     // Show the selected style's glyph, falling back to the generic web mark.
     setIcon(iconEl, opt?.icon, CONNECT_ICON);
     labelEl.textContent = opt ? opt.label : v;
@@ -720,27 +748,76 @@ function makeConnectingCombo(control: ConnectingControl): {
     for (const [k, el] of optionEls) el.classList.toggle("active", k === v);
   };
 
-  for (const opt of control.options) {
-    const optEl = document.createElement("div");
-    optEl.className = "brush-option";
-    if (opt.title) optEl.title = opt.title;
-    const optIcon = document.createElement("span");
-    optIcon.className = "opt-icon";
-    if (opt.icon) setIcon(optIcon, opt.icon, "");
-    const optLabel = document.createElement("span");
-    optLabel.className = "opt-label";
-    optLabel.textContent = opt.label;
-    optEl.appendChild(optIcon);
-    optEl.appendChild(optLabel);
-    optEl.addEventListener("click", (e) => {
-      e.stopPropagation();
-      setValue(opt.value);
-      control.onChange(opt.value);
-      popover.classList.remove("open");
-    });
-    popover.appendChild(optEl);
-    optionEls.set(opt.value, optEl);
-  }
+  const renderOptions = () => {
+    popover.replaceChildren();
+    optionEls.clear();
+    for (const g of groups) {
+      const header = document.createElement("div");
+      header.className = "brush-group-header";
+      header.textContent = g.group;
+      // The Custom group header carries import (always) + export (disabled when
+      // empty) actions.
+      if (g.group === "Custom" && (control.onImport || control.onExport)) {
+        header.classList.add("with-actions");
+        const acts = document.createElement("div");
+        acts.className = "group-actions";
+        const mkAction = (icon: string, title: string, disabled: boolean, fn?: () => void) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "group-action";
+          b.title = title;
+          b.innerHTML = icon;
+          b.disabled = disabled;
+          b.addEventListener("click", (e) => {
+            e.stopPropagation();
+            popover.classList.remove("open");
+            fn?.();
+          });
+          return b;
+        };
+        if (control.onImport)
+          acts.appendChild(mkAction(IMPORT_ICON, "Import presets (.preset)", false, control.onImport));
+        if (control.onExport)
+          acts.appendChild(mkAction(EXPORT_ICON, "Export presets", g.items.length === 0, control.onExport));
+        header.appendChild(acts);
+      }
+      popover.appendChild(header);
+      for (const opt of g.items) {
+        const optEl = document.createElement("div");
+        optEl.className = "brush-option in-group";
+        if (opt.title) optEl.title = opt.title;
+        const optIcon = document.createElement("span");
+        optIcon.className = "opt-icon";
+        if (opt.icon) setIcon(optIcon, opt.icon, "");
+        const optLabel = document.createElement("span");
+        optLabel.className = "opt-label";
+        optLabel.textContent = opt.label;
+        optEl.append(optIcon, optLabel);
+        // User presets get a delete (×).
+        if (opt.custom && control.onDeleteCustom) {
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "opt-remove";
+          del.textContent = "×";
+          del.title = "Delete preset";
+          del.addEventListener("click", (e) => {
+            e.stopPropagation();
+            control.onDeleteCustom?.(opt.value);
+          });
+          optEl.appendChild(del);
+        }
+        optEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setValue(opt.value);
+          control.onChange(opt.value);
+          popover.classList.remove("open");
+        });
+        popover.appendChild(optEl);
+        optionEls.set(opt.value, optEl);
+      }
+    }
+    setValue(current); // refresh active highlight against the new list
+  };
 
   pill.addEventListener("click", (e) => {
     if (e.target instanceof HTMLElement && e.target.closest(".brush-option")) {
@@ -754,7 +831,7 @@ function makeConnectingCombo(control: ConnectingControl): {
     popover.classList.remove("open");
   });
 
-  setValue(control.initial);
+  renderOptions();
 
   return {
     el: pill,
@@ -762,15 +839,13 @@ function makeConnectingCombo(control: ConnectingControl): {
     setVisible: (v) => {
       pill.style.display = v ? "" : "none";
     },
+    setOptions: (g) => {
+      groups = g;
+      renderOptions();
+    },
   };
 }
 
-function makeZoomPill(text: string): HTMLElement {
-  const el = document.createElement("span");
-  el.className = "pill zoom-pill";
-  el.textContent = text;
-  return el;
-}
 
 function makeIconButton(
   glyph: string,

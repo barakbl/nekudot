@@ -1,6 +1,6 @@
 // Injects the book's contents tree as a sticky sidebar on every book page, and
 // highlights the current page. Included via <script src="/book/book-nav.js" defer>.
-// Nodes: { label, href?, icon?, children? } — a node with no href renders as a
+// Nodes: { label, href?, icon?, children? } - a node with no href renders as a
 // (sub)group header; nesting is shown by indentation; icon is inline SVG / a char.
 (() => {
   // --- glyphs ---------------------------------------------------------------
@@ -23,7 +23,7 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L15 6l3 3L8 19z"/><path d="M13 8l3 3"/></svg>',
     link:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg>',
-    // brushes — the app's own glyphs
+    // brushes - the app's own glyphs
     round: "●",
     squares: "▭",
     circles: "◯",
@@ -41,7 +41,7 @@
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 5 q1.5 -2.5 3 0 t3 0"/><path d="M2 11 q1.5 -2.5 3 0 t3 0"/><path d="M10 4 a2 2 0 1 0 0.01 0"/><path d="M12 12 a2 2 0 1 0 0.01 0"/></svg>',
     invisible:
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 2"><circle cx="8" cy="8" r="5"/></svg>',
-    // connections — the app's own glyphs
+    // connections - the app's own glyphs
     classic:
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path d="M2 6 L12 11 M4 11.5 L13 5 M3 9 L11 9"/></svg>',
     web:
@@ -93,12 +93,23 @@
           href: "/book/connections.html",
           icon: I.link,
           children: [
-            { label: "Classic", href: "/book/connections.html#classic", icon: I.classic },
-            { label: "Web", href: "/book/brushes/web.html", icon: I.web },
-            { label: "Arc", href: "/book/connections.html#arc", icon: I.arc },
-            { label: "Shaded", href: "/book/brushes/soft-pencil.html", icon: I.shaded },
-            { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
-            { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
+            {
+              label: "Classic",
+              children: [
+                { label: "Airy", href: "/book/connections.html#classic", icon: I.classic },
+                { label: "String Art", href: "/book/brushes/web.html", icon: I.web },
+                { label: "Shading", href: "/book/connections.html#shaded", icon: I.shaded },
+              ],
+            },
+            {
+              label: "More",
+              children: [
+                { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
+                { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
+                { label: "Arc", href: "/book/connections.html#arc", icon: I.arc },
+              ],
+            },
+            { label: "Custom", href: "/book/connections.html#custom", icon: I.link },
           ],
         },
       ],
@@ -134,7 +145,7 @@
 
   // A nav entry is active when its page matches the current path. Anchor links
   // (href with a #fragment) also require the fragment to match, so on a page
-  // like connections.html only the bare page link lights up — not every anchor.
+  // like connections.html only the bare page link lights up - not every anchor.
   const isActive = (href) => {
     const i = href.indexOf("#");
     const path = i < 0 ? href : href.slice(0, i);

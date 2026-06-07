@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Writing a brush — Nekudot developer docs</title>
+    <title>Writing a brush - Nekudot developer docs</title>
     <link rel="stylesheet" href="/docs.css" />
     <script src="/book/book-nav.js" defer></script>
   </head>
@@ -22,15 +22,15 @@
 
       <h2>Two flavours</h2>
       <ul>
-        <li><strong>Stroke brush</strong> — extends <code>BrushBase</code>, paints continuously as the pointer moves. It can connect (weave the web). Examples: Round, Marker, Squares.</li>
-        <li><strong>Grid / tap brush</strong> — extends <code>GridBrush</code>, stamps a pattern at grid intersections on each click. Doesn't connect. Examples: Dots, Lines, Ellipse.</li>
+        <li><strong>Stroke brush</strong> - extends <code>BrushBase</code>, paints continuously as the pointer moves. It can connect (weave the web). Examples: Round, Marker, Squares.</li>
+        <li><strong>Grid / tap brush</strong> - extends <code>GridBrush</code>, stamps a pattern at grid intersections on each click. Doesn't connect. Examples: Dots, Lines, Ellipse.</li>
       </ul>
 
       <h2>1. A minimal stroke brush</h2>
       <p>
         Override <code>onStroke(x, y, current)</code> and draw with
         <code>this.renderer</code>. The base class deposits points into the memory
-        map for you; to weave the connecting web too, attach a Connection — see
+        map for you; to weave the connecting web too, attach a Connection - see
         <em>Opting into connecting</em> below.
       </p>
       <pre><code>// src/brushes/spray.ts
@@ -69,22 +69,22 @@ export class SprayBrush extends BrushBase {
 
       <h3>Opting into connecting</h3>
       <p>
-        To weave the connecting web, attach a <strong>Connection</strong> — the
+        To weave the connecting web, attach a <strong>Connection</strong> - the
         art-style engine (Classic, Web, Fur…). Two lines:
       </p>
-      <pre><code>// in the constructor — attach a default style
+      <pre><code>// in the constructor - attach a default style
 this.initConnection("classic");
 
-// in getSettings() — surface its dials
+// in getSettings() - surface its dials
 ...(this.connection?.sliders() ?? [])</code></pre>
       <p>
         The navbar Connecting combo then swaps the style via
         <code>applyArtStylePreset()</code>, and the rest is handled: the web,
         fanning each connection into <em>Weight</em>×1px hairs, and routing.
-        <code>Round</code> and <code>Soft Pencil</code> are the built-in examples;
+        <code>Round</code> (and <code>Handfree</code>) are the built-in examples;
         a brush that never calls <code>initConnection</code> simply doesn't connect
         (Marker, the grid brushes). Connection styles live in
-        <code>src/brushes/connections/</code> — one <code>ConnectionBase</code>
+        <code>src/brushes/connections/</code> - one <code>ConnectionBase</code>
         subclass per style, listed in <code>connections.json</code>.
       </p>
 
@@ -120,7 +120,7 @@ export class CrossBrush extends GridBrush {
 
       <h2>Settings &amp; persistence</h2>
       <p>
-        <code>getSettings()</code> returns <code>BrushSetting[]</code> — one of
+        <code>getSettings()</code> returns <code>BrushSetting[]</code> - one of
         <code>number</code>, <code>boolean</code>, <code>color</code> or
         <code>select</code>. The settings panel renders them automatically.
         Always wrap your array in <code>this.persistSettings([...])</code>: it
@@ -136,9 +136,9 @@ export class CrossBrush extends GridBrush {
         <dt><code>strokeStart(x, y)</code> / <code>strokeEnd()</code></dt>
         <dd>Begin/finish a gesture (e.g. reset last-point state).</dd>
         <dt><code>initConnection(name)</code></dt>
-        <dd>Attach a connecting style in the constructor (Round/Soft Pencil do). No call → the brush never connects.</dd>
+        <dd>Attach a connecting style in the constructor (Round does). No call → the brush never connects.</dd>
         <dt><code>onSelect()</code></dt>
-        <dd>Run when the brush becomes active — e.g. apply an art-style or routing preset (<code>applyArtStylePreset</code> / <code>applyRoutingPreset</code>).</dd>
+        <dd>Run when the brush becomes active - e.g. apply an art-style or routing preset (<code>applyArtStylePreset</code> / <code>applyRoutingPreset</code>).</dd>
         <dt><code>getSelectOpacity(): number | undefined</code></dt>
         <dd>Push a value to the global opacity control on select (the <em>Opacity</em> slider atop the brush settings panel).</dd>
         <dt><code>strokeDashValue(): DashStyle</code></dt>
@@ -147,10 +147,10 @@ export class CrossBrush extends GridBrush {
 
       <h3>What you get for free</h3>
       <ul>
-        <li><code>this.renderer</code> — the <a href="/book/dev/architecture.html">IRenderer</a> to draw with.</li>
-        <li><code>this.random()</code> — a seeded PRNG, so a redrawn stroke is reproducible.</li>
-        <li><code>this.finder</code> — the memory map (NeighborFinder).</li>
-        <li><code>this.store</code> — the key/value store (e.g. read the secondary color).</li>
+        <li><code>this.renderer</code> - the <a href="/book/dev/architecture.html">IRenderer</a> to draw with.</li>
+        <li><code>this.random()</code> - a seeded PRNG, so a redrawn stroke is reproducible.</li>
+        <li><code>this.finder</code> - the memory map (NeighborFinder).</li>
+        <li><code>this.store</code> - the key/value store (e.g. read the secondary color).</li>
         <li>Connecting: <code>this.initConnection(name)</code> + spread <code>this.connection?.sliders()</code> and the web is handled.</li>
       </ul>
 
@@ -160,9 +160,9 @@ export class CrossBrush extends GridBrush {
         a <strong>create()</strong> from its own file, then add one row to
         <code>src/brushes/brushes.json</code>. The brush map, toolbar menu,
         keyboard shortcut and pixel-log <code>brush_type</code> validation are all
-        generated from there — nothing else to touch.
+        generated from there - nothing else to touch.
       </p>
-      <pre><code>// src/brushes/spray.ts — export the glyph + a factory
+      <pre><code>// src/brushes/spray.ts - export the glyph + a factory
 import type { BrushContext } from "./registry";
 
 export const icon = "…svg markup or a single char…";
@@ -170,7 +170,7 @@ export const icon = "…svg markup or a single char…";
 export function create(c: BrushContext): SprayBrush {
   return new SprayBrush(c.renderer, c.finder, undefined, c.store);
 }</code></pre>
-      <pre><code>// src/brushes/brushes.json — add one row (order = toolbar order)
+      <pre><code>// src/brushes/brushes.json - add one row (order = toolbar order)
 { "name": "Spray", "file": "spray.ts", "shortcut": "0", "menuGroup": "Other" }</code></pre>
       <p class="muted">
         Every brush is built from a shared <code>BrushContext</code>
@@ -187,7 +187,7 @@ export function create(c: BrushContext): SprayBrush {
       <div class="note">
         Conventions: draw in CSS pixels (the renderer handles dpr); prefer
         <code>this.random()</code> over <code>Math.random()</code> for
-        reproducibility; keep <code>onStroke</code> cheap — it runs once per
+        reproducibility; keep <code>onStroke</code> cheap - it runs once per
         coalesced pointer sample.
       </div>
     </main>

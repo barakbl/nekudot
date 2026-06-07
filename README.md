@@ -1,7 +1,7 @@
 # Nekudot
 
 A browser-based **expressive drawing tool**. As you draw, Nekudot remembers
-every point and weaves faint lines between nearby ones — so a single gesture
+every point and weaves faint lines between nearby ones - so a single gesture
 blooms into a web of its own. Inspired by
 [mrdoob's Harmony](https://mrdoob.github.io/harmony/).
 
@@ -11,7 +11,7 @@ blooms into a web of its own. Inspired by
 ## The idea
 
 Most brushes only lay down the pixels under your cursor. Nekudot also keeps a
-**point cloud** — a "memory map" of everywhere your strokes have been. While you
+**point cloud** - a "memory map" of everywhere your strokes have been. While you
 draw, a connecting brush looks up the neighbours of each new point in that cloud
 and draws lines between them. Hundreds of faint, overlapping lines accumulate
 into the soft, sketchy, spider-web texture that Harmony made famous.
@@ -22,14 +22,25 @@ single connected structure rather than a stack of independent lines.
 
 ## Features
 
-- **Connecting brushes** — Classic Round & Web bloom into webs; every brush can connect.
-- **Two preset groups** — *Connection* (where lines go) and *Connection art style* (how they look: alpha, inset, dash, arc…).
-- **Grid brushes** — Dots, Lines and Ellipse stamp patterns at grid intersections.
-- **Shape brushes** — Squares & Circles size themselves to your speed.
-- **Layers** — multiple canvases with opacity, duplicate and delete.
-- **Memory maps** — top-level point clouds you can read from / write to independently.
-- **Save & load** — export a flat PNG, or a `.nekudot` archive you can reopen and keep editing.
-- **Runs entirely in the browser** — your work is stored locally (IndexedDB); nothing is uploaded.
+- **Connecting brushes** - Round & Handfree bloom into webs; the mark builds up
+  at a steady rate however fast you draw (tuned to match Harmony).
+- **Grouped connections** - pick a style from the navbar combo: **Classic**
+  (Airy, String Art, Shading - the three Harmony looks), **More** (Fur, Lace,
+  Arc) and your own **Custom** presets. The gear opens per-style dials
+  (density, reach, opacity, line shape, dash, arc, stipple…).
+- **Custom presets** - save a look you like (dials + line opacity), update or
+  branch off an existing one, and **import / export** presets as `.preset` files
+  to share or back up (validated on import, merged by name).
+- **Grid brushes** - Dots, Lines and Ellipse stamp patterns at grid intersections.
+- **Shape brushes** - Squares & Circles size themselves to your speed.
+- **Layers** - multiple canvases with opacity, drag-to-reorder, duplicate and delete.
+- **Memory maps** - top-level point clouds you can read from / write to independently.
+- **Even, uniform strokes** - faint lines composite through a wet-stroke buffer,
+  so a stroke lands at one flat opacity with no dark dots at sample joints.
+- **Transparent background** - toggle the canvas background off for PNGs with alpha.
+- **Save, load & share** - export a flat PNG (or share it via the Share menu),
+  or a `.nekudot` archive you can reopen and keep editing.
+- **Runs entirely in the browser** - your work is stored locally (IndexedDB); nothing is uploaded.
 
 ## Run it locally
 
@@ -58,7 +69,7 @@ npm run smoke    # run the headless smoke test
 
 `build.sh` produces one self-contained, minified `index.html` (JS + CSS inlined).
 It writes into `public/` by default, so the single-file app sits next to
-`about.html` and `book/` — ready to host the whole site statically
+`about.html` and `book/` - ready to host the whole site statically
 (e.g. GitHub Pages):
 
 ```bash
@@ -68,16 +79,16 @@ It writes into `public/` by default, so the single-file app sits next to
 
 ## Documentation
 
-- **[Usage book](https://barakbl.github.io/nekudot/book/)** — how every brush, layer and map works.
-- **[Memory maps](https://barakbl.github.io/nekudot/book/map.html)** — the connecting idea, in depth.
-- **Developer docs** — [architecture](https://barakbl.github.io/nekudot/book/dev/architecture.html) and [writing a brush](https://barakbl.github.io/nekudot/book/dev/brushes.html).
+- **[Usage book](https://barakbl.github.io/nekudot/book/)** - how every brush, layer and map works.
+- **[Memory maps](https://barakbl.github.io/nekudot/book/map.html)** - the connecting idea, in depth.
+- **Developer docs** - [architecture](https://barakbl.github.io/nekudot/book/dev/architecture.html) and [writing a brush](https://barakbl.github.io/nekudot/book/dev/brushes.html).
 
 The same docs live in this repo under [`public/`](public/) (`about.html` and `book/`).
 
 ## Acknowledgements
 
-The central idea — turning each stroke into a web by drawing lines between
-nearby points — is **Ricardo Cabello's (mrdoob)**, from his
+The central idea - turning each stroke into a web by drawing lines between
+nearby points - is **Ricardo Cabello's (mrdoob)**, from his
 [Harmony](https://mrdoob.github.io/harmony/) sketch tool. Nekudot is an
 independent reimplementation of that idea in TypeScript; the concept and the
 original Harmony code are his, and full credit for the inspiration goes to him.
