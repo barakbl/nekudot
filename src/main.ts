@@ -35,7 +35,6 @@ import { LocalStorageStore } from "./store/local_storage";
 import type { BrushBase } from "./base";
 import { LayerManager } from "./layered/manager";
 import { createLayersBox } from "./layered/box";
-import { createNeighborsMapBox } from "./layered/neighbors-map-box";
 import { createSizePicker } from "./layered/size-picker";
 import { exportArt, shareArt } from "./export";
 import { saveArtwork } from "./save-artwork";
@@ -449,24 +448,9 @@ const layersBox = createLayersBox(
   () => {
     applyStageBackground();
     layersBox.refreshPreviews();
-    neighborsMapBox.refreshPreviews();
   },
 );
 document.body.appendChild(layersBox.el);
-
-const neighborsMapBox = createNeighborsMapBox(
-  layerManager,
-  () => layerManager.currentSize,
-  () => backgroundColorForPreviews(),
-  (desc) => pushUndo(desc),
-  () => currentMainColor,
-  (index) => highlightNeighborsMap(index),
-);
-document.body.appendChild(neighborsMapBox.el);
-
-layerManager.subscribePixelAdded((mapIndex, x, y) => {
-  neighborsMapBox.pokePixel(mapIndex, x, y);
-});
 
 const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   layerManager.applyConfig(snap.config);
@@ -524,7 +508,6 @@ loadFileInput.addEventListener("change", async () => {
   resizeGridOverlay(size);
   applyStageBackground();
   layersBox.refreshPreviews();
-  neighborsMapBox.refreshPreviews();
   renderActiveBrush();
   store.set(CANVAS_SIZE_KEY, size);
   persistPaint();
@@ -801,7 +784,7 @@ const menu = createMenu(
     { label: "Brushes", shortcut: "b", toggle: toggleSettings },
     { label: "Connecting", shortcut: "c", toggle: toggleConnecting },
     { label: "Layers", shortcut: "l", toggle: layersBox.toggle },
-    { label: "Maps", shortcut: "m", toggle: neighborsMapBox.toggle },
+    { label: "Maps", shortcut: "m", toggle: () => menu.toggleMaps() },
     { label: "Shortcuts", shortcut: "/", toggle: () => toggleShortcuts() },
   ],
   {
@@ -812,6 +795,51 @@ const menu = createMenu(
     onDeleteCustom: (name) => deleteCustomFn(name),
     onImport: () => importPresetsFn(),
     onExport: () => exportPresetsFn(),
+  },
+  {
+    getInfo: () => {
+      const activeIdx = layerManager.selectedNeighborsMapIdx;
+      return {
+        maps: layerManager.allNeighborsMaps.map((m, i) => ({
+          name: m.config.name,
+          dots: m.finder.livePixelCount(),
+          active: i === activeIdx,
+        })),
+      };
+    },
+    onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
+    onFlashMap: (i) => highlightNeighborsMap(i),
+    onAddMap: () => {
+      const nm = layerManager.addNeighborsMap(); // made active by the manager
+      pushUndo(`Add ${nm.config.name}`);
+    },
+    onRenameMap: (i, name) => {
+      const prev = layerManager.allNeighborsMaps[i]?.config.name;
+      layerManager.setNeighborsMapName(i, name); // no-op if blank/unchanged
+      if (prev && layerManager.allNeighborsMaps[i]?.config.name !== prev)
+        pushUndo(`Rename ${prev} → ${name}`);
+    },
+    onSelectMap: (i) => {
+      layerManager.selectNeighborsMap(i); // not an undo step
+      const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
+      showChip(`Selected “${name}”`);
+      highlightNeighborsMap(i); // flash it so the choice is visible
+    },
+    onDeleteMap: (i) => {
+      const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
+      showConfirm({
+        title: "Delete map?",
+        message: `Delete the “${name}” map and the points it remembers?`,
+        confirmLabel: "Delete",
+        destructive: true,
+        onConfirm: () => {
+          if (layerManager.removeNeighborsMap(i)) {
+            showChip(`Deleted “${name}”`);
+            pushUndo(`Delete ${name}`);
+          }
+        },
+      });
+    },
   },
 );
 undoManager.subscribe(() => menu.refreshHistoryState());
@@ -952,7 +980,6 @@ const toggleAllPanels = (source: "key" | "touch") => {
     brushSettings.el,
     connectingSettings.el,
     layersBox.el,
-    neighborsMapBox.el,
     shortcutsPanel.el,
   ];
   const isVisible = (el: HTMLElement) => el.style.display !== "none";
@@ -965,7 +992,7 @@ const toggleAllPanels = (source: "key" | "touch") => {
         : "Menus hidden · press H to show",
     );
   } else {
-    const restore = savedPanelState ?? [true, false, false, false, false, false];
+    const restore = savedPanelState ?? [true, false, false, false, false];
     panels.forEach((el, i) => {
       el.style.display = restore[i] ? "" : "none";
     });
@@ -983,8 +1010,8 @@ const shortcuts: Shortcut[] = [
   {
     key: "m",
     group: "Panels",
-    description: "Toggle neighbors maps",
-    onPress: neighborsMapBox.toggle,
+    description: "Toggle the maps menu",
+    onPress: () => menu.toggleMaps(),
   },
   {
     key: "l",
@@ -1084,10 +1111,6 @@ attachToHeading(
   "Drawing layers. Each layer holds its own canvas plus its connections sub-layers; the active layer is the target for strokes and connection drawings.",
 );
 attachToHeading(
-  neighborsMapBox.el,
-  "Top-level point clouds (quadtrees). The selected map receives pixels from every stroke; the connecting brush looks up neighbors from it.",
-);
-attachToHeading(
   brushSettings.el,
   "Settings for the currently selected brush: its size, opacity and brush-specific options.",
 );
@@ -1136,7 +1159,6 @@ const end = (e: PointerEvent) => {
   // before previews/persist read the layer.
   if (brush.bufferedStroke()) layerManager.endStroke();
   layersBox.refreshPreviews();
-  neighborsMapBox.refreshPreviews();
   persistPaint();
   pushUndo(`${brush.name()} stroke on ${activeLayerName()}`);
 };

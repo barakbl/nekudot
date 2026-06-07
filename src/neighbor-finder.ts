@@ -13,6 +13,10 @@ export interface NeighborFinder {
   // number of points ever added since the last clear. Used as a stroke cutoff
   // marker; unaffected by cap eviction (which drops oldest points but not ids).
   pixelCount(): number;
+  // The number of points currently held — the live count, O(1). Unlike
+  // pixelCount() this tracks cap eviction (oldest points dropped past MAX_PIXELS),
+  // so it's the right number to show as "dots in this map".
+  livePixelCount(): number;
 }
 
 // Upper bound on points kept per cloud. Bounds findNeighbors traversal cost and
@@ -39,6 +43,10 @@ abstract class NeighborFinderBase implements NeighborFinder {
 
   pixelCount(): number {
     return this.nextId;
+  }
+
+  livePixelCount(): number {
+    return this.pixels.length;
   }
 }
 

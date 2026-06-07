@@ -330,17 +330,6 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     this.emit();
   }
 
-  private pixelListeners = new Set<
-    (neighborsMapIndex: number, x: number, y: number) => void
-  >();
-
-  subscribePixelAdded(
-    fn: (neighborsMapIndex: number, x: number, y: number) => void,
-  ): () => void {
-    this.pixelListeners.add(fn);
-    return () => this.pixelListeners.delete(fn);
-  }
-
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -511,10 +500,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   addPixel(x: number, y: number): Pixel {
     const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
     if (!nm) return { id: 0, x, y };
-    const px = nm.finder.addPixel(x, y);
-    for (const fn of this.pixelListeners)
-      fn(this.selectedNeighborsMapIndex, x, y);
-    return px;
+    return nm.finder.addPixel(x, y);
   }
   findNeighbors(px: Pixel, radius: number): Pixel[] {
     const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
@@ -527,6 +513,10 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   pixelCount(): number {
     const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
     return nm?.finder.pixelCount() ?? 0;
+  }
+  livePixelCount(): number {
+    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
+    return nm?.finder.livePixelCount() ?? 0;
   }
 
   // ---- ConnectRouter (target specific layers/maps by stable id) -------------
@@ -543,9 +533,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   addPixelToMap(mapId: string, x: number, y: number): Pixel {
     const idx = this.neighborsMaps.findIndex((m) => m.config.id === mapId);
     if (idx < 0) return this.addPixel(x, y); // pinned map gone -> selected
-    const px = this.neighborsMaps[idx].finder.addPixel(x, y);
-    for (const fn of this.pixelListeners) fn(idx, x, y);
-    return px;
+    return this.neighborsMaps[idx].finder.addPixel(x, y);
   }
   findNeighborsInMap(mapId: string, px: Pixel, radius: number): Pixel[] {
     const nm = this.neighborsMaps.find((m) => m.config.id === mapId);

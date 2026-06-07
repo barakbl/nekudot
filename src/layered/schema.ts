@@ -69,7 +69,7 @@ export function defaultLayer(index: number): LayerConfig {
 export function defaultNeighborsMap(
   existing: readonly NeighborsMapConfig[],
 ): NeighborsMapConfig {
-  return { id: genId(), name: `neighbors-${existing.length + 1}`, opacity: 100 };
+  return { id: genId(), name: `map-${existing.length + 1}`, opacity: 100 };
 }
 
 export function defaultLayersConfig(
