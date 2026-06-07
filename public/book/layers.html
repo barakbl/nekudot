@@ -24,8 +24,8 @@
       <p>
         Open it from the <strong>Windows</strong> menu or with <span class="kbd">l</span>.
         Each layer is its own canvas. Strokes land on the <strong>active</strong>
-        layer - click a layer row to make it active. Connecting lines are baked
-        onto the <strong>connection layer</strong> instead (see below), which can
+        layer - click a layer row to make it active. Connecting lines land on the
+        <strong>connection layer</strong> instead (see below), which can
         be a different layer. The panel lists layers top-down in the same order
         they stack on screen - drag a row by its grip handle to reorder them
         (see below).
@@ -41,7 +41,7 @@
         Exactly one layer is always the connection layer, marked by the link
         button
         <span class="conn-glyph"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>
-        on its row. It's the layer connecting brushes bake their lines onto.
+        on its row. It's the layer connecting brushes lay their web onto.
         Click another row's link to move it there; it's independent of the
         active layer, so you can paint on one layer while the web accumulates on
         another. Whether a brush connects at all is its
@@ -75,7 +75,7 @@
         <dt>Opacity</dt>
         <dd>Blend the whole layer over the ones beneath it (0–100%).</dd>
         <dt>Connection layer (link button)</dt>
-        <dd>Make this the connection layer - the target for baked connecting lines. Always exactly one; click to move it here.</dd>
+        <dd>Make this the connection layer - where connecting lines are drawn. Always exactly one; click to move it here.</dd>
         <dt>Duplicate</dt>
         <dd>Copy the layer and its pixels into a new layer above. Duplicating the connection layer hands the marker to the copy.</dd>
         <dt>Delete</dt>
@@ -85,10 +85,10 @@
       </dl>
 
       <div class="note">
-        Layers are about <em>pixels</em>. The point clouds that drive connecting
-        lines are separate, shared <a href="/book/map.html">memory maps</a> - so
-        you can paint on different layers while feeding (or reading from) the
-        same cloud.
+        Layers hold <em>pixels</em>. What the connecting lines reach toward -
+        your drawing's <a href="/book/map.html">memory</a> - is separate and
+        shared, so you can paint on different layers while feeding (or reaching
+        back into) the same memory.
       </div>
 
       <h2>Tips</h2>
@@ -98,6 +98,14 @@
         <li>Reorder by the grip, not the row - dragging elsewhere selects or edits the layer instead.</li>
         <li>Drag any panel by its title bar to get it out of the way.</li>
       </ul>
+
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Paint your strokes on the top layer and let the web pile up on the
+        connection layer beneath. When you're done, drop that layer's
+        <em>Opacity</em> until the web is just a whisper behind your marks - or
+        hide it entirely - all without disturbing a single stroke.
+      </div>
     </main>
 
     <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>

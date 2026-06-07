@@ -19,33 +19,41 @@
       <p class="crumbs"><a href="/book/">Book</a> › Memory maps</p>
       <h1>Memory maps &amp; connecting</h1>
       <p class="lead">
-        The point cloud that turns single strokes into webs - the heart of Nekudot.
+        What your drawing remembers - and how it turns single strokes into webs.
+        The heart of Nekudot.
       </p>
 
       <h2>What a memory map is</h2>
       <p>
-        A <strong>memory map</strong> is a cloud of points (stored as a
-        quadtree, so neighbour lookups stay fast). It has no pixels of its own -
-        it just remembers <em>where</em> you've drawn. As you draw, each new
-        point is added to a map; this growing record is the map's
-        <strong>trail</strong>.
+        A <strong>memory map</strong> is simply <strong>what your drawing
+        remembers</strong> - every spot you've drawn, kept as a scatter of
+        points. It has no pixels of its own; it just remembers <em>where</em>
+        your strokes have been. As you draw, each new point joins the map, and
+        that growing record is the map's <strong>trail</strong>.
       </p>
       <p>
-        Maps are <strong>top-level</strong> - shared across every layer. You can
-        keep several maps and switch between them in the
+        Maps are shared across every layer, so the same memory feeds your whole
+        drawing. You can keep several maps and switch between them in the
         <a href="/book/">Maps</a> panel (<span class="kbd">m</span>). Each map row
         has a <strong>Flash</strong> button that briefly lights up that map's
-        points on the canvas (glowing dots that pulse, then fade) so you can see
-        where they sit.
+        points on the canvas - glowing dots that pulse, then fade.
       </p>
+      <div class="tip">
+        <span class="tip-label">Check the memory</span>
+        Not sure why the web is reaching somewhere? Hit <strong>Flash</strong>
+        (<span class="kbd">m</span> → the map row) to see exactly which points
+        your drawing remembers. Invisible strokes and erased marks still show -
+        a great way to understand where your next connections will land.
+      </div>
 
       <h2>How connecting works</h2>
       <p>
-        When a connecting brush lays down a point, it asks a map for the
-        neighbours within a <em>radius</em> and draws a line to some of them
-        (controlled by <em>density</em>). Each line is faint; hundreds of them
-        overlapping build the soft, sketchy texture. Because the map persists,
-        a new stroke connects to where earlier strokes have been.
+        When a connecting brush lays down a point, it reaches out to nearby
+        remembered points and draws a faint line to some of them - how near it
+        looks is <em>Reach</em>, how many it connects is <em>Density</em>.
+        One line is barely there; hundreds of them overlapping build the soft,
+        sketchy texture. Because the memory sticks around, a new stroke reaches
+        back toward everywhere you drew before.
       </p>
       <div class="note">
         This is the idea behind <a href="https://mrdoob.github.io/harmony/" target="_blank" rel="noopener">Harmony</a>:
@@ -61,7 +69,7 @@
 
       <h3>Connection <span class="tag">where</span></h3>
       <p>
-        Connection lines always bake onto the
+        Connection lines always land on the
         <a href="/book/layers.html"><strong>connection layer</strong></a> - the
         layer marked with the link icon in the Layers panel. Move that marker to
         send the web to a different layer. Whether to connect at all is the
@@ -119,9 +127,14 @@
       </dl>
       <p class="muted">Presets: <strong>Classic</strong> (faint, inset, sketchy), <strong>Web</strong> (sparser, stronger), <strong>Arc</strong> (opaque curved arcs).</p>
 
-      <div class="note">
-        Tip: a soft Harmony look comes from <em>low alpha + some inset + brush-matched width</em>.
-        Crisp ink comes from <em>high alpha + zero inset</em>. Try the presets, then nudge.
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Trace a shape with the <a href="/book/brushes/invisible.html">Invisible</a>
+        brush first (it only feeds the memory, no ink), then draw over it with
+        <a href="/book/brushes/classic-round.html">Round</a> - watch the web pull
+        toward your hidden guide. For a soft Harmony look reach for
+        <em>low opacity + a little inset</em>; for crisp ink use <em>high opacity +
+        zero inset</em>. Start from a preset, then nudge one dial at a time.
       </div>
     </main>
 

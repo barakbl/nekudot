@@ -33,18 +33,25 @@
       <h2>The idea</h2>
       <p>
         Most brushes only lay down the pixels under your cursor. Nekudot also
-        keeps a <strong>point cloud</strong> - a "memory map" of everywhere your
-        strokes have been. While you draw, a connecting brush looks up the
-        neighbours of each new point in that cloud and draws lines between them.
-        Hundreds of faint, overlapping lines accumulate into the soft, sketchy,
-        spider-web texture that Harmony made famous.
+        gives your drawing a <strong>memory</strong> - it remembers everywhere
+        you've drawn. While you draw, a connecting brush reaches out to nearby
+        remembered spots and draws faint lines between them. Hundreds of those
+        overlapping threads build the soft, sketchy, spider-web texture that
+        Harmony made famous.
       </p>
       <p>
-        Because the connections come from a shared, persistent cloud, strokes
-        relate to each other: new marks reach back toward old ones, and the
-        drawing grows as a single connected structure rather than a stack of
-        independent lines.
+        Because that memory is shared and sticks around, your marks relate to
+        each other: new strokes reach back toward old ones, and the drawing grows
+        as one connected thing rather than a stack of separate lines.
       </p>
+
+      <div class="tip">
+        <span class="tip-label">Try this first</span>
+        <a href="/">Open the app</a>, grab <strong>Round</strong>
+        (<span class="kbd">1</span>) and scribble a loose shape - then scribble a
+        second one nearby and watch faint threads leap between them. That bloom is
+        the whole idea; everything else just shapes how it looks.
+      </div>
 
       <h2>Features</h2>
       <ul>
@@ -53,7 +60,7 @@
         <li><strong>Grid brushes</strong> - Dots, Lines &amp; Handfree stamp patterns at grid intersections.</li>
         <li><strong>Shape brushes</strong> - Squares &amp; Circles size themselves to your speed.</li>
         <li><strong>Layers</strong> - stack canvases with opacity; drag to reorder, duplicate &amp; delete.</li>
-        <li><strong>Memory maps</strong> - top-level point clouds you can read from / write to independently.</li>
+        <li><strong>Memory maps</strong> - what your drawing remembers; feed or reuse them across layers.</li>
         <li><strong>Save &amp; load</strong> - export a flat PNG, or a <code>.nekudot</code> archive you can reopen and keep editing.</li>
         <li><strong>Runs entirely in the browser</strong> - your work is stored locally; nothing is uploaded.</li>
       </ul>

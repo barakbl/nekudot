@@ -34,8 +34,8 @@
         The eraser borrows the <strong>currently selected brush's shape and
         size</strong> - it doesn't have its own. A fat round brush erases in fat
         round dabs; a Squares brush erases square chunks; making the brush bigger
-        makes the eraser bigger. Under the hood it just switches the brush to
-        "remove" mode, so everything you know about the brush still applies.
+        makes the eraser bigger. It simply puts the current brush into "remove"
+        mode, so everything you know about the brush still applies.
       </p>
       <ul>
         <li>Pick the brush whose footprint you want, then toggle the eraser on.</li>
@@ -46,10 +46,10 @@
       <h2>The eraser and memory</h2>
       <p>
         This is the important part: <strong>erasing is purely visual.</strong> It
-        clears pixels on the canvas but does <em>not</em> touch the
-        <a href="/book/map.html">memory maps</a>. While erasing, no points are
-        added to the point cloud and none are removed - the remembered points
-        behind the paint stay exactly where they were.
+        clears pixels on the canvas but does <em>not</em> touch your drawing's
+        <a href="/book/map.html">memory</a>. While erasing, nothing is added to or
+        removed from that memory - the remembered points behind the paint stay
+        exactly where they were.
       </p>
       <div class="note">
         So if you erase a stroke and then draw with a connecting brush, its web
@@ -57,6 +57,13 @@
         not forgotten. To actually forget points (and stop them attracting
         connections), <em>clear the memory map</em> instead - that's a separate
         action from erasing.
+      </div>
+      <div class="tip">
+        <span class="tip-label">Check the memory</span>
+        Erase a stroke, then press <span class="kbd">m</span> and
+        <strong>Flash</strong> the map - you'll see its points glowing right where
+        the paint used to be. That's why a new web still reaches there. It's a
+        handy feature, not a bug: rub out the ink but keep the structure.
       </div>
 
       <h2>When to use which</h2>
