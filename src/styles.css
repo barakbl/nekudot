@@ -25,6 +25,7 @@
   --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.22);
   --canvas-bg: #ffffff;
   --canvas-border: #333;
+  --app-bg: #232428;
 }
 
 @media (prefers-color-scheme: light) {
@@ -51,6 +52,7 @@
     --shadow: 0 6px 22px rgba(0, 0, 0, 0.15);
     --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.1);
     --canvas-border: #bbb;
+    --app-bg: #eceef0;
   }
 }
 
@@ -77,6 +79,7 @@
   --shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
   --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.22);
   --canvas-border: #333;
+  --app-bg: #232428;
 }
 
 [data-theme="light"] {
@@ -102,6 +105,11 @@
   --shadow: 0 6px 22px rgba(0, 0, 0, 0.15);
   --shadow-toolbar: 0 3px 14px rgba(0, 0, 0, 0.1);
   --canvas-border: #bbb;
+  --app-bg: #eceef0;
+}
+
+body {
+  background: var(--app-bg);
 }
 
 .toolbar {
@@ -250,6 +258,71 @@
   height: 1px;
   background: var(--border-subtle);
   margin: 4px 6px;
+}
+.sym-section {
+  padding: 0 4px 4px;
+}
+.sym-seg {
+  display: flex;
+  gap: 4px;
+  padding: 2px 4px 6px;
+}
+.sym-seg-btn {
+  flex: 1;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 2px;
+  white-space: nowrap;
+  color: var(--text-muted);
+  background: var(--pill-bg);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+/* Mode buttons stack a glyph over the label; axis buttons stay text-only. */
+.sym-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 5px 2px;
+}
+.sym-mode-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.sym-seg-btn:hover {
+  color: var(--text-primary);
+  background: var(--pill-hover);
+}
+.sym-seg-btn.active {
+  color: var(--accent-text);
+  background: var(--accent);
+}
+.sym-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+}
+.sym-rowlabel {
+  flex: 0 0 64px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.sym-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+.sym-rowval {
+  flex: 0 0 30px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+.sym-check {
+  margin-left: auto;
 }
 .maps-menu-popover {
   min-width: 228px;

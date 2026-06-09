@@ -1,10 +1,12 @@
 import "./styles.css";
-import type { GridSpec } from "./brushes/grid";
 import {
   BRUSH_DEFS,
   type BrushContext,
   type BrushDef,
 } from "./brushes/registry";
+import { SymmetryController } from "./symmetry/controller";
+import { makeSymmetryProxy } from "./symmetry/proxy";
+import { createSymmetryBox } from "./symmetry/box";
 import { CanvasRenderer, type IRenderer } from "./renderer";
 import { createMenu, type MenuEntry, type MenuGroup } from "./menu";
 import {
@@ -181,34 +183,35 @@ const resizeInvisibleOverlay = (size: CanvasSize) => {
 resizeInvisibleOverlay(initialCanvasSize);
 stage.appendChild(invisibleOverlay);
 
-// Static overlay (one z-index below the invisible glow) used to show
-// the grid only while a GridBrush is selected. Visual help, not paint.
-const gridOverlay = document.createElement("canvas");
-gridOverlay.style.position = "absolute";
-gridOverlay.style.left = "0";
-gridOverlay.style.top = "0";
-gridOverlay.style.pointerEvents = "none";
-gridOverlay.style.zIndex = "9998";
-gridOverlay.style.display = "none";
+// Static overlay (one z-index below the invisible glow) that shows the symmetry
+// guide lines (tile lattice / radial spokes / mirror line) while a symmetry mode
+// is active. Visual help, not paint.
+const symmetryOverlay = document.createElement("canvas");
+symmetryOverlay.style.position = "absolute";
+symmetryOverlay.style.left = "0";
+symmetryOverlay.style.top = "0";
+symmetryOverlay.style.pointerEvents = "none";
+symmetryOverlay.style.zIndex = "9998";
+symmetryOverlay.style.display = "none";
 
-const makeGridOverlayRenderer = (): IRenderer => {
-  const ctx = gridOverlay.getContext("2d");
-  if (!ctx) throw new Error("gridOverlay: failed to get 2d context");
+const makeSymmetryOverlayRenderer = (): IRenderer => {
+  const ctx = symmetryOverlay.getContext("2d");
+  if (!ctx) throw new Error("symmetryOverlay: failed to get 2d context");
   return new CanvasRenderer(ctx, { dpr });
 };
 
-let gridOverlayRenderer: IRenderer;
-let gridOverlayCssSize: CanvasSize = initialCanvasSize;
-const resizeGridOverlay = (size: CanvasSize) => {
-  gridOverlay.width = Math.round(size.width * dpr);
-  gridOverlay.height = Math.round(size.height * dpr);
-  gridOverlay.style.width = `${size.width}px`;
-  gridOverlay.style.height = `${size.height}px`;
-  gridOverlayCssSize = size;
-  gridOverlayRenderer = makeGridOverlayRenderer();
+let symmetryOverlayRenderer: IRenderer;
+let symmetryOverlayCssSize: CanvasSize = initialCanvasSize;
+const resizeSymmetryOverlay = (size: CanvasSize) => {
+  symmetryOverlay.width = Math.round(size.width * dpr);
+  symmetryOverlay.height = Math.round(size.height * dpr);
+  symmetryOverlay.style.width = `${size.width}px`;
+  symmetryOverlay.style.height = `${size.height}px`;
+  symmetryOverlayCssSize = size;
+  symmetryOverlayRenderer = makeSymmetryOverlayRenderer();
 };
-resizeGridOverlay(initialCanvasSize);
-stage.appendChild(gridOverlay);
+resizeSymmetryOverlay(initialCanvasSize);
+stage.appendChild(symmetryOverlay);
 
 // Transient highlight overlay (top-most): when the Maps box asks, it flashes a
 // neighbors map's pixels over the canvas for a couple of seconds — thicker,
@@ -274,14 +277,39 @@ const highlightNeighborsMap = (index: number) => {
   requestAnimationFrame(frame);
 };
 
+// Symmetry (Tile / Radial / Mirror): a proxy around the LayerManager mirrors every mark
+// and deposited point at the active mode's transforms, so any brush works under
+// symmetry. When the mode is None it forwards untouched.
+const symmetry = new SymmetryController(store);
+const symmetryProxy = makeSymmetryProxy(
+  layerManager,
+  () => symmetry.transforms(),
+  () => store.get<number>("app.opacity") ?? 1,
+);
+
 // Construct every registered brush from one shared context (see brushes/
 // registry.ts — the single source of truth for brushes).
 const brushContext: BrushContext = {
-  renderer: layerManager,
-  finder: layerManager,
+  renderer: symmetryProxy,
+  finder: symmetryProxy,
   store,
   getInvisibleOverlay: () => invisibleOverlayRenderer,
 };
+// Symmetry guide overlay: the tile lattice, radial spokes or mirror line, shown whenever a
+// symmetry mode is active. Brush-independent — driven by the controller. Defined
+// here (after the overlay + controller exist) so the resize handlers can call it.
+const updateSymmetryOverlay = () => {
+  if (symmetry.active()) {
+    symmetryOverlay.style.display = "";
+    symmetry.drawGuides(symmetryOverlayRenderer, symmetryOverlayCssSize);
+  } else {
+    symmetryOverlay.style.display = "none";
+    symmetryOverlayRenderer.clear();
+  }
+};
+symmetry.subscribe(updateSymmetryOverlay);
+updateSymmetryOverlay();
+
 const brushes: Record<string, BrushBase> = {};
 for (const def of BRUSH_DEFS) brushes[def.name] = def.create(brushContext);
 type BrushKey = string;
@@ -452,6 +480,9 @@ const layersBox = createLayersBox(
 );
 document.body.appendChild(layersBox.el);
 
+const symmetryBox = createSymmetryBox(symmetry);
+document.body.appendChild(symmetryBox.el);
+
 const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   layerManager.applyConfig(snap.config);
   await layerManager.applyPaintData(snap.paint);
@@ -505,7 +536,8 @@ loadFileInput.addEventListener("change", async () => {
 
   const { size } = result.artwork;
   resizeInvisibleOverlay(size);
-  resizeGridOverlay(size);
+  resizeSymmetryOverlay(size);
+  updateSymmetryOverlay();
   applyStageBackground();
   layersBox.refreshPreviews();
   renderActiveBrush();
@@ -539,7 +571,8 @@ const sizePicker = createSizePicker({
       onConfirm: () => {
         layerManager.reset(size);
         resizeInvisibleOverlay(size);
-        resizeGridOverlay(size);
+        resizeSymmetryOverlay(size);
+        updateSymmetryOverlay();
         for (const b of Object.values(brushes)) {
           b.clear();
           b.applyConnectingPreset("classic");
@@ -596,62 +629,9 @@ const canvasMenuOptions = {
   onLoadArtwork: promptLoadArtwork,
 };
 
-let gridSettingsUnsub: (() => void) | null = null;
-
-// Both the GridBrush family and Handfree drive the grid overlay; match them
-// structurally rather than by class so the overlay shows for either.
-type GridLike = {
-  getGridSpec: () => GridSpec;
-  subscribeSettings: (fn: () => void) => () => void;
-};
-const asGridLike = (b: BrushBase): GridLike | null => {
-  const g = b as Partial<GridLike>;
-  return typeof g.getGridSpec === "function" &&
-    typeof g.subscribeSettings === "function"
-    ? (b as unknown as GridLike)
-    : null;
-};
-
-const renderGridOverlay = (b: GridLike) => {
-  gridOverlayRenderer.clear();
-  const { xSpacing, ySpacing } = b.getGridSpec();
-  const w = gridOverlayCssSize.width;
-  const h = gridOverlayCssSize.height;
-  const style = { color: "#888", width: 0.5, alpha: 0.35 };
-  for (let x = 0; x <= w; x += xSpacing) {
-    gridOverlayRenderer.drawLine(
-      { id: 0, x, y: 0 },
-      { id: 0, x, y: h },
-      style,
-    );
-  }
-  for (let y = 0; y <= h; y += ySpacing) {
-    gridOverlayRenderer.drawLine(
-      { id: 0, x: 0, y },
-      { id: 0, x: w, y },
-      style,
-    );
-  }
-};
-
-const onBrushChanged = () => {
-  if (gridSettingsUnsub) {
-    gridSettingsUnsub();
-    gridSettingsUnsub = null;
-  }
-  const gridLike = asGridLike(brush);
-  if (gridLike) {
-    gridOverlay.style.display = "";
-    renderGridOverlay(gridLike);
-    gridSettingsUnsub = gridLike.subscribeSettings(() => {
-      const g = asGridLike(brush);
-      if (g) renderGridOverlay(g);
-    });
-  } else {
-    gridOverlay.style.display = "none";
-    gridOverlayRenderer.clear();
-  }
-};
+// Fired after a brush switch. Symmetry guides don't depend on the brush, so
+// there's nothing brush-specific to redraw here now.
+const onBrushChanged = () => {};
 
 const selectBrush = (key: BrushKey) => {
   brush = brushes[key];
@@ -785,6 +765,7 @@ const menu = createMenu(
     { label: "Connecting", shortcut: "c", toggle: toggleConnecting },
     { label: "Layers", shortcut: "l", toggle: layersBox.toggle },
     { label: "Maps", shortcut: "m", toggle: () => menu.toggleMaps() },
+    { label: "Symmetry", shortcut: "y", toggle: symmetryBox.toggle },
     { label: "Shortcuts", shortcut: "/", toggle: () => toggleShortcuts() },
   ],
   {
@@ -980,6 +961,7 @@ const toggleAllPanels = (source: "key" | "touch") => {
     brushSettings.el,
     connectingSettings.el,
     layersBox.el,
+    symmetryBox.el,
     shortcutsPanel.el,
   ];
   const isVisible = (el: HTMLElement) => el.style.display !== "none";
@@ -992,7 +974,7 @@ const toggleAllPanels = (source: "key" | "touch") => {
         : "Menus hidden · press H to show",
     );
   } else {
-    const restore = savedPanelState ?? [true, false, false, false, false];
+    const restore = savedPanelState ?? [true, false, false, false, false, false];
     panels.forEach((el, i) => {
       el.style.display = restore[i] ? "" : "none";
     });
@@ -1018,6 +1000,12 @@ const shortcuts: Shortcut[] = [
     group: "Panels",
     description: "Toggle layers",
     onPress: layersBox.toggle,
+  },
+  {
+    key: "y",
+    group: "Panels",
+    description: "Toggle symmetry",
+    onPress: symmetryBox.toggle,
   },
   {
     key: "b",
@@ -1118,6 +1106,10 @@ attachToHeading(
   connectingSettings.el,
   "How the Round brush weaves its connecting web: where it connects (routing) and the art-style dials. Pick a preset from the navbar Connecting combo.",
 );
+attachToHeading(
+  symmetryBox.el,
+  "Repeat every stroke with symmetry: Tile repeats your marks across a lattice, Radial mirrors them around the centre (kaleidoscope), Mirror reflects across one line. Works with any brush.",
+);
 
 let drawingId: number | null = null;
 
@@ -1126,10 +1118,14 @@ stage.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   stage.setPointerCapture(e.pointerId);
   drawingId = e.pointerId;
+  // Freeze the symmetry transforms for this stroke (Tile anchored to the start,
+  // Radial/Mirror centred on the canvas) before any mark is drawn.
+  symmetry.beginStroke(e.offsetX, e.offsetY, layerManager.currentSize);
   // Buffer the continuous line (Round) so a faint stroke composites as one
   // uniform alpha instead of dotting at the sample joints. Must start before the
-  // first segment is drawn.
-  if (brush.bufferedStroke()) layerManager.beginStroke();
+  // first segment is drawn. Skipped under symmetry so each copy keeps its own
+  // fade (the buffer would flatten them to one alpha).
+  if (brush.bufferedStroke() && !symmetry.active()) layerManager.beginStroke();
   brush.strokeStart(e.offsetX, e.offsetY);
   brush.stroke(e.offsetX, e.offsetY);
 });
@@ -1156,8 +1152,8 @@ const end = (e: PointerEvent) => {
   drawingId = null;
   brush.strokeEnd();
   // Commit the buffered line onto the active layer (one uniform-alpha composite)
-  // before previews/persist read the layer.
-  if (brush.bufferedStroke()) layerManager.endStroke();
+  // before previews/persist read the layer. (Matches the pointerdown guard.)
+  if (brush.bufferedStroke() && !symmetry.active()) layerManager.endStroke();
   layersBox.refreshPreviews();
   persistPaint();
   pushUndo(`${brush.name()} stroke on ${activeLayerName()}`);

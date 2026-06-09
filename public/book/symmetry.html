@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Symmetry - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Symmetry</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg></span>Symmetry <span class="tag">key y</span></h1>
+      <p class="lead">
+        Repeat every stroke with symmetry. <strong>Tile</strong> repeats your marks
+        across a lattice; <strong>Radial</strong> mirrors them around the canvas
+        centre - a kaleidoscope; <strong>Mirror</strong> reflects across a single
+        line. It works with <em>any</em> brush.
+      </p>
+
+      <h2>What it is</h2>
+      <p>
+        Symmetry is a tool, not a brush - it lives in its own box (open it from
+        the navbar <strong>Windows</strong> menu or press <span class="kbd">y</span>).
+        Pick a mode and draw: whatever you draw is copied to every mirrored
+        position at once. It mirrors <strong>everything</strong> - the painted
+        marks <em>and</em> your drawing's <a href="/book/map.html">memory</a> - so
+        the connecting web threads across the whole pattern, not just within one
+        copy. Guide lines on the canvas show where the copies fall.
+      </p>
+      <div class="note">
+        One mode at a time: <em>None</em>, <em>Tile</em>, <em>Radial</em> or
+        <em>Mirror</em>. Whatever brush you have selected (Round, Squares, Marker…)
+        is the one that gets repeated, so the symmetry is yours to combine with
+        any look.
+      </div>
+
+      <h2 id="tile">Tile</h2>
+      <p>
+        Tiles your strokes across a regular lattice. Draw a small motif and it
+        copies to each junction within <em>Reach</em> of where you started, fading
+        toward the edge. Because the memory is mirrored too, the connecting web
+        links the whole tiling into one connected fabric - lovely for wallpaper,
+        weaves and repeating textures.
+      </p>
+      <dl class="settings">
+        <dt>X spacing / Y spacing</dt>
+        <dd>Distance between junctions across and down - the pattern's pitch.</dd>
+        <dt>Reach</dt>
+        <dd>How far the motif tiles out from the anchor junction.</dd>
+        <dt>Falloff</dt>
+        <dd>How sharply copies fade toward the reach edge. <strong>0</strong> = flat (every copy full strength); higher = a soft vignette.</dd>
+      </dl>
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Draw one small flourish near the top-left and watch it bloom into a whole
+        repeating field. Tighten the spacing for dense wallpaper, widen it for an
+        airy lattice; lower the Falloff for an even tile, raise it to feather the
+        edges.
+      </div>
+
+      <h2 id="radial">Radial</h2>
+      <p>
+        Mirrors your strokes radially around the canvas centre - the classic
+        kaleidoscope. A single off-centre gesture becomes a symmetric bloom; the
+        guide spokes show the wedges. With the memory mirrored, the web reaches
+        across the wedges, so the rings connect into lace-like rosettes.
+      </p>
+      <dl class="settings">
+        <dt>Segments</dt>
+        <dd>How many wedges the circle is divided into (more = finer symmetry).</dd>
+        <dt>Mirror</dt>
+        <dd>Reflect each wedge as well as rotating it (a true kaleidoscope). Off = pure rotation.</dd>
+      </dl>
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Set <strong>6</strong> segments with <strong>Mirror</strong> on and sketch
+        a few strokes between the centre and the edge - you'll grow a snowflake.
+        Draw nearer the centre for a tight rosette, nearer the rim for an open
+        wreath. Pair it with the <a href="/book/connections.html">Airy</a> or
+        <a href="/book/connections.html#shaded">Shading</a> style for soft,
+        webbed petals.
+      </div>
+
+      <h2 id="mirror">Mirror</h2>
+      <p>
+        Reflects your strokes across a single line through the canvas centre - a
+        one-line Radial. Pick the axis: <strong>Vertical</strong> mirrors
+        left↔right, <strong>Horizontal</strong> mirrors top↔bottom. Draw on one
+        side and it appears flipped on the other - perfect for faces, butterflies,
+        vases and anything bilaterally symmetric.
+      </p>
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Set a <strong>Vertical</strong> mirror and sketch half a face down one side
+        of the centre line; the other half mirrors as you go. Switch the connecting
+        web on for a soft, symmetric portrait.
+      </div>
+
+      <h2>Works with any brush</h2>
+      <p>
+        Symmetry repeats whatever brush is active. Round gives webbed mandalas;
+        <a href="/book/brushes/squares.html">Squares</a> and
+        <a href="/book/brushes/circles.html">Circles</a> build faceted, crystalline
+        patterns; <a href="/book/brushes/marker.html">Marker</a> lays bold
+        kaleidoscope ribbons; the <a href="/book/brushes/invisible.html">Invisible</a>
+        brush seeds a mirrored scaffold of points for a later connecting pass.
+      </p>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

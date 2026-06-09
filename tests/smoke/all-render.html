@@ -32,13 +32,9 @@
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
-      import { HandfreeBrush } from "/src/brushes/handfree.ts";
       import { MarkerBrush } from "/src/brushes/marker.ts";
       import { SquaresBrush } from "/src/brushes/squares.ts";
       import { CirclesBrush } from "/src/brushes/circles.ts";
-      import { DotsBrush } from "/src/brushes/dots.ts";
-      import { LinesBrush } from "/src/brushes/lines.ts";
-      import { EllipseBrush } from "/src/brushes/ellipse.ts";
 
       const W = 240;
       const H = 200;
@@ -73,9 +69,6 @@
         return [a, b];
       }
 
-      // Tap targets for the grid-tap brushes (Dots/Lines/Ellipse): one tap each.
-      const TAPS = [[80, 70], [165, 110], [110, 150]];
-
       function newCell() {
         const canvas = document.createElement("canvas");
         canvas.width = W;
@@ -97,14 +90,6 @@
         brush.strokeEnd();
       }
 
-      function runTaps(brush, pts) {
-        for (const [x, y] of pts) {
-          brush.strokeStart(x, y);
-          brush.stroke(x, y);
-          brush.strokeEnd();
-        }
-      }
-
       // name -> render fn (returns the cell's canvas). Each isolates its own
       // renderer/finder so cells never bleed into each other.
       const RENDERERS = {
@@ -120,34 +105,9 @@
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
-        Dots: () => {
-          const c = newCell();
-          const brush = new DotsBrush(c.renderer, c.finder, SEED);
-          runTaps(brush, TAPS);
-          return c.canvas;
-        },
-        Lines: () => {
-          const c = newCell();
-          const brush = new LinesBrush(c.renderer, c.finder, SEED);
-          runTaps(brush, TAPS);
-          return c.canvas;
-        },
-        Ellipse: () => {
-          const c = newCell();
-          const brush = new EllipseBrush(c.renderer, c.finder, SEED);
-          runTaps(brush, TAPS);
-          return c.canvas;
-        },
         Marker: () => {
           const c = newCell();
           const brush = new MarkerBrush(c.renderer, c.finder, SEED);
-          for (const s of gestureStrokes()) runStroke(brush, s);
-          return c.canvas;
-        },
-        Handfree: () => {
-          const c = newCell();
-          const brush = new HandfreeBrush(c.renderer, c.finder, SEED);
-          brush.applyArtStylePreset("classic");
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },

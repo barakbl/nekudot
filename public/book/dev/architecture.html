@@ -40,7 +40,8 @@
   save-artwork.ts      export a .nekudot zip
   load-artwork.ts      validate + import a .nekudot (zip-bomb safe)
   export.ts            flatten layers to a PNG
-  brushes/             one file per brush (+ grid.ts, shapes-stroke.ts bases)
+  brushes/             one file per brush (+ shapes-stroke.ts base)
+  symmetry/            Tile / Radial / Mirror tool (transforms, proxy, controller, box)
     brushes.json       ordered brush index (name/file/shortcut/group/connections)
     registry.ts        builds BRUSH_DEFS from brushes.json - map, menu, shortcuts, names
     connections/       the connecting engine + art-style "connections"

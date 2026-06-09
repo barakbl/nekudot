@@ -20,13 +20,16 @@
       <h1>Writing a brush</h1>
       <p class="lead">A brush is one class (with an <code>icon</code> and a <code>create()</code>) plus a one-line row in <code>brushes.json</code>.</p>
 
-      <h2>Two flavours</h2>
-      <ul>
-        <li><strong>Stroke brush</strong> - extends <code>BrushBase</code>, paints continuously as the pointer moves. It can connect (weave the web). Examples: Round, Marker, Squares.</li>
-        <li><strong>Grid / tap brush</strong> - extends <code>GridBrush</code>, stamps a pattern at grid intersections on each click. Doesn't connect. Examples: Dots, Lines, Ellipse.</li>
-      </ul>
+      <h2>What a brush is</h2>
+      <p>
+        A brush extends <code>BrushBase</code> and paints continuously as the
+        pointer moves; it can optionally connect (weave the web). Examples: Round,
+        Marker, Squares. (Symmetry - Tile, Radial &amp; Mirror - is a separate global
+        tool that repeats <em>any</em> brush, so it isn't a brush type; see
+        <code>src/symmetry/</code>.)
+      </p>
 
-      <h2>1. A minimal stroke brush</h2>
+      <h2>A minimal stroke brush</h2>
       <p>
         Override <code>onStroke(x, y, current)</code> and draw with
         <code>this.renderer</code>. The base class deposits points into the memory
@@ -81,42 +84,12 @@ this.initConnection("classic");
         The navbar Connecting combo then swaps the style via
         <code>applyArtStylePreset()</code>, and the rest is handled: the web,
         fanning each connection into <em>Weight</em>×1px hairs, and routing.
-        <code>Round</code> (and <code>Handfree</code>) are the built-in examples;
-        a brush that never calls <code>initConnection</code> simply doesn't connect
-        (Marker, the grid brushes). Connection styles live in
+        <code>Round</code> is the built-in example; a brush that never calls
+        <code>initConnection</code> simply doesn't connect (Marker, the shape
+        brushes). Connection styles live in
         <code>src/brushes/connections/</code> - one <code>ConnectionBase</code>
         subclass per style, listed in <code>connections.json</code>.
       </p>
-
-      <h2>2. A grid / tap brush</h2>
-      <p>
-        Extend <code>GridBrush</code> and implement <code>paintAt(x, y, alpha)</code>.
-        The base stamps every grid intersection within <em>reach</em> of a click,
-        with <code>alpha</code> already faded by distance. Spread
-        <code>this.gridSettings()</code> to expose spacing/reach/tap-strength.
-      </p>
-      <pre><code>// src/brushes/cross.ts
-import { GridBrush } from "./grid";
-import type { BrushSetting } from "../base";
-
-export class CrossBrush extends GridBrush {
-  private size = 6;
-  name() { return "Cross"; }
-
-  protected paintAt(x: number, y: number, alpha: number): void {
-    const s = this.size, st = { width: 1, alpha };
-    this.renderer.drawLine({ id: 0, x: x - s, y }, { id: 0, x: x + s, y }, st);
-    this.renderer.drawLine({ id: 0, x, y: y - s }, { id: 0, x, y: y + s }, st);
-  }
-
-  getSettings(): BrushSetting[] {
-    return this.persistSettings([
-      { kind: "number", key: "size", label: "Size", min: 2, max: 40, step: 1,
-        value: this.size, onChange: (v) => { this.size = v; } },
-      ...this.gridSettings(),
-    ]);
-  }
-}</code></pre>
 
       <h2>Settings &amp; persistence</h2>
       <p>

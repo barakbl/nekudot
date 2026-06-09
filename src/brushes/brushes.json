@@ -2,10 +2,6 @@
   { "name": "Round", "file": "round.ts", "shortcut": "1", "connections": true, "info": "The heart of the app — a round line plus the connecting web." },
   { "name": "Squares", "file": "squares.ts", "shortcut": "2", "menuGroup": "Shapes strokes", "info": "Speed-sized squares stamped along the stroke." },
   { "name": "Circles", "file": "circles.ts", "shortcut": "3", "menuGroup": "Shapes strokes", "info": "Speed-sized circles stamped along the stroke." },
-  { "name": "Dots", "file": "dots.ts", "shortcut": "4", "menuGroup": "Grid", "info": "Taps a dot at every grid intersection in reach." },
-  { "name": "Lines", "file": "lines.ts", "shortcut": "5", "menuGroup": "Grid", "info": "Taps an angled line at every grid intersection in reach." },
-  { "name": "Ellipse", "file": "ellipse.ts", "shortcut": "6", "menuGroup": "Grid", "info": "Stamps an ellipse at every grid intersection in reach." },
-  { "name": "Handfree", "file": "handfree.ts", "shortcut": "7", "menuGroup": "Grid", "connections": true, "info": "A round-with-connections motif mirrored across a grid." },
   { "name": "Marker", "file": "marker.ts", "shortcut": "8", "menuGroup": "Other", "info": "A chisel-tip marker stroke." },
   { "name": "Invisible", "file": "invisible.ts", "shortcut": "9", "menuGroup": "Other", "info": "Deposits points (with a fading glow) without painting the layer." }
 ]

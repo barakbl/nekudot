@@ -27,18 +27,10 @@
     round: "●",
     squares: "▭",
     circles: "◯",
-    ellipse:
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="8" cy="8" rx="6" ry="3.2" transform="rotate(-30 8 8)"/></svg>',
     marker:
       '<svg viewBox="0 0 24 24"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z" fill="#ffd83b" stroke="#8a6500" stroke-width="1.4" stroke-linejoin="round"/><path d="M13 6 L18 11" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/><path d="M4 13 L10 19" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>',
-    grid:
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="2.5" width="4" height="4" rx="1"/><rect x="9.5" y="2.5" width="4" height="4" rx="1"/><rect x="2.5" y="9.5" width="4" height="4" rx="1"/><rect x="9.5" y="9.5" width="4" height="4" rx="1"/></svg>',
-    dots:
-      '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="5" r="1.6"/><circle cx="11" cy="5" r="1.6"/><circle cx="5" cy="11" r="1.6"/><circle cx="11" cy="11" r="1.6"/></svg>',
-    lines:
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3" y1="13" x2="9" y2="7"/><line x1="8" y1="14" x2="14" y2="8"/></svg>',
-    handfree:
-      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M2 5 q1.5 -2.5 3 0 t3 0"/><path d="M2 11 q1.5 -2.5 3 0 t3 0"/><path d="M10 4 a2 2 0 1 0 0.01 0"/><path d="M12 12 a2 2 0 1 0 0.01 0"/></svg>',
+    symmetry:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg>',
     invisible:
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 2"><circle cx="8" cy="8" r="5"/></svg>',
     // connections - the app's own glyphs
@@ -74,20 +66,10 @@
             { label: "Round", href: "/book/brushes/classic-round.html", icon: I.round },
             { label: "Squares", href: "/book/brushes/squares.html", icon: I.squares },
             { label: "Circles", href: "/book/brushes/circles.html", icon: I.circles },
-            { label: "Ellipse", href: "/book/brushes/ellipse.html", icon: I.ellipse },
             { label: "Marker", href: "/book/brushes/marker.html", icon: I.marker },
-            {
-              label: "Grid",
-              href: "/book/brushes/grid.html",
-              icon: I.grid,
-              children: [
-                { label: "Dots", href: "/book/brushes/dots.html", icon: I.dots },
-                { label: "Lines", href: "/book/brushes/lines.html", icon: I.lines },
-                { label: "Handfree", href: "/book/brushes/handfree.html", icon: I.handfree },
-              ],
-            },
           ],
         },
+        { label: "Symmetry", href: "/book/symmetry.html", icon: I.symmetry },
         {
           label: "Connections",
           href: "/book/connections.html",
