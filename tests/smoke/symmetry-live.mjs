@@ -56,15 +56,20 @@ async function main() {
       return has;
     };
     const overlayShown = () => E(`(()=>{const ov=[...document.querySelectorAll('.stage canvas')].find(x=>x.style.zIndex==='9998');return !!ov&&getComputedStyle(ov).display!=='none';})()`);
+    // The Maps box is a display-toggled panel opened from the navbar pill; keep
+    // it closed between checks so it doesn't sit over the canvas while drawing.
+    const mapsBoxOpen = () => E(`(()=>{const b=document.querySelector('.maps-box');return !!b&&b.style.display!=='none';})()`);
+    const openMaps = async () => { if (!(await mapsBoxOpen())) { await E(`document.querySelector('.toolbar .maps-pill-open').click()`); await sleep(80); } };
+    const closeMaps = async () => { if (await mapsBoxOpen()) { await E(`document.querySelector('.toolbar .maps-pill-open').click()`); await sleep(60); } };
     const newMap = async () => {
-      await E(`document.querySelector('.toolbar button[title="Memory maps"]').click()`); await sleep(80);
-      await E(`(()=>{const r=[...document.querySelectorAll('.maps-menu-popover .brush-option')].find(x=>x.querySelector('.opt-label')?.textContent==='New map');r&&r.click();})()`);
-      await closePopovers(); await sleep(60);
+      await openMaps();
+      await E(`document.querySelector('.maps-box .layers-add-btn')?.click()`); await sleep(60);
+      await closeMaps();
     };
     const activeDots = async () => {
-      await E(`document.querySelector('.toolbar button[title="Memory maps"]').click()`); await sleep(80);
-      const d = await E(`(()=>{const r=[...document.querySelectorAll('.maps-menu-row')].find(x=>x.querySelector('.maps-menu-tag'));const n=parseInt(r?.querySelector('.maps-menu-dots')?.textContent||'',10);return isNaN(n)?-1:n;})()`);
-      await closePopovers(); await sleep(60);
+      await openMaps();
+      const d = await E(`(()=>{const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-tag'));const n=parseInt(r?.querySelector('.maps-menu-dots')?.textContent||'',10);return isNaN(n)?-1:n;})()`);
+      await closeMaps();
       return d;
     };
     const draw = async (cx, cy) => {

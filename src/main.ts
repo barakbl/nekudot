@@ -37,6 +37,7 @@ import { LocalStorageStore } from "./store/local_storage";
 import type { BrushBase } from "./base";
 import { LayerManager } from "./layered/manager";
 import { createLayersBox } from "./layered/box";
+import { createMapsBox, type MapsControl } from "./layered/maps-box";
 import { createSizePicker } from "./layered/size-picker";
 import { exportArt, shareArt } from "./export";
 import { saveArtwork } from "./save-artwork";
@@ -483,6 +484,58 @@ document.body.appendChild(layersBox.el);
 const symmetryBox = createSymmetryBox(symmetry);
 document.body.appendChild(symmetryBox.el);
 
+// The memory-maps editor, opened from the navbar Maps pill. Holds all the
+// per-map controls (flash / select / rename / delete + live dot counts); the
+// pill only shows the active map's name + a flash button.
+const mapsControl: MapsControl = {
+  getInfo: () => {
+    const activeIdx = layerManager.selectedNeighborsMapIdx;
+    return {
+      maps: layerManager.allNeighborsMaps.map((m, i) => ({
+        name: m.config.name,
+        dots: m.finder.livePixelCount(),
+        active: i === activeIdx,
+      })),
+    };
+  },
+  onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
+  onFlashMap: (i) => highlightNeighborsMap(i),
+  onAddMap: () => {
+    const nm = layerManager.addNeighborsMap(); // made active by the manager
+    pushUndo(`Add ${nm.config.name}`);
+  },
+  onRenameMap: (i, name) => {
+    const prev = layerManager.allNeighborsMaps[i]?.config.name;
+    layerManager.setNeighborsMapName(i, name); // no-op if blank/unchanged
+    if (prev && layerManager.allNeighborsMaps[i]?.config.name !== prev)
+      pushUndo(`Rename ${prev} → ${name}`);
+  },
+  onSelectMap: (i) => {
+    layerManager.selectNeighborsMap(i); // not an undo step
+    const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
+    showChip(`Selected “${name}”`);
+    highlightNeighborsMap(i); // flash it so the choice is visible
+  },
+  onDeleteMap: (i) => {
+    const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
+    showConfirm({
+      title: "Delete map?",
+      message: `Delete the “${name}” map and the points it remembers?`,
+      confirmLabel: "Delete",
+      destructive: true,
+      onConfirm: () => {
+        if (layerManager.removeNeighborsMap(i)) {
+          showChip(`Deleted “${name}”`);
+          pushUndo(`Delete ${name}`);
+        }
+      },
+    });
+  },
+  subscribe: (fn) => layerManager.subscribe(fn),
+};
+const mapsBox = createMapsBox(mapsControl);
+document.body.appendChild(mapsBox.el);
+
 const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   layerManager.applyConfig(snap.config);
   await layerManager.applyPaintData(snap.paint);
@@ -764,7 +817,7 @@ const menu = createMenu(
     { label: "Brushes", shortcut: "b", toggle: toggleSettings },
     { label: "Connecting", shortcut: "c", toggle: toggleConnecting },
     { label: "Layers", shortcut: "l", toggle: layersBox.toggle },
-    { label: "Maps", shortcut: "m", toggle: () => menu.toggleMaps() },
+    { label: "Maps", shortcut: "m", toggle: mapsBox.toggle },
     { label: "Symmetry", shortcut: "y", toggle: symmetryBox.toggle },
     { label: "Shortcuts", shortcut: "/", toggle: () => toggleShortcuts() },
   ],
@@ -778,49 +831,13 @@ const menu = createMenu(
     onExport: () => exportPresetsFn(),
   },
   {
-    getInfo: () => {
-      const activeIdx = layerManager.selectedNeighborsMapIdx;
-      return {
-        maps: layerManager.allNeighborsMaps.map((m, i) => ({
-          name: m.config.name,
-          dots: m.finder.livePixelCount(),
-          active: i === activeIdx,
-        })),
-      };
+    getActiveName: () => {
+      const { maps } = mapsControl.getInfo();
+      return maps.find((m) => m.active)?.name ?? "Map";
     },
     onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
-    onFlashMap: (i) => highlightNeighborsMap(i),
-    onAddMap: () => {
-      const nm = layerManager.addNeighborsMap(); // made active by the manager
-      pushUndo(`Add ${nm.config.name}`);
-    },
-    onRenameMap: (i, name) => {
-      const prev = layerManager.allNeighborsMaps[i]?.config.name;
-      layerManager.setNeighborsMapName(i, name); // no-op if blank/unchanged
-      if (prev && layerManager.allNeighborsMaps[i]?.config.name !== prev)
-        pushUndo(`Rename ${prev} → ${name}`);
-    },
-    onSelectMap: (i) => {
-      layerManager.selectNeighborsMap(i); // not an undo step
-      const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
-      showChip(`Selected “${name}”`);
-      highlightNeighborsMap(i); // flash it so the choice is visible
-    },
-    onDeleteMap: (i) => {
-      const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
-      showConfirm({
-        title: "Delete map?",
-        message: `Delete the “${name}” map and the points it remembers?`,
-        confirmLabel: "Delete",
-        destructive: true,
-        onConfirm: () => {
-          if (layerManager.removeNeighborsMap(i)) {
-            showChip(`Deleted “${name}”`);
-            pushUndo(`Delete ${name}`);
-          }
-        },
-      });
-    },
+    onOpen: () => mapsBox.toggle(),
+    subscribe: (fn) => layerManager.subscribe(fn),
   },
 );
 undoManager.subscribe(() => menu.refreshHistoryState());
@@ -962,6 +979,7 @@ const toggleAllPanels = (source: "key" | "touch") => {
     connectingSettings.el,
     layersBox.el,
     symmetryBox.el,
+    mapsBox.el,
     shortcutsPanel.el,
   ];
   const isVisible = (el: HTMLElement) => el.style.display !== "none";
@@ -974,7 +992,7 @@ const toggleAllPanels = (source: "key" | "touch") => {
         : "Menus hidden · press H to show",
     );
   } else {
-    const restore = savedPanelState ?? [true, false, false, false, false, false];
+    const restore = savedPanelState ?? [true, false, false, false, false, false, false];
     panels.forEach((el, i) => {
       el.style.display = restore[i] ? "" : "none";
     });
@@ -992,8 +1010,8 @@ const shortcuts: Shortcut[] = [
   {
     key: "m",
     group: "Panels",
-    description: "Toggle the maps menu",
-    onPress: () => menu.toggleMaps(),
+    description: "Toggle the maps box",
+    onPress: mapsBox.toggle,
   },
   {
     key: "l",
@@ -1109,6 +1127,10 @@ attachToHeading(
 attachToHeading(
   symmetryBox.el,
   "Repeat every stroke with symmetry: Tile repeats your marks across a lattice, Radial mirrors them around the centre (kaleidoscope), Mirror reflects across one line. Works with any brush.",
+);
+attachToHeading(
+  mapsBox.el,
+  "Memory maps remember sets of points so the Round brush can connect to them. Pick the active map (drawn into now), flash any map to see its dots on the canvas, or rename/add/delete maps.",
 );
 
 let drawingId: number | null = null;

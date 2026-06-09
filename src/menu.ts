@@ -61,18 +61,13 @@ export type ConnectingControl = {
   onExport?: () => void; // export (↑) on the Custom group header
 };
 
-// The navbar Maps quick-access: an icon whose popover summarises the memory
-// maps (count + active map name/dots) and offers Flash + Open editor.
-export type MapsControl = {
-  // Read live each time the popover opens (count/dots change as you draw). Lists
-  // every map with its live dot count; the active map is flagged (shown bold).
-  getInfo: () => { maps: { name: string; dots: number; active: boolean }[] };
-  onFlashActive: () => void; // flash the active map's dots (top action row)
-  onFlashMap: (index: number) => void; // flash a specific map (per-row icon)
-  onAddMap: () => void; // create a new map (made active)
-  onRenameMap: (index: number, name: string) => void; // inline rename in the list
-  onSelectMap: (index: number) => void; // make a listed map the active one
-  onDeleteMap: (index: number) => void; // delete a map (the app confirms first)
+// The navbar Maps quick-access: a small pill showing the active map's name plus
+// a Flash button. Clicking the name opens the full Maps box (see maps-box.ts).
+export type MapsPillControl = {
+  getActiveName: () => string; // active map name, shown on the pill
+  onFlashActive: () => void; // flash button → flash the active map's dots
+  onOpen: () => void; // click the name → open/toggle the Maps box
+  subscribe: (fn: () => void) => () => void; // refresh the name when maps change
 };
 
 export function createMenu<T extends string>(
@@ -87,7 +82,7 @@ export function createMenu<T extends string>(
   history?: HistoryControl,
   windows?: WindowToggle[],
   connecting?: ConnectingControl,
-  maps?: MapsControl,
+  maps?: MapsPillControl,
 ): {
   el: HTMLElement;
   setBrushValue: (value: T) => void;
@@ -96,7 +91,6 @@ export function createMenu<T extends string>(
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
   refreshHistoryState: () => void;
   toggleCanvasMenu: () => void;
-  toggleMaps: () => void;
 } {
   const bar = document.createElement("div");
   bar.className = "toolbar";
@@ -109,12 +103,7 @@ export function createMenu<T extends string>(
     bar.appendChild(el);
   }
   if (windows && windows.length) bar.appendChild(makeWindowsMenu(windows));
-  let toggleMaps = () => {};
-  if (maps) {
-    const m = makeMapsMenu(maps);
-    bar.appendChild(m.el);
-    toggleMaps = m.toggle;
-  }
+  if (maps) bar.appendChild(makeMapsPill(maps));
   bar.appendChild(makeColorSwatch(colors));
   bar.appendChild(makeDivider());
   const flatOptions = flattenMenuEntries(options);
@@ -169,7 +158,6 @@ export function createMenu<T extends string>(
     setConnectingOptions,
     refreshHistoryState,
     toggleCanvasMenu,
-    toggleMaps,
   };
 }
 
@@ -225,199 +213,59 @@ function makeWindowsMenu(items: WindowToggle[]): HTMLElement {
   return wrap;
 }
 
-// Navbar Maps quick-access: a scattered-dots icon whose popover shows the
-// number of memory maps and the active map's name + live dot count, plus rows
-// to flash the active map on the canvas or open the full Maps editor.
-function makeMapsMenu(control: MapsControl): { el: HTMLElement; toggle: () => void } {
+// Navbar Maps quick-access: a small pill showing the active map's name plus a
+// Flash button. Clicking the name opens the full Maps box; the flash button
+// flashes the active map's dots on the canvas. The name stays in sync with the
+// active map via control.subscribe.
+function makeMapsPill(control: MapsPillControl): HTMLElement {
   const wrap = document.createElement("span");
-  wrap.className = "canvas-menu-wrap";
+  wrap.className = "pill maps-pill";
 
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "icon-btn";
-  btn.title = "Memory maps";
-  btn.innerHTML =
+  // The name area opens the Maps box: a small map glyph + the active map's name.
+  const open = document.createElement("button");
+  open.type = "button";
+  open.className = "maps-pill-open";
+  open.title = "Open Memory Maps";
+  const icon = document.createElement("span");
+  icon.className = "maps-pill-icon";
+  icon.innerHTML =
     '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M9 4 L3 6 V20 L9 18 L15 20 L21 18 V4 L15 6 L9 4 Z"/>' +
     '<path d="M9 4 V18"/><path d="M15 6 V20"/>' +
     "</svg>";
-  wrap.appendChild(btn);
+  const label = document.createElement("span");
+  label.className = "maps-pill-label";
+  open.append(icon, label);
+  open.addEventListener("click", (e) => {
+    e.stopPropagation();
+    control.onOpen();
+  });
 
-  const popover = document.createElement("div");
-  popover.className = "brush-popover canvas-menu-popover maps-menu-popover";
-  wrap.appendChild(popover);
-
-  const titleEl = document.createElement("div");
-  titleEl.className = "maps-menu-title";
-  titleEl.textContent = "Memory Maps";
-  popover.appendChild(titleEl);
-
-  // The target glyph (matches the Maps box Flash button), reused for the active
-  // action and each per-map flash icon.
-  const FLASH_ICON =
+  // Flash button — the target glyph (matches the per-map flash in the box).
+  const flash = document.createElement("button");
+  flash.type = "button";
+  flash.className = "icon-btn maps-pill-flash";
+  flash.innerHTML =
     '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">' +
     '<circle cx="8" cy="8" r="5.2"/>' +
     '<circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/>' +
     '<path d="M8 0.5 V2.5 M8 13.5 V15.5 M0.5 8 H2.5 M13.5 8 H15.5" stroke-linecap="round"/>' +
     "</svg>";
-
-  const makeRow = (icon: string, label: string, onClick: () => void, keepOpen = false) => {
-    const row = document.createElement("div");
-    row.className = "brush-option";
-    const ic = document.createElement("span");
-    ic.className = "opt-icon";
-    ic.innerHTML = icon;
-    const lbl = document.createElement("span");
-    lbl.className = "opt-label";
-    lbl.textContent = label;
-    row.append(ic, lbl);
-    row.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!keepOpen) popover.classList.remove("open");
-      onClick();
-    });
-    popover.appendChild(row);
-  };
-
-  // Actions first. "New map" keeps the popover open and re-renders the list so
-  // the freshly-created (now active) map shows immediately, ready to rename.
-  makeRow(
-    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5 V19 M5 12 H19"/></svg>',
-    "New map",
-    () => { control.onAddMap(); renderInfo(); },
-    true,
-  );
-  makeRow(FLASH_ICON, "Flash Active map on canvas", control.onFlashActive);
-
-  const sep = document.createElement("div");
-  sep.className = "canvas-menu-sep";
-  popover.appendChild(sep);
-
-  // Maps list at the bottom — rebuilt on open since the list/counts change as
-  // you draw. Each row carries its own flash icon; the active map is bold.
-  const info = document.createElement("div");
-  info.className = "maps-menu-info";
-  popover.appendChild(info);
-  const countEl = document.createElement("div");
-  countEl.className = "maps-menu-count";
-  const listEl = document.createElement("div");
-  listEl.className = "maps-menu-list";
-  info.append(countEl, listEl);
-
-  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
-  const renderInfo = () => {
-    const { maps } = control.getInfo();
-    countEl.textContent = plural(maps.length, "map");
-    listEl.replaceChildren();
-    maps.forEach((m, i) => {
-      const row = document.createElement("div");
-      row.className = "maps-menu-row" + (m.active ? " active" : "");
-      const flash = document.createElement("button");
-      flash.type = "button";
-      flash.className = "maps-menu-flash";
-      flash.title = `Flash ${m.name} on canvas`;
-      flash.innerHTML = FLASH_ICON;
-      flash.addEventListener("click", (e) => {
-        e.stopPropagation();
-        popover.classList.remove("open"); // close so the flash is unobstructed
-        control.onFlashMap(i);
-      });
-      const name = document.createElement("span");
-      name.className = "maps-menu-name";
-      name.title = "Click to rename";
-      name.textContent = m.name;
-      // Click the name to rename inline: swap in an input; Enter/blur commits,
-      // Escape cancels. stopPropagation on keys so brush shortcuts don't fire.
-      name.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const input = document.createElement("input");
-        input.className = "maps-menu-name-input";
-        input.value = m.name;
-        row.replaceChild(input, name);
-        input.focus();
-        input.select();
-        let done = false;
-        const commit = (save: boolean) => {
-          if (done) return;
-          done = true;
-          if (save) control.onRenameMap(i, input.value.trim());
-          renderInfo();
-        };
-        input.addEventListener("click", (ev) => ev.stopPropagation());
-        input.addEventListener("keydown", (ev) => {
-          ev.stopPropagation();
-          if (ev.key === "Enter") commit(true);
-          else if (ev.key === "Escape") commit(false);
-        });
-        input.addEventListener("blur", () => commit(true));
-      });
-      // Active map gets an "(Active)" tag; the others get a Select button that
-      // makes them active (keeps the popover open so the change is visible).
-      let middle: HTMLElement;
-      if (m.active) {
-        const tag = document.createElement("span");
-        tag.className = "maps-menu-tag";
-        tag.textContent = "(Active)";
-        middle = tag;
-      } else {
-        const sel = document.createElement("button");
-        sel.type = "button";
-        sel.className = "maps-menu-select";
-        sel.textContent = "Select";
-        sel.title = `Make ${m.name} the active map`;
-        sel.addEventListener("click", (e) => {
-          e.stopPropagation();
-          popover.classList.remove("open"); // close so the flash is unobstructed
-          control.onSelectMap(i);
-        });
-        middle = sel;
-      }
-      const dots = document.createElement("span");
-      dots.className = "maps-menu-dots";
-      const dotsN = document.createElement("span");
-      dotsN.textContent = String(m.dots);
-      const dotsU = document.createElement("span");
-      dotsU.className = "maps-menu-dots-unit";
-      dotsU.textContent = m.dots === 1 ? " dot" : " dots";
-      dots.append(dotsN, dotsU);
-      // Delete (offered only when >1 map, since one must remain) sits on the far
-      // left; clicking closes the popover and the app confirms before removing.
-      let del: HTMLButtonElement | null = null;
-      if (maps.length > 1) {
-        del = document.createElement("button");
-        del.type = "button";
-        del.className = "maps-menu-delete";
-        del.title = `Delete ${m.name}`;
-        del.innerHTML =
-          '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M7 7l1 13h8l1-13"/></svg>';
-        del.addEventListener("click", (e) => {
-          e.stopPropagation();
-          popover.classList.remove("open"); // close behind the confirm modal
-          control.onDeleteMap(i);
-        });
-      }
-      if (del) row.append(del);
-      row.append(middle, flash, name, dots);
-      listEl.appendChild(row);
-    });
-  };
-
-  const toggle = () => {
-    const open = popover.classList.toggle("open");
-    if (open) renderInfo();
-  };
-  btn.addEventListener("click", (e) => {
+  flash.addEventListener("click", (e) => {
     e.stopPropagation();
-    toggle();
-  });
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (wrap.contains(e.target as Node)) return;
-    popover.classList.remove("open");
+    control.onFlashActive();
   });
 
-  return { el: wrap, toggle };
+  const refresh = () => {
+    const name = control.getActiveName();
+    label.textContent = name;
+    flash.title = `Flash ${name} on canvas`;
+  };
+  control.subscribe(refresh);
+  refresh();
+
+  wrap.append(open, flash);
+  return wrap;
 }
 
 function makeCanvasMenu(opts: CanvasMenuOptions): {

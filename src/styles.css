@@ -229,6 +229,39 @@ body {
   color: var(--text-icon);
 }
 
+/* Navbar Maps pill: the active map's name (opens the Maps box) + a flash btn. */
+.toolbar .maps-pill {
+  padding: 2px 3px 2px 8px;
+  gap: 3px;
+}
+.toolbar .maps-pill-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.toolbar .maps-pill-icon {
+  display: inline-flex;
+  color: var(--text-icon);
+}
+.toolbar .maps-pill-label {
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolbar .maps-pill-flash {
+  width: 22px;
+  height: 22px;
+}
+
 .brush-popover {
   position: absolute;
   top: 100%;
@@ -323,17 +356,6 @@ body {
 }
 .sym-check {
   margin-left: auto;
-}
-.maps-menu-popover {
-  min-width: 228px;
-}
-.maps-menu-title {
-  padding: 8px 12px 7px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 4px;
 }
 .maps-menu-info {
   padding: 8px 10px 6px;
@@ -1009,6 +1031,22 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+/* Maps box reuses the Layers chrome; offset so it doesn't open exactly on top
+   of the Layers box, and size the list to the wider panel. */
+.maps-box {
+  left: auto;
+  right: 16px;
+  min-width: 248px;
+}
+.maps-box .maps-menu-info {
+  padding: 4px 0 0;
+}
+.maps-box .maps-menu-list {
+  max-height: 360px;
+}
+.maps-box .maps-menu-row {
+  padding: 3px 2px;
 }
 .layers-list {
   display: flex;
