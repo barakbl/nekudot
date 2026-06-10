@@ -121,6 +121,12 @@ export abstract class BrushBase {
 
   abstract name(): string;
 
+  // Whether selecting this brush puts the canvas into erase mode (destination-out).
+  // The Eraser overrides this; main.ts reads it on brush switch to toggle erase.
+  erases(): boolean {
+    return false;
+  }
+
   strokeStart(_x: number, _y: number): void {}
 
   // Template: deposit the point, run the child's stroke logic, then let the
@@ -132,10 +138,14 @@ export abstract class BrushBase {
   // hardware's report rate — feeding every sub-sample made the web build up
   // ~quadratically with the pointer's rate. The line still draws every sample.
   stroke(x: number, y: number, sample = true): void {
-    // While erasing, just paint (erase) the mark — don't feed the point cloud
-    // or draw connections (which would grow the tree behind a blank canvas).
+    // While erasing, paint (erase) the mark. The Eraser brush may also weave a
+    // connection so the web gets erased too — run connect() with an ephemeral
+    // point so erasing never grows the point cloud. connect() is a no-op when
+    // the routing mode is "none" (the eraser's default), so a plain eraser just
+    // wipes its own line.
     if (this.router?.isErasing() === true) {
       this.onStroke(x, y, { id: -1, x, y });
+      if (sample) this.connection?.connect({ id: -1, x, y });
       return;
     }
     if (!sample) {

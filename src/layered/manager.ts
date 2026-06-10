@@ -616,6 +616,11 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
       nm.finder.clear();
       for (const p of nmPaint.pixels) nm.finder.addPixel(p.x, p.y);
     }
+
+    // applyConfig (called just before this on undo/redo) emits while the finders
+    // are still empty, so the maps box would show 0 dots. Re-emit now that the
+    // points are restored so the live counts reflect the snapshot.
+    this.emit();
   }
 
   // ---- internals ------------------------------------------------------------

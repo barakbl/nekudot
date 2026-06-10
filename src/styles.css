@@ -625,20 +625,6 @@ body {
   background: var(--hover-bg-strong);
 }
 
-.tool-toggles {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: 4px;
-}
-.toolbar .tool-toggle.active {
-  background: var(--accent);
-  color: var(--accent-text);
-  box-shadow: 0 0 0 1px var(--accent), 0 2px 6px rgba(37, 99, 235, 0.35);
-}
-.toolbar .tool-toggle.active:hover {
-  background: var(--accent-hover);
-}
-
 .shortcuts-panel {
   position: fixed;
   top: 64px;

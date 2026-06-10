@@ -689,6 +689,8 @@ const onBrushChanged = () => {};
 const selectBrush = (key: BrushKey) => {
   brush = brushes[key];
   menu.setBrushValue(key);
+  // The Eraser paints in erase mode; every other brush draws normally.
+  layerManager.setEraseMode(brush.erases());
   // Let the brush apply its art style, then push its stroke opacity to the nav.
   brush.onSelect();
   // Brushes that don't pin an opacity paint fully opaque. The `?? 1` also resets
@@ -733,6 +735,8 @@ const menu = createMenu(
   buildBrushMenu(BRUSH_DEFS),
   (key) => {
     brush = brushes[key];
+    // The Eraser paints in erase mode; every other brush draws normally.
+    layerManager.setEraseMode(brush.erases());
     brush.onSelect();
     // `?? 1`: brushes without a pinned opacity paint opaque, and this resets the
     // slider after Shading (strokeAlpha 0) so the next brush isn't invisible.
@@ -804,9 +808,6 @@ const menu = createMenu(
   initialBrushKey,
   toggleSettings,
   canvasMenuOptions,
-  (tool) => {
-    layerManager.setEraseMode(tool === "eraser");
-  },
   {
     onUndo: () => doUndo(),
     onRedo: () => doRedo(),
@@ -865,6 +866,12 @@ document.body.appendChild(menu.el);
 brushes["Round"]?.applyArtStylePreset(
   hasConnection(currentArtStyle) ? currentArtStyle : DEFAULT_ART_STYLE,
 );
+// Apply the persisted brush's own onSelect (art style) + erase mode. The initial
+// brush is assigned directly, not through selectBrush, so do it here. Round is
+// already handled above with the custom-preset-safe guard, so skip its (unguarded)
+// onSelect to avoid touching a custom style that hasn't loaded yet.
+if (brush !== brushes["Round"]) brush.onSelect();
+layerManager.setEraseMode(brush.erases());
 applyBrushStrokeOpacity(false);
 renderActiveBrush();
 onBrushChanged();
@@ -1177,6 +1184,10 @@ const end = (e: PointerEvent) => {
   // before previews/persist read the layer. (Matches the pointerdown guard.)
   if (brush.bufferedStroke() && !symmetry.active()) layerManager.endStroke();
   layersBox.refreshPreviews();
+  // A stroke may have added points to the active map; refresh the maps box so
+  // its live dot counts reflect them (strokes add pixels directly without an
+  // emit, so the box wouldn't otherwise update while open).
+  mapsBox.render();
   persistPaint();
   pushUndo(`${brush.name()} stroke on ${activeLayerName()}`);
 };

@@ -11,7 +11,6 @@ export type MenuGroup<T extends string> = {
 };
 export type MenuEntry<T extends string> = MenuOption<T> | MenuGroup<T>;
 export type MenuAction = { label: string; onClick: () => void; icon?: string };
-export type Tool = "eraser";
 export type ColorSlot = { initial: string; onChange: (color: string) => void };
 export type ColorControl = { main: ColorSlot; secondary: ColorSlot };
 
@@ -78,7 +77,6 @@ export function createMenu<T extends string>(
   initial?: T,
   onBrushSettings?: () => void,
   canvasOptions?: CanvasMenuOptions,
-  onToolChange?: (tool: Tool | null) => void,
   history?: HistoryControl,
   windows?: WindowToggle[],
   connecting?: ConnectingControl,
@@ -126,7 +124,6 @@ export function createMenu<T extends string>(
     setConnectingOptions = combo.setOptions;
     bar.appendChild(combo.el);
   }
-  bar.appendChild(makeToolToggles(onToolChange));
   bar.appendChild(makeDivider());
   const undoBtn = makeSvgButton(undoIcon, "Undo", history?.onUndo);
   const redoBtn = makeSvgButton(redoIcon, "Redo", history?.onRedo);
@@ -926,41 +923,3 @@ function makeIconButton(
   return btn;
 }
 
-const eraserIcon =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M15 4 L20 9 L11 18 H6 V13 Z"/>' +
-  '<path d="M9 18 H20"/>' +
-  "</svg>";
-
-function makeToolToggles(
-  onChange?: (tool: Tool | null) => void,
-): HTMLElement {
-  const wrap = document.createElement("span");
-  wrap.className = "tool-toggles";
-
-  let active: { btn: HTMLButtonElement; tool: Tool } | null = null;
-
-  const makeToggle = (tool: Tool, title: string, icon: string): HTMLButtonElement => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "icon-btn tool-toggle";
-    btn.title = title;
-    btn.innerHTML = icon;
-    btn.addEventListener("click", () => {
-      if (active?.btn === btn) {
-        btn.classList.remove("active");
-        active = null;
-        onChange?.(null);
-        return;
-      }
-      if (active) active.btn.classList.remove("active");
-      btn.classList.add("active");
-      active = { btn, tool };
-      onChange?.(tool);
-    });
-    return btn;
-  };
-
-  wrap.appendChild(makeToggle("eraser", "Eraser", eraserIcon));
-  return wrap;
-}
