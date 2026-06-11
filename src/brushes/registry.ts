@@ -1,15 +1,15 @@
 import type { BrushBase } from "../base";
 import type { IRenderer } from "../renderer";
-import type { NeighborFinder } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import brushesIndex from "./brushes.json";
 
 // Everything needed to construct any brush, passed uniformly so each brush's
 // create() picks only what it uses (e.g. Invisible reads getInvisibleOverlay;
-// the rest ignore it). renderer/finder are both the LayerManager at runtime.
+// the rest ignore it). `host` is the one drawing surface every brush paints
+// through — the LayerManager (behind the symmetry proxy) at runtime.
 export type BrushContext = {
-  renderer: IRenderer;
-  finder: NeighborFinder;
+  host: PaintHost;
   store: Store;
   getInvisibleOverlay: () => IRenderer;
 };

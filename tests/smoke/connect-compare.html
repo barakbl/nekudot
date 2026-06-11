@@ -21,6 +21,7 @@
       // expose where they diverge and whether a fix matches Harmony.
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
 
       const W = 1000, H = 300, SEED = 1234;
@@ -65,7 +66,7 @@
         const { cv, ctx } = newCanvas(baseAlpha);
         const r = new CanvasRenderer(ctx, { dpr: 1 }); r.setStrokeStyle("#000");
         const finder = createNeighborFinder("quadtree", []);
-        const b = new RoundBrush(r, finder, SEED);
+        const b = new RoundBrush(createBareHost(r, finder), SEED);
         b.applyArtStylePreset(preset);
         if (overrides) b.activeConnection().applyFlat(overrides);
         for (let p = 0; p < passes; p++) {
@@ -154,7 +155,7 @@
       {
         const f = createNeighborFinder("quadtree", []);
         const { ctx } = newCanvas(1);
-        const b2 = new RoundBrush(new CanvasRenderer(ctx, { dpr: 1 }), f, SEED);
+        const b2 = new RoundBrush(createBareHost(new CanvasRenderer(ctx, { dpr: 1 }), f), SEED);
         b2.applyArtStylePreset("classic");
         b2.strokeStart(10, 10);
         b2.stroke(10, 10, true);   // frame point → deposits

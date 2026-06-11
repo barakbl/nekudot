@@ -1,7 +1,7 @@
 import { createOffscreenRenderer } from "../renderer";
 import type { IRenderer, LineStyle, LineConnectType, RendererInit } from "../renderer";
-import type { NeighborFinder, Pixel } from "../neighbor-finder";
-import type { ConnectRouter } from "../connecting-types";
+import type { Pixel } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import type { PaintSnapshot } from "../store/paint";
 import type { CanvasSize } from "../canvas-size";
@@ -50,12 +50,12 @@ const shiftAfterRemoval = (
   return current;
 };
 
-// The facade every brush draws through: one object that is at once the
-// IRenderer (strokes hit the active layer), the NeighborFinder (points go to
-// the selected neighbors map) and the ConnectRouter (connections target
-// layers/maps by stable id). It owns the layer + map collections, the active
-// cursors, and persistence of the whole arrangement.
-export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
+// The facade every brush draws through (the app's PaintHost): one object that
+// is at once the IRenderer (strokes hit the active layer), the NeighborFinder
+// (points go to the selected neighbors map) and the ConnectRouter (connections
+// target layers/maps by stable id). It owns the layer + map collections, the
+// active cursors, and persistence of the whole arrangement.
+export class LayerManager implements PaintHost {
   private layers: Layer[] = [];
   private activeIndex = 0;
   private activeConnectionIndex = 0;

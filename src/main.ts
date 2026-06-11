@@ -195,10 +195,10 @@ const resizeOverlays = (size: CanvasSize) => {
 // ---- brushes --------------------------------------------------------------------
 
 // Construct every registered brush from one shared context (see brushes/
-// registry.ts — the single source of truth for brushes).
+// registry.ts — the single source of truth for brushes). The host is the
+// LayerManager behind the symmetry proxy, so every mark and deposit mirrors.
 const brushContext: BrushContext = {
-  renderer: symmetryProxy,
-  finder: symmetryProxy,
+  host: symmetryProxy,
   store,
   getInvisibleOverlay: () => invisibleOverlay.renderer,
 };

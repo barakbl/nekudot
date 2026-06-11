@@ -6,8 +6,8 @@ import {
   type BrushSetting,
   type DashStyle,
 } from "../base";
-import type { IRenderer } from "../renderer";
-import type { NeighborFinder, Pixel } from "../neighbor-finder";
+import type { Pixel } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import type { BrushContext } from "./registry";
 
@@ -15,7 +15,7 @@ import type { BrushContext } from "./registry";
 export const icon = "●";
 
 export function create(c: BrushContext): RoundBrush {
-  return new RoundBrush(c.renderer, c.finder, undefined, c.store);
+  return new RoundBrush(c.host, undefined, c.store);
 }
 
 // Art style applied when Round is first used / on selection. The art style is
@@ -32,13 +32,8 @@ export class RoundBrush extends BrushBase {
   private strokeDash: DashStyle = "solid";
   private accumDist = 0;
 
-  constructor(
-    renderer: IRenderer,
-    finder: NeighborFinder,
-    seed?: number,
-    store?: Store,
-  ) {
-    super(renderer, finder, seed, store);
+  constructor(host: PaintHost, seed?: number, store?: Store) {
+    super(host, seed, store);
     // Round is a connecting brush: attach the default connection (the navbar
     // combo / onSelect swaps it via applyArtStylePreset).
     this.initConnection(DEFAULT_ART_STYLE);

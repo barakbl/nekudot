@@ -16,6 +16,7 @@
     <script type="module">
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { SoftPencilBrush } from "/src/brushes/soft-pencil.ts";
 
       const SZ = 520;
@@ -131,7 +132,7 @@
         renderer.setStrokeStyle("#1a1a1a");
 
         const finder = createNeighborFinder("quadtree", []);
-        const brush = new SoftPencilBrush(renderer, finder, SEED);
+        const brush = new SoftPencilBrush(createBareHost(renderer, finder), SEED);
         brush.applyArtStylePreset("fur");
 
         for (const stroke of strokesFn(mulberry32(99))) {

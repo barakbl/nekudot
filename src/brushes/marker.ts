@@ -12,7 +12,7 @@ export const icon =
   "</svg>";
 
 export function create(c: BrushContext): MarkerBrush {
-  return new MarkerBrush(c.renderer, c.finder, undefined, c.store);
+  return new MarkerBrush(c.host, undefined, c.store);
 }
 
 export class MarkerBrush extends BrushBase {

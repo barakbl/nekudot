@@ -1,5 +1,6 @@
 import type { LineStyle, LineConnectType } from "../renderer";
 import type { Pixel } from "../neighbor-finder";
+import type { GeometryMethod } from "../paint-host";
 import {
   type Transform,
   applyPoint,
@@ -14,12 +15,11 @@ import {
 // transform list is just the identity (symmetry off) it forwards untouched, so
 // there's zero behaviour change.
 //
-// A Proxy forwards every method to the base by default; we override only the
-// draw + deposit entry points the brushes/connection engine actually use:
-//   - draws:    drawLine, drawConnection, drawConnectionToLayer, drawChisel,
-//               strokeRect, fillRect, strokeCircle, fillCircle,
-//               strokeEllipse, fillEllipse
-//   - deposits: addPixel (selected map), addPixelToMap (pinned map)
+// A Proxy forwards every method to the base by default; we override exactly
+// the geometry-bearing entry points listed in GEOMETRY_METHODS (paint-host.ts)
+// — the overrides table below is typed against that list, so the two cannot
+// drift apart without a compile error (tests/symmetry-coverage.test.ts guards
+// new renderer methods being added without classification).
 // Searches (findNeighbors / findNeighborsInMap) stay at the master coordinate;
 // the mirrored points already live in the map, so the web connects across the
 // symmetry and the connection lines are then copied to each transform.
@@ -44,7 +44,7 @@ export function makeSymmetryProxy<T extends object>(
   const fillAlpha = (alpha: number | undefined, aMul: number): number =>
     (alpha ?? getBaseOpacity()) * aMul;
 
-  const overrides: Record<string, (...a: never[]) => unknown> = {
+  const overrides: Record<GeometryMethod, (...a: never[]) => unknown> = {
     drawLine(p1: Pixel, p2: Pixel, style?: LineStyle, kind?: LineConnectType) {
       if (off()) return b.drawLine(p1, p2, style, kind);
       for (const t of getTransforms())
@@ -139,7 +139,8 @@ export function makeSymmetryProxy<T extends object>(
 
   return new Proxy(base, {
     get(target, prop, receiver) {
-      if (typeof prop === "string" && prop in overrides) return overrides[prop];
+      if (typeof prop === "string" && prop in overrides)
+        return overrides[prop as GeometryMethod];
       const v = Reflect.get(target, prop, receiver);
       return typeof v === "function" ? v.bind(target) : v;
     },

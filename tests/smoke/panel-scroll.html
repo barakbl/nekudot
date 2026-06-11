@@ -6,6 +6,7 @@
       import "/src/styles.css";
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
       import { createSettingsPanel } from "/src/settings-panel.ts";
 
@@ -13,7 +14,7 @@
       cv.width = 8; cv.height = 8;
       const renderer = new CanvasRenderer(cv.getContext("2d"), { dpr: 1 });
       const finder = createNeighborFinder("quadtree", []);
-      const brush = new RoundBrush(renderer, finder, 1234);
+      const brush = new RoundBrush(createBareHost(renderer, finder), 1234);
       brush.applyArtStylePreset("fur"); // the tallest connection (many dials)
 
       const panel = createSettingsPanel({ scope: "connecting" });

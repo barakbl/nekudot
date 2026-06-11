@@ -8,6 +8,7 @@
       // throttle, on Nekudot's real engine (Airy/classic), isolating web ink.
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
 
       const W = 600, H = 360, SEED = 1234;
@@ -46,7 +47,7 @@
           const ctx = cv.getContext("2d", { willReadFrequently: true });
           ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 0.05;
           const r = new CanvasRenderer(ctx, { dpr: 1 }); r.setStrokeStyle("#000");
-          const b = new RoundBrush(r, createNeighborFinder("quadtree", []), SEED);
+          const b = new RoundBrush(createBareHost(r, createNeighborFinder("quadtree", [])), SEED);
           b.applyArtStylePreset("classic");
           b.activeConnection().applyFlat({ density: dens, sampleSpacing: spacing });
           ctx.globalAlpha = 0.05;

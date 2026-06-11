@@ -1,6 +1,7 @@
-import type { IRenderer, LineStyle, LineConnectType } from "../../renderer";
+import type { LineStyle, LineConnectType } from "../../renderer";
 import { LineConnectTypes } from "../../renderer";
-import type { NeighborFinder, Pixel } from "../../neighbor-finder";
+import type { Pixel } from "../../neighbor-finder";
+import type { PaintHost } from "../../paint-host";
 import type { Store } from "../../store/base";
 import {
   DASH_STYLES,
@@ -12,7 +13,6 @@ import {
   type DashStyle,
   type ConnectMap,
   type ConnectMode,
-  type ConnectRouter,
   type ConnectingFlat,
 } from "../../connecting-types";
 import type { BrushSetting } from "../../base";
@@ -27,15 +27,14 @@ const DYNAMICS_SPEED_REF = 28;
 const ROUTE_SECTION = "Connection";
 const STYLE_SECTION = "Connection art style";
 
-// Everything a connection needs from its owning brush. `renderer` is a live accessor
-// (not a snapshot) because some brushes swap their renderer mid-stroke — e.g.
-// Handfree wraps it in a tiling renderer so the connecting web copies to every
-// grid junction. `random` is the brush's own seeded RNG, shared so the
-// connecting engine consumes it in the exact same order as before this logic
-// lived on the brush — output stays byte-identical.
+// Everything a connection needs from its owning brush. `host` is a live
+// accessor (not a snapshot) so a brush could swap its drawing surface
+// mid-stroke (none does today; kept for parity with the original renderer
+// accessor). `random` is the brush's own seeded RNG, shared so the connecting
+// engine consumes it in the exact same order as before this logic lived on
+// the brush — output stays byte-identical.
 export type ConnectionDeps = {
-  renderer: () => IRenderer;
-  finder: NeighborFinder;
+  host: () => PaintHost;
   store?: Store;
   random: () => number;
 };
@@ -116,11 +115,10 @@ export class ConnectionBase {
     return this.spec.defaults ?? {};
   }
 
-  // The renderer is the LayerManager at runtime; expose its routing surface when
-  // present, else null (tests/headless render pass a bare renderer/finder).
-  protected get router(): ConnectRouter | null {
-    const r = this.deps.renderer() as unknown as Partial<ConnectRouter>;
-    return r && typeof r.listLayers === "function" ? (r as ConnectRouter) : null;
+  // The live drawing surface: the LayerManager (via the symmetry proxy) in the
+  // app, a bare host (createBareHost) in tests/headless render.
+  protected get host(): PaintHost {
+    return this.deps.host();
   }
 
   protected random(): number {
@@ -166,14 +164,14 @@ export class ConnectionBase {
   ): { px: Pixel; mapId: string | undefined; log: boolean } {
     if (this.connectToMap.kind === "none")
       return { px: { id: -1, x, y }, mapId: undefined, log: false };
-    const r = this.router;
-    if (r && this.connectToMap.kind === "map")
+    const h = this.host;
+    if (this.connectToMap.kind === "map")
       return {
-        px: r.addPixelToMap(this.connectToMap.mapId, x, y),
+        px: h.addPixelToMap(this.connectToMap.mapId, x, y),
         mapId: this.connectToMap.mapId,
         log: true,
       };
-    return { px: this.deps.finder.addPixel(x, y), mapId: r?.selectedMapId(), log: true };
+    return { px: h.addPixel(x, y), mapId: h.selectedMapId(), log: true };
   }
 
   connect(current: Pixel): void {
@@ -296,25 +294,23 @@ export class ConnectionBase {
 
   protected searchNeighbors(px: Pixel, radius: number): Pixel[] {
     if (this.connectFromMap.kind === "none") return [];
-    const r = this.router;
-    if (r && this.connectFromMap.kind === "map")
-      return r.findNeighborsInMap(this.connectFromMap.mapId, px, radius);
-    return this.deps.finder.findNeighbors(px, radius);
+    const h = this.host;
+    if (this.connectFromMap.kind === "map")
+      return h.findNeighborsInMap(this.connectFromMap.mapId, px, radius);
+    return h.findNeighbors(px, radius);
   }
 
   protected fromMapSize(): number {
     if (this.connectFromMap.kind === "none") return 0;
-    const r = this.router;
-    if (r && this.connectFromMap.kind === "map")
-      return r.mapSize(this.connectFromMap.mapId);
-    return this.deps.finder.pixelCount();
+    const h = this.host;
+    if (this.connectFromMap.kind === "map")
+      return h.mapSize(this.connectFromMap.mapId);
+    return h.pixelCount();
   }
 
   protected drawConnection(p1: Pixel, p2: Pixel, style: LineStyle): void {
-    const r = this.router;
-    if (r)
-      r.drawConnectionToLayer(r.activeConnectionLayerId(), p1, p2, style, this.connectType);
-    else this.deps.renderer().drawConnection(p1, p2, style, this.connectType);
+    const h = this.host;
+    h.drawConnectionToLayer(h.activeConnectionLayerId(), p1, p2, style, this.connectType);
   }
 
   private resolveConnectionColor(): string | undefined {
@@ -515,8 +511,7 @@ export class ConnectionBase {
   }
 
   private routingSliders(): BrushSetting[] {
-    const r = this.router;
-    const maps = r?.listMaps() ?? [];
+    const maps = this.host.listMaps(); // [] on a bare host
     const fromOptions = ["selected", ...maps.map((m) => m.id)];
     const trailOptions = [...fromOptions, "none"];
     const mapLabels: Record<string, string> = { selected: "Active map", none: "No trail" };

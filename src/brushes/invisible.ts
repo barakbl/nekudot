@@ -1,6 +1,7 @@
 import { BrushBase, type BrushSetting } from "../base";
 import type { IRenderer } from "../renderer";
-import type { NeighborFinder, Pixel } from "../neighbor-finder";
+import type { Pixel } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import type { BrushContext } from "./registry";
 
@@ -14,13 +15,7 @@ export const icon =
   "</svg>";
 
 export function create(c: BrushContext): InvisibleBrush {
-  return new InvisibleBrush(
-    c.renderer,
-    c.finder,
-    c.getInvisibleOverlay,
-    undefined,
-    c.store,
-  );
+  return new InvisibleBrush(c.host, c.getInvisibleOverlay, undefined, c.store);
 }
 
 type GlowDot = { x: number; y: number; t: number };
@@ -33,13 +28,12 @@ export class InvisibleBrush extends BrushBase {
   private animFrame: number | null = null;
 
   constructor(
-    renderer: IRenderer,
-    finder: NeighborFinder,
+    host: PaintHost,
     getOverlayRenderer: () => IRenderer,
     seed?: number,
     store?: Store,
   ) {
-    super(renderer, finder, seed, store);
+    super(host, seed, store);
     this.getOverlayRenderer = getOverlayRenderer;
   }
 

@@ -31,6 +31,7 @@
       // read pixels (window.__cells / window.__diff) — no screenshot needed.
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
       import { MarkerBrush } from "/src/brushes/marker.ts";
       import { SquaresBrush } from "/src/brushes/squares.ts";
@@ -95,19 +96,19 @@
       const RENDERERS = {
         Squares: () => {
           const c = newCell();
-          const brush = new SquaresBrush(c.renderer, c.finder, SEED);
+          const brush = new SquaresBrush(createBareHost(c.renderer, c.finder), SEED);
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
         Circles: () => {
           const c = newCell();
-          const brush = new CirclesBrush(c.renderer, c.finder, SEED);
+          const brush = new CirclesBrush(createBareHost(c.renderer, c.finder), SEED);
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
         Marker: () => {
           const c = newCell();
-          const brush = new MarkerBrush(c.renderer, c.finder, SEED);
+          const brush = new MarkerBrush(createBareHost(c.renderer, c.finder), SEED);
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
@@ -118,7 +119,7 @@
       for (const name of PRESETS) {
         RENDERERS["preset-" + name] = () => {
           const c = newCell();
-          const brush = new RoundBrush(c.renderer, c.finder, SEED);
+          const brush = new RoundBrush(createBareHost(c.renderer, c.finder), SEED);
           brush.applyArtStylePreset(name);
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;

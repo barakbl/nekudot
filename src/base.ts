@@ -1,12 +1,12 @@
 import type { IRenderer } from "./renderer";
 import type { NeighborFinder, Pixel } from "./neighbor-finder";
+import type { PaintHost } from "./paint-host";
 import type { Store } from "./store/base";
 import {
   DASH_STYLES,
   DASH_PATTERNS,
   DASH_ICONS,
   type DashStyle,
-  type ConnectRouter,
 } from "./connecting-types";
 import {
   ROUTING_PRESETS,
@@ -95,24 +95,21 @@ export abstract class BrushBase {
     return "solid";
   }
 
-  // The renderer is the LayerManager at runtime; expose its routing surface
-  // when present, else null (e.g. in tests with a bare renderer/finder). Used
-  // for the erase check + pixel-log context; connecting uses the preset's copy.
-  protected get router(): ConnectRouter | null {
-    const r = this.renderer as unknown as Partial<ConnectRouter>;
-    return r && typeof r.listLayers === "function"
-      ? (r as ConnectRouter)
-      : null;
-  }
-
   constructor(
-    protected renderer: IRenderer,
-    protected finder: NeighborFinder,
+    protected host: PaintHost,
     seed: number = (Math.random() * 0x100000000) >>> 0,
     protected store?: Store,
   ) {
     this.seed = seed;
     this.rng = mulberry32(seed);
+  }
+
+  // Role views of the one host, for subclasses that only draw or only deposit.
+  protected get renderer(): IRenderer {
+    return this.host;
+  }
+  protected get finder(): NeighborFinder {
+    return this.host;
   }
 
   abstract name(): string;
@@ -139,7 +136,7 @@ export abstract class BrushBase {
     // point so erasing never grows the point cloud. connect() is a no-op when
     // the routing mode is "none" (the eraser's default), so a plain eraser just
     // wipes its own line.
-    if (this.router?.isErasing() === true) {
+    if (this.host.isErasing()) {
       this.onStroke(x, y, { id: -1, x, y });
       if (sample) this.connection?.connect({ id: -1, x, y });
       return;
@@ -221,31 +218,31 @@ export abstract class BrushBase {
     if (this.connection) {
       ({ px, mapId, log } = this.connection.deposit(x, y));
     } else {
-      px = this.finder.addPixel(x, y);
-      mapId = this.router?.selectedMapId();
+      px = this.host.addPixel(x, y);
+      mapId = this.host.selectedMapId();
     }
     if (log) this.logPixel(x, y, mapId);
     return px;
   }
 
+  // mapId is "" on a bare host (no maps), which keeps the log silent there.
   private logPixel(x: number, y: number, mapId: string | undefined): void {
-    const r = this.router;
-    if (this.pixelLog && r && mapId) {
+    if (this.pixelLog && mapId) {
       this.pixelLog.append({
         brush_type: this.name() as BrushType,
         dash: this.strokeDashValue(),
-        width: r.strokeWidth(),
+        width: this.host.strokeWidth(),
         x,
         y,
-        layer_id: r.activeLayerId(),
+        layer_id: this.host.activeLayerId(),
         pixel_map_id: mapId,
       });
     }
   }
 
   clear(): void {
-    this.finder.clear(); // active canvas (manager's clear)
-    this.router?.clearPixels(); // neighbor cloud (not cleared by canvas clear)
+    this.host.clear(); // the active canvas (see PaintHost on the clear() collision)
+    this.host.clearPixels(); // every neighbor cloud — not touched by canvas clear
   }
 
   getSettings(): BrushSetting[] {
@@ -273,9 +270,9 @@ export abstract class BrushBase {
 
   private connectionDeps(): ConnectionDeps {
     return {
-      // Live accessor: Handfree swaps its renderer to a tiling one mid-stroke.
-      renderer: () => this.renderer,
-      finder: this.finder,
+      // Live accessor so a brush could swap its host mid-stroke (none does
+      // today; kept for parity with the original renderer accessor).
+      host: () => this.host,
       store: this.store,
       // Share the brush's seeded RNG so the connecting engine consumes it in the
       // same order as when this logic lived on the brush — output is identical.

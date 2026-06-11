@@ -1,6 +1,6 @@
 import { BrushBase } from "../base";
-import type { IRenderer } from "../renderer";
-import type { NeighborFinder, Pixel } from "../neighbor-finder";
+import type { Pixel } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import { hasConnection } from "./connections/registry";
 import type { BrushContext } from "./registry";
@@ -13,7 +13,7 @@ export const icon =
   "</svg>";
 
 export function create(c: BrushContext): EraserBrush {
-  return new EraserBrush(c.renderer, c.finder, undefined, c.store);
+  return new EraserBrush(c.host, undefined, c.store);
 }
 
 // The Eraser: a round-capped line painted in erase mode (destination-out), so it
@@ -27,13 +27,8 @@ export class EraserBrush extends BrushBase {
   private lastX = 0;
   private lastY = 0;
 
-  constructor(
-    renderer: IRenderer,
-    finder: NeighborFinder,
-    seed?: number,
-    store?: Store,
-  ) {
-    super(renderer, finder, seed, store);
+  constructor(host: PaintHost, seed?: number, store?: Store) {
+    super(host, seed, store);
     // Attach a connection so the Connecting combo/box engage like Round, but
     // start with "no connect" routing so the eraser only wipes its own line.
     this.initConnection("classic");

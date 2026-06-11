@@ -4,7 +4,7 @@ import type { BrushContext } from "./registry";
 export const icon = "▭";
 
 export function create(c: BrushContext): SquaresBrush {
-  return new SquaresBrush(c.renderer, c.finder, undefined, c.store);
+  return new SquaresBrush(c.host, undefined, c.store);
 }
 
 export class SquaresBrush extends ShapesStrokeBrush {

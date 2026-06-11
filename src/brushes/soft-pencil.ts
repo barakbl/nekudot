@@ -1,6 +1,5 @@
 import { BrushBase, type BrushSetting } from "../base";
-import type { IRenderer } from "../renderer";
-import type { NeighborFinder } from "../neighbor-finder";
+import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 
 // Port of mrdoob's Harmony "shaded" brush. There is no solid core — the mark is
@@ -8,13 +7,8 @@ import type { Store } from "../store/base";
 // with distance (the "shaded" art-style preset), so scribbling builds up smooth
 // soft-pencil tone. Connecting is handled by the attached preset.
 export class SoftPencilBrush extends BrushBase {
-  constructor(
-    renderer: IRenderer,
-    finder: NeighborFinder,
-    seed?: number,
-    store?: Store,
-  ) {
-    super(renderer, finder, seed, store);
+  constructor(host: PaintHost, seed?: number, store?: Store) {
+    super(host, seed, store);
     this.initConnection("shaded");
   }
 

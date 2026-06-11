@@ -20,6 +20,7 @@
       // IDENTICAL fixed gesture so any difference in ink is the engine, not input.
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
 
       const W = 600, H = 360, SEED = 1234;
@@ -96,7 +97,7 @@
         const renderer = new CanvasRenderer(ctx, { dpr: 1 });
         renderer.setStrokeStyle("#000000");
         const finder = createNeighborFinder("quadtree", []);
-        const brush = new RoundBrush(renderer, finder, SEED);
+        const brush = new RoundBrush(createBareHost(renderer, finder), SEED);
         brush.applyArtStylePreset(preset);
         if (density !== undefined) brush.activeConnection().applyFlat({ density });
         // keep baseAlpha as the resting globalAlpha after every connection restore
