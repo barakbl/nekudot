@@ -13,6 +13,10 @@ import {
 
 export type SymmetryMode = "none" | "tile" | "radial" | "mirror";
 
+// Appearance of the on-canvas guide lines, shared by all three modes. alpha is
+// 0..1 (LineStyle.alpha); width is the line thickness in CSS px (1-3).
+export type GuideStyle = { color: string; width: number; alpha: number };
+
 // Minimal store shape (the app's persistent key/value store).
 type Store = {
   get<T>(key: string): T | undefined;
@@ -28,9 +32,12 @@ const K = {
   radialSegments: "app.symmetry.radial.segments",
   radialMirror: "app.symmetry.radial.mirror",
   mirrorAxis: "app.symmetry.mirror.axis",
+  guideColor: "app.symmetry.guide.color",
+  guideWidth: "app.symmetry.guide.width",
+  guideAlpha: "app.symmetry.guide.alpha",
 };
 
-const GUIDE = { color: "#888", width: 0.5, alpha: 0.35 } as const;
+const GUIDE_DEFAULT: GuideStyle = { color: "#888888", width: 1, alpha: 0.35 };
 
 // Owns the symmetry mode + params, computes the per-stroke transform list, and
 // draws the on-canvas guide lines. The render/finder proxy reads transforms()
@@ -40,6 +47,7 @@ export class SymmetryController {
   tile: TileParams;
   radial: RadialParams;
   mirror: MirrorParams;
+  guide: GuideStyle;
   private current: readonly Transform[] = [IDENTITY];
   private listeners = new Set<() => void>();
 
@@ -57,6 +65,11 @@ export class SymmetryController {
     };
     this.mirror = {
       axis: store.get<MirrorParams["axis"]>(K.mirrorAxis) ?? "vertical",
+    };
+    this.guide = {
+      color: store.get<string>(K.guideColor) ?? GUIDE_DEFAULT.color,
+      width: store.get<number>(K.guideWidth) ?? GUIDE_DEFAULT.width,
+      alpha: store.get<number>(K.guideAlpha) ?? GUIDE_DEFAULT.alpha,
     };
   }
 
@@ -96,6 +109,14 @@ export class SymmetryController {
     this.store.set(K.mirrorAxis, this.mirror.axis);
     this.notify();
   }
+  // Guide-line appearance, shared by every mode.
+  setGuide(patch: Partial<GuideStyle>): void {
+    this.guide = { ...this.guide, ...patch };
+    this.store.set(K.guideColor, this.guide.color);
+    this.store.set(K.guideWidth, this.guide.width);
+    this.store.set(K.guideAlpha, this.guide.alpha);
+    this.notify();
+  }
 
   // Called on pointerdown: freeze the transform list for the whole stroke (Tile
   // is anchored to the start; Radial/Mirror are centred on the canvas).
@@ -127,8 +148,8 @@ export class SymmetryController {
     const cx = size.width / 2;
     const cy = size.height / 2;
     if (this.mirror.axis === "vertical")
-      r.drawLine({ id: 0, x: cx, y: 0 }, { id: 0, x: cx, y: size.height }, GUIDE);
-    else r.drawLine({ id: 0, x: 0, y: cy }, { id: 0, x: size.width, y: cy }, GUIDE);
+      r.drawLine({ id: 0, x: cx, y: 0 }, { id: 0, x: cx, y: size.height }, this.guide);
+    else r.drawLine({ id: 0, x: 0, y: cy }, { id: 0, x: size.width, y: cy }, this.guide);
   }
 
   private drawTileGuides(r: IRenderer, size: CanvasSize): void {
@@ -137,9 +158,9 @@ export class SymmetryController {
     if (sx <= 0 || sy <= 0) return;
     const { width: w, height: h } = size;
     for (let x = 0; x <= w; x += sx)
-      r.drawLine({ id: 0, x, y: 0 }, { id: 0, x, y: h }, GUIDE);
+      r.drawLine({ id: 0, x, y: 0 }, { id: 0, x, y: h }, this.guide);
     for (let y = 0; y <= h; y += sy)
-      r.drawLine({ id: 0, x: 0, y }, { id: 0, x: w, y }, GUIDE);
+      r.drawLine({ id: 0, x: 0, y }, { id: 0, x: w, y }, this.guide);
   }
 
   private drawRadialGuides(r: IRenderer, size: CanvasSize): void {
@@ -154,7 +175,7 @@ export class SymmetryController {
       r.drawLine(
         { id: 0, x: cx, y: cy },
         { id: 0, x: cx + Math.cos(a) * reach, y: cy + Math.sin(a) * reach },
-        GUIDE,
+        this.guide,
       );
     }
   }

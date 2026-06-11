@@ -357,6 +357,24 @@ body {
 .sym-check {
   margin-left: auto;
 }
+.sym-subhead {
+  margin: 6px 6px 1px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.sym-color {
+  margin-left: auto;
+  width: 30px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border-stronger);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
 .maps-menu-info {
   padding: 8px 10px 6px;
 }
@@ -1300,7 +1318,8 @@ body.help-mode .help-icon {
   font: 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.4;
   box-shadow: var(--shadow);
-  z-index: 100;
+  /* Above the floating windows (z 100-ish; see window-stack.ts). */
+  z-index: 300;
   pointer-events: none;
 }
 
@@ -1311,7 +1330,8 @@ body.help-mode .help-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 40;
+  /* Above the floating windows (z 100-ish; see window-stack.ts). */
+  z-index: 400;
 }
 .size-picker-card {
   width: min(520px, calc(100vw - 32px));
@@ -1450,7 +1470,8 @@ body.help-mode .help-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 30;
+  /* Above the floating windows (z 100-ish; see window-stack.ts). */
+  z-index: 400;
 }
 .confirm-card {
   min-width: 240px;

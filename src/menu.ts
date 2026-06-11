@@ -32,11 +32,12 @@ export type CanvasMenuOptions = {
   onLoadArtwork: () => void;
 };
 
-// A panel the "Windows" menu can toggle, shown with its keyboard shortcut.
-export type WindowToggle = {
+// A panel the "Windows" menu can open (revealing it on top), shown with its
+// keyboard shortcut.
+export type WindowEntry = {
   label: string;
   shortcut: string;
-  toggle: () => void;
+  open: () => void;
 };
 
 // The navbar Connecting combo: a grouped dropdown of art-style presets plus a
@@ -78,7 +79,7 @@ export function createMenu<T extends string>(
   onBrushSettings?: () => void,
   canvasOptions?: CanvasMenuOptions,
   history?: HistoryControl,
-  windows?: WindowToggle[],
+  windows?: WindowEntry[],
   connecting?: ConnectingControl,
   maps?: MapsPillControl,
 ): {
@@ -159,7 +160,7 @@ export function createMenu<T extends string>(
 }
 
 // "Windows" dropdown: toggles each panel, shown as "[key] Label".
-function makeWindowsMenu(items: WindowToggle[]): HTMLElement {
+function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   const wrap = document.createElement("span");
   wrap.className = "canvas-menu-wrap";
 
@@ -191,7 +192,7 @@ function makeWindowsMenu(items: WindowToggle[]): HTMLElement {
     row.appendChild(lbl);
     row.addEventListener("click", (e) => {
       e.stopPropagation();
-      it.toggle();
+      it.open();
       popover.classList.remove("open");
     });
     popover.appendChild(row);

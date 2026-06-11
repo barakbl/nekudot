@@ -83,6 +83,45 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
     return row;
   };
 
+  const colorRow = (
+    text: string,
+    value: string,
+    onInput: (v: string) => void,
+  ): HTMLElement => {
+    const row = document.createElement("div");
+    row.className = "sym-row";
+    const l = document.createElement("span");
+    l.className = "sym-rowlabel";
+    l.textContent = text;
+    const input = document.createElement("input");
+    input.type = "color";
+    input.className = "sym-color";
+    input.value = value;
+    input.addEventListener("click", (e) => e.stopPropagation());
+    input.addEventListener("input", (e) => {
+      e.stopPropagation();
+      onInput(input.value);
+    });
+    row.append(l, input);
+    return row;
+  };
+
+  // Guide-line appearance (opacity / width / color), shared by Tile, Radial and
+  // Mirror. Shown below the mode-specific params whenever a mode is active.
+  const appearanceRows = (): HTMLElement[] => {
+    const head = document.createElement("div");
+    head.className = "sym-subhead";
+    head.textContent = "Guides";
+    return [
+      head,
+      slider("Opacity", 0, 100, Math.round(c.guide.alpha * 100), (v) =>
+        c.setGuide({ alpha: v / 100 }),
+      ),
+      slider("Width", 1, 3, c.guide.width, (v) => c.setGuide({ width: v })),
+      colorRow("Color", c.guide.color, (v) => c.setGuide({ color: v })),
+    ];
+  };
+
   const renderParams = () => {
     params.replaceChildren();
     if (c.mode === "tile") {
@@ -134,6 +173,10 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
       }
       params.appendChild(seg);
     }
+
+    // The shared guide-appearance controls follow the per-mode params (any mode
+    // but None, which draws no guides).
+    if (c.mode !== "none") params.append(...appearanceRows());
   };
 
   syncMode();

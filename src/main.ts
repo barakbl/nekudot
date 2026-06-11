@@ -47,6 +47,7 @@ import { UndoStore } from "./store/undo";
 import { UndoManager, type UndoSnapshot } from "./undo";
 import { attachHelp, toggleHelpMode } from "./help";
 import { showChip } from "./chip";
+import { registerWindow, showWindow } from "./window-stack";
 import {
   clampSize,
   fullScreenSize,
@@ -353,6 +354,7 @@ const brushSettings = createSettingsPanel({
   },
 });
 document.body.appendChild(brushSettings.el);
+registerWindow(brushSettings.el);
 
 // The Connecting box holds the routing + art-style dials; it's opened from the
 // navbar Connecting combo's gear (only Round connects).
@@ -364,15 +366,12 @@ const connectingSettings = createSettingsPanel({
     customPresets.some((s) => s.name === currentArtStyle) ? currentArtStyle : null,
 });
 document.body.appendChild(connectingSettings.el);
+registerWindow(connectingSettings.el);
 
-const toggleSettings = () => {
-  brushSettings.el.style.display =
-    brushSettings.el.style.display === "none" ? "" : "none";
-};
-const toggleConnecting = () => {
-  connectingSettings.el.style.display =
-    connectingSettings.el.style.display === "none" ? "" : "none";
-};
+// The navbar buttons + keyboard shortcuts reveal a window and bring it to the
+// front (rather than toggling it shut); each window closes via its × button.
+const showSettings = () => showWindow(brushSettings.el);
+const showConnecting = () => showWindow(connectingSettings.el);
 
 // The connection art style is chosen from the navbar Connecting combo and
 // persisted; Round applies it on select (see RoundBrush.onSelect).
@@ -480,9 +479,11 @@ const layersBox = createLayersBox(
   },
 );
 document.body.appendChild(layersBox.el);
+registerWindow(layersBox.el);
 
 const symmetryBox = createSymmetryBox(symmetry);
 document.body.appendChild(symmetryBox.el);
+registerWindow(symmetryBox.el);
 
 // The memory-maps editor, opened from the navbar Maps pill. Holds all the
 // per-map controls (flash / select / rename / delete + live dot counts); the
@@ -535,6 +536,15 @@ const mapsControl: MapsControl = {
 };
 const mapsBox = createMapsBox(mapsControl);
 document.body.appendChild(mapsBox.el);
+registerWindow(mapsBox.el);
+
+// Show helpers for the boxes created above (see showSettings/showConnecting).
+const showLayers = () => showWindow(layersBox.el);
+const showSymmetry = () => showWindow(symmetryBox.el);
+const showMaps = () => {
+  showWindow(mapsBox.el);
+  mapsBox.render(); // fresh dot counts each time it opens
+};
 
 const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   layerManager.applyConfig(snap.config);
@@ -708,7 +718,7 @@ const selectBrush = (key: BrushKey) => {
 
 // Late-bound: the Shortcuts panel is built from the shortcuts array, which
 // itself needs `menu`. The Windows menu + "/" call this once it's wired.
-let toggleShortcuts = () => {};
+let showShortcuts = () => {};
 
 // Turn the brush registry into the toolbar's menu entries: consecutive brushes
 // sharing a menuGroup are wrapped into that sub-group; the rest are top-level.
@@ -806,7 +816,7 @@ const menu = createMenu(
     },
   },
   initialBrushKey,
-  toggleSettings,
+  showSettings,
   canvasMenuOptions,
   {
     onUndo: () => doUndo(),
@@ -815,18 +825,18 @@ const menu = createMenu(
     canRedo: () => undoManager.canRedo(),
   },
   [
-    { label: "Brushes", shortcut: "b", toggle: toggleSettings },
-    { label: "Connecting", shortcut: "c", toggle: toggleConnecting },
-    { label: "Layers", shortcut: "l", toggle: layersBox.toggle },
-    { label: "Maps", shortcut: "m", toggle: mapsBox.toggle },
-    { label: "Symmetry", shortcut: "y", toggle: symmetryBox.toggle },
-    { label: "Shortcuts", shortcut: "/", toggle: () => toggleShortcuts() },
+    { label: "Brushes", shortcut: "b", open: showSettings },
+    { label: "Connecting", shortcut: "c", open: showConnecting },
+    { label: "Layers", shortcut: "l", open: showLayers },
+    { label: "Maps", shortcut: "m", open: showMaps },
+    { label: "Symmetry", shortcut: "y", open: showSymmetry },
+    { label: "Shortcuts", shortcut: "/", open: () => showShortcuts() },
   ],
   {
     groups: connectingComboGroups(),
     initial: currentArtStyle,
     onChange: (name) => setArtStyle(name),
-    onSettings: () => toggleConnecting(),
+    onSettings: () => showConnecting(),
     onDeleteCustom: (name) => deleteCustomFn(name),
     onImport: () => importPresetsFn(),
     onExport: () => exportPresetsFn(),
@@ -837,7 +847,7 @@ const menu = createMenu(
       return maps.find((m) => m.active)?.name ?? "Map";
     },
     onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
-    onOpen: () => mapsBox.toggle(),
+    onOpen: () => showMaps(),
     subscribe: (fn) => layerManager.subscribe(fn),
   },
 );
@@ -1017,32 +1027,32 @@ const shortcuts: Shortcut[] = [
   {
     key: "m",
     group: "Panels",
-    description: "Toggle the maps box",
-    onPress: mapsBox.toggle,
+    description: "Show the maps box",
+    onPress: () => showMaps(),
   },
   {
     key: "l",
     group: "Panels",
-    description: "Toggle layers",
-    onPress: layersBox.toggle,
+    description: "Show layers",
+    onPress: () => showLayers(),
   },
   {
     key: "y",
     group: "Panels",
-    description: "Toggle symmetry",
-    onPress: symmetryBox.toggle,
+    description: "Show symmetry",
+    onPress: () => showSymmetry(),
   },
   {
     key: "b",
     group: "Panels",
-    description: "Toggle brush settings",
-    onPress: toggleSettings,
+    description: "Show brush settings",
+    onPress: () => showSettings(),
   },
   {
     key: "c",
     group: "Panels",
-    description: "Toggle connecting settings",
-    onPress: toggleConnecting,
+    description: "Show connecting settings",
+    onPress: () => showConnecting(),
   },
   {
     key: "s",
@@ -1054,7 +1064,7 @@ const shortcuts: Shortcut[] = [
     key: "/",
     group: "Help",
     description: "Show shortcuts",
-    onPress: () => toggleShortcuts(),
+    onPress: () => showShortcuts(),
   },
   {
     key: "?",
@@ -1111,7 +1121,8 @@ const shortcuts: Shortcut[] = [
 ];
 const shortcutsPanel = createShortcutsPanel(shortcuts);
 document.body.appendChild(shortcutsPanel.el);
-toggleShortcuts = shortcutsPanel.toggle;
+registerWindow(shortcutsPanel.el);
+showShortcuts = () => showWindow(shortcutsPanel.el);
 bindShortcuts(shortcuts);
 
 // --- Help hints (press ? to toggle visibility) ---
