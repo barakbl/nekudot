@@ -31,7 +31,17 @@
 
       <h2>Module map</h2>
       <pre class="filetree"><code>src/
-  main.ts              app wiring: brushes, toolbar, panels, pointer loop, undo
+  main.ts              composition root: builds the stage, panels and navbar, wires src/app
+  app/                 the app wiring, one concern per module
+    drawing-input.ts   the pointer → brush stroke loop
+    overlay.ts         pointer-transparent canvases (invisible glow, symmetry guides)
+    map-highlight.ts   flash a memory map's dots over the canvas
+    history.ts         AppHistory - undo snapshots + paint persistence plumbing
+    maps-control.ts    controller behind the Maps box
+    presets.ts         custom connection presets (save/update/delete/import/export)
+    app-shortcuts.ts   the global shortcut table + panel hide/show toggle
+  paint-host.ts        PaintHost - the one drawing surface a brush paints through;
+                       createBareHost() for tests, GEOMETRY_METHODS for symmetry
   base.ts              BrushBase - the brush template; delegates connecting to a Connection
   renderer.ts          IRenderer + CanvasRenderer (Canvas2D, dpr-scaled)
   neighbor-finder.ts   NeighborFinder + quadtree (capped point cloud)
@@ -41,7 +51,6 @@
   load-artwork.ts      validate + import a .nekudot (zip-bomb safe)
   export.ts            flatten layers to a PNG
   brushes/             one file per brush (+ shapes-stroke.ts base)
-  symmetry/            Tile / Radial / Mirror tool (transforms, proxy, controller, box)
     brushes.json       ordered brush index (name/file/shortcut/group/connections)
     registry.ts        builds BRUSH_DEFS from brushes.json - map, menu, shortcuts, names
     connections/       the connecting engine + art-style "connections"
@@ -50,17 +59,20 @@
       connections.json ordered index of connection styles
       routing.ts       ROUTING_PRESETS - where a stroke reads/stores neighbours
       classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
+  symmetry/            Tile / Radial / Mirror tool (transforms, proxy, controller, box)
   layered/
-    manager.ts         LayerManager: IRenderer + NeighborFinder + ConnectRouter
+    manager.ts         LayerManager - the app's PaintHost over the layer stack + maps
     layer.ts           Layer = one canvas + renderer
+    wet-stroke.ts      WetStrokeBuffer - faint continuous strokes composite at one alpha
     neighbors-map.ts   NeighborsMap = a named point cloud
     schema.ts          zod schema for the layer/map config
     box.ts             Layers panel UI
-    neighbors-map-box.ts  Maps panel UI
+    maps-box.ts        Maps panel UI
+    size-picker.ts     New-art size dialog
   store/               LocalStorage + IndexedDB stores, PaintStore, UndoStore
-  menu.ts settings-panel.ts size-picker.ts confirm.ts chip.ts help.ts drag.ts</code></pre>
+  menu.ts settings-panel.ts shortcuts.ts confirm.ts chip.ts help.ts drag.ts window-stack.ts</code></pre>
 
-      <h2>The rendering seam: <code>IRenderer</code></h2>
+      <h2>The drawing surface: <code>PaintHost</code></h2>
       <p>
         Everything that draws goes through <code>IRenderer</code>
         (<code>renderer.ts</code>) - <code>drawLine</code>, <code>fillCircle</code>,
@@ -70,10 +82,24 @@
         work in CSS pixels and stay crisp on retina.
       </p>
       <p>
-        Crucially, <strong><code>LayerManager</code> also implements
-        <code>IRenderer</code></strong> and delegates every draw call to the
-        <em>active</em> layer's renderer. A brush holds an <code>IRenderer</code>
-        and never knows whether it's drawing to one canvas or a layer stack.
+        A brush, though, holds one <strong><code>PaintHost</code></strong>
+        (<code>paint-host.ts</code>): a single object serving three roles -
+        <code>IRenderer</code> (marks land on the <em>active</em> layer),
+        <code>NeighborFinder</code> (points land in the <em>selected</em> memory
+        map) and <code>ConnectRouter</code> (target layers/maps by stable id).
+        At runtime the host is the <code>LayerManager</code>, wrapped in the
+        symmetry proxy so every mark <em>and</em> deposit mirrors under
+        Tile/Radial/Mirror. Tests and the headless render harnesses build one
+        with <code>createBareHost(renderer, finder)</code> - a neutral router
+        over a bare canvas - so they run the exact same code paths as the app.
+      </p>
+      <p>
+        The symmetry proxy overrides exactly the geometry-bearing methods listed
+        in <code>GEOMETRY_METHODS</code> (<code>paint-host.ts</code>); its
+        override table is typed against that list, and
+        <code>tests/symmetry-coverage.test.ts</code> forces every new renderer
+        method to be classified - so a new draw call can't silently skip
+        symmetry.
       </p>
 
       <h2>Layers &amp; memory maps</h2>
@@ -94,24 +120,38 @@
 
       <h2>The stroke loop</h2>
       <p>
-        <code>main.ts</code> turns pointer input into brush calls. Pointer moves
-        are de-coalesced so fast gestures keep full resolution:
+        <code>app/drawing-input.ts</code> turns pointer input into brush calls.
+        Pointer moves are de-coalesced so fast gestures keep full resolution -
+        but a <em>connecting</em> brush weaves its web only on the last sample
+        per frame (Harmony's per-move cadence), or the web would build up
+        quadratically with the pointer's report rate:
       </p>
       <pre><code>stage.addEventListener("pointerdown", (e) => {
+  symmetry.beginStroke(...);          // freeze the transforms for this stroke
   brush.strokeStart(e.offsetX, e.offsetY);
   brush.stroke(e.offsetX, e.offsetY);
 });
 stage.addEventListener("pointermove", (e) => {
-  for (const ev of e.getCoalescedEvents())
-    brush.stroke(ev.offsetX, ev.offsetY);
+  const list = e.getCoalescedEvents();
+  const frameCadence = brush.supportsConnecting();
+  for (let i = 0; i &lt; list.length; i++)   // mark: every sample; web: last only
+    brush.stroke(list[i].offsetX, list[i].offsetY,
+                 !frameCadence || i === list.length - 1);
 });
-// pointerup → brush.strokeEnd(); pushUndo(); persist;</code></pre>
+// pointerup → brush.strokeEnd(); refresh previews; persist; pushUndo</code></pre>
       <p>
         <code>BrushBase.stroke()</code> is a <em>template method</em>: it
         deposits the point into the trail map, calls the subclass's
         <code>onStroke()</code> to paint the mark, then - if the brush has a
         <code>Connection</code> attached - lets it weave the web via
         <code>connection.connect()</code>.
+      </p>
+      <p>
+        A faint continuous stroke (Round below full opacity) is buffered in a
+        <strong>wet-stroke buffer</strong> (<code>layered/wet-stroke.ts</code>):
+        the line draws opaque into an off-buffer shown at the stroke's opacity,
+        then composites onto the layer in one pass on pointer-up - so it reads
+        as one uniform alpha instead of darkening where segment caps overlap.
       </p>
 
       <h2>Connecting &amp; <code>ConnectRouter</code></h2>
@@ -120,9 +160,10 @@ stage.addEventListener("pointermove", (e) => {
         <code>ConnectRouter</code> (<code>connecting-types.ts</code>):
         <code>listLayers/listMaps</code>, <code>addPixelToMap</code>,
         <code>findNeighborsInMap</code>, <code>drawConnectionToLayer</code>,
-        <code>activeLayerId/selectedMapId/strokeWidth</code>, etc. A connection
-        picks it up by duck-typing its renderer, so tests can run with a bare
-        renderer.
+        <code>activeLayerId/selectedMapId/strokeWidth</code>, etc. The router is
+        the third role of the brush's <code>PaintHost</code>, so connections
+        call it directly; <code>createBareHost</code> supplies a neutral one
+        (no layers, a single map) for tests and the headless harnesses.
       </p>
       <p>
         The connecting half is its own module under

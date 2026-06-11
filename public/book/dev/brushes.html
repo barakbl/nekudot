@@ -120,9 +120,9 @@ this.initConnection("classic");
 
       <h3>What you get for free</h3>
       <ul>
-        <li><code>this.renderer</code> - the <a href="/book/dev/architecture.html">IRenderer</a> to draw with.</li>
+        <li><code>this.host</code> - the full <a href="/book/dev/architecture.html">PaintHost</a> (renderer + memory maps + routing).</li>
+        <li><code>this.renderer</code> / <code>this.finder</code> - role views of the host: the IRenderer to draw with, the memory map to deposit/search points.</li>
         <li><code>this.random()</code> - a seeded PRNG, so a redrawn stroke is reproducible.</li>
-        <li><code>this.finder</code> - the memory map (NeighborFinder).</li>
         <li><code>this.store</code> - the key/value store (e.g. read the secondary color).</li>
         <li>Connecting: <code>this.initConnection(name)</code> + spread <code>this.connection?.sliders()</code> and the web is handled.</li>
       </ul>
@@ -141,14 +141,16 @@ import type { BrushContext } from "./registry";
 export const icon = "…svg markup or a single char…";
 
 export function create(c: BrushContext): SprayBrush {
-  return new SprayBrush(c.renderer, c.finder, undefined, c.store);
+  return new SprayBrush(c.host, undefined, c.store);
 }</code></pre>
       <pre><code>// src/brushes/brushes.json - add one row (order = toolbar order)
 { "name": "Spray", "file": "spray.ts", "shortcut": "0", "menuGroup": "Other" }</code></pre>
       <p class="muted">
         Every brush is built from a shared <code>BrushContext</code>
-        (<code>renderer</code>, <code>finder</code>, <code>store</code>,
-        <code>getInvisibleOverlay</code>), so <code>create()</code> just picks
+        (<code>host</code> - the
+        <a href="/book/dev/architecture.html">PaintHost</a> it paints through -
+        plus <code>store</code> and <code>getInvisibleOverlay</code>), so
+        <code>create()</code> just picks
         what it needs. <code>name</code> is the display name, storage key and
         pixel-log <code>brush_type</code> (validated against the registry, so
         there's no separate list to keep in sync). Add <code>"menuGroup"</code> to
