@@ -1,4 +1,4 @@
-import { createOffscreenRenderer, CanvasRenderer } from "../renderer";
+import { createOffscreenRenderer } from "../renderer";
 import type { IRenderer, LineStyle, LineConnectType, RendererInit } from "../renderer";
 import type { NeighborFinder, Pixel } from "../neighbor-finder";
 import type { ConnectRouter } from "../connecting-types";
@@ -7,6 +7,7 @@ import type { PaintSnapshot } from "../store/paint";
 import type { CanvasSize } from "../canvas-size";
 import { Layer } from "./layer";
 import { NeighborsMap } from "./neighbors-map";
+import { WetStrokeBuffer } from "./wet-stroke";
 import {
   LayersConfigSchema,
   defaultLayer,
@@ -30,6 +31,30 @@ export type LayerManagerOptions = {
   rendererInit?: RendererInit;
 };
 
+// Clamp a cursor index into [0, length-1] (length 0 yields -1, matching the
+// previous behaviour for empty lists).
+const clampIndex = (i: number, length: number): number =>
+  Math.min(Math.max(0, i), length - 1);
+
+// Adjust a cursor index after removing position `removed` from a list now
+// `length` long: positions above the removal shift down, the removed slot
+// falls back to the item below it, and everything clamps into range.
+const shiftAfterRemoval = (
+  current: number,
+  removed: number,
+  length: number,
+): number => {
+  if (current >= length) return length - 1;
+  if (current > removed) return current - 1;
+  if (current === removed) return Math.max(0, removed - 1);
+  return current;
+};
+
+// The facade every brush draws through: one object that is at once the
+// IRenderer (strokes hit the active layer), the NeighborFinder (points go to
+// the selected neighbors map) and the ConnectRouter (connections target
+// layers/maps by stable id). It owns the layer + map collections, the active
+// cursors, and persistence of the whole arrangement.
 export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   private layers: Layer[] = [];
   private activeIndex = 0;
@@ -44,16 +69,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   private readonly container: HTMLElement;
   private readonly store?: Store;
   private rendererInit: RendererInit;
-
-  // Per-stroke "wet" buffer for continuous strokes. While a partly-transparent
-  // line is in progress, drawLine() targets this opaque off-buffer (shown live
-  // at the stroke opacity) and endStroke() composites it onto the active layer
-  // in one pass — so the stroke reads as one uniform alpha instead of darker
-  // dots where each segment's round caps overlap at the joints. Lazily created.
-  private wetCanvas: HTMLCanvasElement | null = null;
-  private wetRenderer: CanvasRenderer | null = null;
-  private wetActive = false;
-  private wetAlpha = 1;
+  private readonly wet: WetStrokeBuffer;
 
   constructor(opts: LayerManagerOptions) {
     this.container = opts.container;
@@ -61,6 +77,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     this.dpr = opts.dpr;
     this.store = opts.store;
     this.rendererInit = { ...(opts.rendererInit ?? {}) };
+    this.wet = new WetStrokeBuffer(opts.container, opts.dpr);
 
     this.applyContainerSize();
 
@@ -73,25 +90,70 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
       config.neighborsMaps = [defaultNeighborsMap([])];
       config.selectedNeighborsMapIndex = 0;
     }
+    this.hydrate(config);
+  }
+
+  // ---- config load/save ------------------------------------------------------
+
+  // Build layers + maps from a config and clamp the cursor indices. Callers
+  // start from an empty state (fresh construction or removeAll()).
+  private hydrate(config: LayersConfig): void {
     for (const layerCfg of config.layers) this.spawnLayer(layerCfg);
     // Normalize order on load so config.index (and the 1-based z-index) is a
     // clean 0..n-1 sequence, repairing any legacy/odd saved indices.
     this.renumberLayers();
     for (const nmCfg of config.neighborsMaps) this.spawnNeighborsMap(nmCfg);
-    this.activeIndex = Math.min(
-      Math.max(0, config.activeIndex),
-      this.layers.length - 1,
+    this.activeIndex = clampIndex(config.activeIndex, this.layers.length);
+    this.activeConnectionIndex = clampIndex(
+      config.activeConnectionIndex ?? 0,
+      this.layers.length,
     );
-    this.activeConnectionIndex = Math.min(
-      Math.max(0, config.activeConnectionIndex ?? 0),
-      this.layers.length - 1,
-    );
-    this.selectedNeighborsMapIndex = Math.min(
-      Math.max(0, config.selectedNeighborsMapIndex ?? 0),
-      this.neighborsMaps.length - 1,
+    this.selectedNeighborsMapIndex = clampIndex(
+      config.selectedNeighborsMapIndex ?? 0,
+      this.neighborsMaps.length,
     );
     this.background = { ...config.background };
   }
+
+  // Drop every layer canvas and map, back to the empty state hydrate expects.
+  private removeAll(): void {
+    for (const layer of this.layers) layer.canvas.remove();
+    this.layers = [];
+    this.neighborsMaps = [];
+  }
+
+  getConfig(): LayersConfig {
+    return structuredClone(this.snapshot());
+  }
+
+  applyConfig(config: LayersConfig, size?: CanvasSize): void {
+    if (size) {
+      this.size = { ...size };
+      this.applyContainerSize();
+    }
+    this.removeAll();
+    this.hydrate(config);
+    this.persist();
+    this.emit();
+  }
+
+  reset(newSize: CanvasSize): void {
+    this.size = { ...newSize };
+    this.applyContainerSize();
+    this.removeAll();
+    // Two-layer default: layer-2 selected for painting, layer-1 the connection
+    // layer (matches defaultLayersConfig).
+    this.spawnLayer(defaultLayer(0));
+    this.spawnLayer(defaultLayer(1));
+    this.spawnNeighborsMap(defaultNeighborsMap([]));
+    this.activeIndex = 1;
+    this.activeConnectionIndex = 0;
+    this.selectedNeighborsMapIndex = 0;
+    this.persist();
+    this.emit();
+  }
+
+  // ---- background + size -----------------------------------------------------
 
   getBackground(): BackgroundConfig {
     return { ...this.background };
@@ -107,78 +169,12 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     return { ...this.size };
   }
 
-  reset(newSize: CanvasSize): void {
-    this.size = { ...newSize };
-    this.applyContainerSize();
-    for (const layer of this.layers) {
-      layer.canvas.remove();
-    }
-    this.layers = [];
-    this.neighborsMaps = [];
-    // Two-layer default: layer-2 selected for painting, layer-1 the connection
-    // layer (matches defaultLayersConfig).
-    this.spawnLayer(defaultLayer(0));
-    this.spawnLayer(defaultLayer(1));
-    this.spawnNeighborsMap(defaultNeighborsMap([]));
-    this.activeIndex = 1;
-    this.activeConnectionIndex = 0;
-    this.selectedNeighborsMapIndex = 0;
-    this.persist();
-    this.emit();
-  }
-
-  getConfig(): LayersConfig {
-    return {
-      maxLayers: this.maxLayers,
-      activeIndex: this.activeIndex,
-      activeConnectionIndex: this.activeConnectionIndex,
-      layers: this.layers.map((l) =>
-        structuredClone(l.config) as LayerConfig,
-      ),
-      neighborsMaps: this.neighborsMaps.map(
-        (nm) => structuredClone(nm.config) as NeighborsMapConfig,
-      ),
-      selectedNeighborsMapIndex: this.selectedNeighborsMapIndex,
-      background: { ...this.background },
-    };
-  }
-
-  applyConfig(config: LayersConfig, size?: CanvasSize): void {
-    if (size) {
-      this.size = { ...size };
-      this.applyContainerSize();
-    }
-    for (const layer of this.layers) {
-      layer.canvas.remove();
-    }
-    this.layers = [];
-    this.neighborsMaps = [];
-    for (const layerCfg of config.layers) this.spawnLayer(layerCfg);
-    this.renumberLayers(); // clean 0..n-1 order + 1-based z-index
-    for (const nmCfg of config.neighborsMaps) this.spawnNeighborsMap(nmCfg);
-    this.activeIndex = Math.min(
-      Math.max(0, config.activeIndex),
-      this.layers.length - 1,
-    );
-    this.activeConnectionIndex = Math.min(
-      Math.max(0, config.activeConnectionIndex ?? 0),
-      this.layers.length - 1,
-    );
-    this.selectedNeighborsMapIndex = Math.min(
-      Math.max(0, config.selectedNeighborsMapIndex ?? 0),
-      this.neighborsMaps.length - 1,
-    );
-    this.background = { ...config.background };
-    this.persist();
-    this.emit();
-  }
-
   private applyContainerSize(): void {
     this.container.style.width = `${this.size.width}px`;
     this.container.style.height = `${this.size.height}px`;
   }
 
-  // ---- queries --------------------------------------------------------------
+  // ---- layer queries ----------------------------------------------------------
 
   get all(): readonly Layer[] {
     return this.layers;
@@ -206,7 +202,11 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     return createOffscreenRenderer(this.size, this.dpr);
   }
 
-  // ---- mutations ------------------------------------------------------------
+  private layerById(id: string): Layer | undefined {
+    return this.layers.find((l) => l.config.id === id);
+  }
+
+  // ---- layer mutations ----------------------------------------------------------
 
   addLayer(): Layer | null {
     if (!this.canAddMore()) return null;
@@ -269,22 +269,14 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     layer.canvas.remove();
     this.layers.splice(index, 1);
     this.renumberLayers(); // reassign 0..n-1 indices + refresh z-indices
-    if (this.activeIndex >= this.layers.length) {
-      this.activeIndex = this.layers.length - 1;
-    } else if (this.activeIndex > index) {
-      this.activeIndex -= 1;
-    } else if (this.activeIndex === index) {
-      this.activeIndex = Math.max(0, index - 1);
-    }
+    this.activeIndex = shiftAfterRemoval(this.activeIndex, index, this.layers.length);
     // Same shift for the connection layer; deleting it hands the connection to
     // the layer directly under it (index - 1, clamped).
-    if (this.activeConnectionIndex >= this.layers.length) {
-      this.activeConnectionIndex = this.layers.length - 1;
-    } else if (this.activeConnectionIndex > index) {
-      this.activeConnectionIndex -= 1;
-    } else if (this.activeConnectionIndex === index) {
-      this.activeConnectionIndex = Math.max(0, index - 1);
-    }
+    this.activeConnectionIndex = shiftAfterRemoval(
+      this.activeConnectionIndex,
+      index,
+      this.layers.length,
+    );
     this.persist();
     this.emit();
     return true;
@@ -347,8 +339,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     // The continuous stroke line goes to the wet buffer while one is open (see
     // beginStroke); the connecting web targets its layer via drawConnectionToLayer,
     // so it stays on the layer and keeps its own per-line build-up.
-    const target = this.wetActive && this.wetRenderer ? this.wetRenderer : this.active.renderer;
-    target.drawLine(p1, p2, style, kind);
+    (this.wet.target ?? this.active.renderer).drawLine(p1, p2, style, kind);
   }
   drawConnection(p1: Pixel, p2: Pixel, style?: LineStyle, kind?: LineConnectType): void {
     this.active.renderer.drawLine(p1, p2, style, kind);
@@ -356,62 +347,35 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
   drawChisel(p1: Pixel, p2: Pixel, angle: number, style?: LineStyle): void {
     this.active.renderer.drawChisel(p1, p2, angle, style);
   }
-
-  strokeRect(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    style?: LineStyle,
-    angle?: number,
-  ): void {
+  strokeRect(x: number, y: number, w: number, h: number, style?: LineStyle, angle?: number): void {
     this.active.renderer.strokeRect(x, y, w, h, style, angle);
   }
   strokeCircle(x: number, y: number, radius: number, style?: LineStyle): void {
     this.active.renderer.strokeCircle(x, y, radius, style);
   }
-  fillEllipse(
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    angle: number,
-    color?: string,
-    alpha?: number,
-  ): void {
+  fillEllipse(x: number, y: number, rx: number, ry: number, angle: number, color?: string, alpha?: number): void {
     this.active.renderer.fillEllipse(x, y, rx, ry, angle, color, alpha);
   }
-  strokeEllipse(
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    angle: number,
-    style?: LineStyle,
-  ): void {
+  strokeEllipse(x: number, y: number, rx: number, ry: number, angle: number, style?: LineStyle): void {
     this.active.renderer.strokeEllipse(x, y, rx, ry, angle, style);
   }
-  fillRect(
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    color?: string,
-    angle?: number,
-    alpha?: number,
-  ): void {
+  fillRect(x: number, y: number, w: number, h: number, color?: string, angle?: number, alpha?: number): void {
     this.active.renderer.fillRect(x, y, w, h, color, angle, alpha);
   }
-  fillCircle(
-    x: number,
-    y: number,
-    radius: number,
-    color?: string,
-    alpha?: number,
-  ): void {
+  fillCircle(x: number, y: number, radius: number, color?: string, alpha?: number): void {
     this.active.renderer.fillCircle(x, y, radius, color, alpha);
   }
   clear(): void { this.active.renderer.clear(); }
+  fillBackground(color: string): void { this.active.renderer.fillBackground(color); }
+  drawSource(other: IRenderer, opacity?: number, scale?: number): void {
+    this.active.renderer.drawSource(other, opacity, scale);
+  }
+  drawBitmap(bitmap: CanvasImageSource): void {
+    this.active.renderer.drawBitmap(bitmap);
+  }
+  toBlob(type?: string): Promise<Blob | null> {
+    return this.active.renderer.toBlob(type);
+  }
 
   setLineWidth(w: number): void {
     this.rendererInit.lineWidth = w;
@@ -429,97 +393,47 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     this.rendererInit.eraseMode = on;
     for (const l of this.layers) l.renderer.setEraseMode(on);
   }
-  fillBackground(color: string): void { this.active.renderer.fillBackground(color); }
-  drawSource(other: IRenderer, opacity?: number, scale?: number): void {
-    this.active.renderer.drawSource(other, opacity, scale);
-  }
 
   // ---- wet-stroke buffer ------------------------------------------------------
 
   // Begin buffering a continuous stroke so it composites at one uniform alpha.
-  // Only engages for a partly-transparent, non-erasing stroke — opaque draws are
-  // already uniform, erasing paints straight through. Brushes that draw a single
-  // continuous line (Round) call this around the stroke (via main.ts); others and
-  // the connecting web are unaffected. Safe no-op outside that case.
+  // Brushes that draw a single continuous line (Round) call this around the
+  // stroke (via main.ts); others and the connecting web are unaffected.
   beginStroke(): void {
-    this.wetActive = false;
-    const alpha = this.rendererInit.globalAlpha ?? 1;
-    if (this.rendererInit.eraseMode || alpha <= 0 || alpha >= 1) return;
-    if (!this.wetCanvas) {
-      const c = document.createElement("canvas");
-      c.style.position = "absolute";
-      c.style.left = "0";
-      c.style.top = "0";
-      c.style.pointerEvents = "none";
-      this.container.appendChild(c);
-      this.wetCanvas = c;
-    }
-    const c = this.wetCanvas;
-    c.width = Math.round(this.size.width * this.dpr);
-    c.height = Math.round(this.size.height * this.dpr);
-    c.style.width = `${this.size.width}px`;
-    c.style.height = `${this.size.height}px`;
-    c.style.zIndex = String(this.active.config.index + 1); // sit on the active layer
-    c.style.opacity = String(alpha); // live preview at the stroke's own opacity
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    // Resizing the canvas reset its context; rebuild a renderer that mirrors the
-    // active stroke style but paints opaque (opacity is applied once on commit).
-    this.wetRenderer = new CanvasRenderer(ctx, {
-      ...this.rendererInit,
-      dpr: this.dpr,
-      globalAlpha: 1,
-      eraseMode: false,
-    });
-    this.wetAlpha = alpha;
-    this.wetActive = true;
+    this.wet.begin(this.size, this.rendererInit, this.active.config.index + 1);
   }
 
-  // Commit the buffered stroke: composite the opaque buffer onto the active layer
-  // at the stroke opacity (one pass → uniform), then clear and hide it.
   endStroke(): void {
-    if (!this.wetActive || !this.wetRenderer || !this.wetCanvas) {
-      this.wetActive = false;
-      return;
-    }
-    this.active.renderer.drawSource(this.wetRenderer, this.wetAlpha);
-    const ctx = this.wetCanvas.getContext("2d");
-    ctx?.clearRect(0, 0, this.wetCanvas.width, this.wetCanvas.height);
-    this.wetCanvas.style.opacity = "0";
-    this.wetActive = false;
-  }
-  drawBitmap(bitmap: CanvasImageSource): void {
-    this.active.renderer.drawBitmap(bitmap);
-  }
-  toBlob(type?: string): Promise<Blob | null> {
-    return this.active.renderer.toBlob(type);
+    this.wet.end(this.active.renderer);
   }
 
-  // ---- NeighborFinder (delegates to active layer) ---------------------------
+  // ---- NeighborFinder (delegates to the selected map) ------------------------
+
+  private get selectedMap(): NeighborsMap | undefined {
+    return this.neighborsMaps[this.selectedNeighborsMapIndex];
+  }
 
   addPixel(x: number, y: number): Pixel {
-    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
-    if (!nm) return { id: 0, x, y };
-    return nm.finder.addPixel(x, y);
+    return this.selectedMap?.finder.addPixel(x, y) ?? { id: 0, x, y };
   }
   findNeighbors(px: Pixel, radius: number): Pixel[] {
-    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
-    return nm?.finder.findNeighbors(px, radius) ?? [];
+    return this.selectedMap?.finder.findNeighbors(px, radius) ?? [];
   }
   allPixels(): Pixel[] {
-    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
-    return nm?.finder.allPixels() ?? [];
+    return this.selectedMap?.finder.allPixels() ?? [];
   }
   pixelCount(): number {
-    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
-    return nm?.finder.pixelCount() ?? 0;
+    return this.selectedMap?.finder.pixelCount() ?? 0;
   }
   livePixelCount(): number {
-    const nm = this.neighborsMaps[this.selectedNeighborsMapIndex];
-    return nm?.finder.livePixelCount() ?? 0;
+    return this.selectedMap?.finder.livePixelCount() ?? 0;
   }
 
   // ---- ConnectRouter (target specific layers/maps by stable id) -------------
+
+  private mapById(id: string): NeighborsMap | undefined {
+    return this.neighborsMaps.find((m) => m.config.id === id);
+  }
 
   listLayers(): { id: string; name: string }[] {
     return this.layers.map((l) => ({ id: l.config.id, name: l.config.name }));
@@ -531,16 +445,16 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     }));
   }
   addPixelToMap(mapId: string, x: number, y: number): Pixel {
-    const idx = this.neighborsMaps.findIndex((m) => m.config.id === mapId);
-    if (idx < 0) return this.addPixel(x, y); // pinned map gone -> selected
-    return this.neighborsMaps[idx].finder.addPixel(x, y);
+    const nm = this.mapById(mapId);
+    if (!nm) return this.addPixel(x, y); // pinned map gone -> selected
+    return nm.finder.addPixel(x, y);
   }
   findNeighborsInMap(mapId: string, px: Pixel, radius: number): Pixel[] {
-    const nm = this.neighborsMaps.find((m) => m.config.id === mapId);
+    const nm = this.mapById(mapId);
     return nm ? nm.finder.findNeighbors(px, radius) : this.findNeighbors(px, radius);
   }
   mapSize(mapId: string): number {
-    const nm = this.neighborsMaps.find((m) => m.config.id === mapId);
+    const nm = this.mapById(mapId);
     return nm ? nm.finder.pixelCount() : this.pixelCount();
   }
   clearPixels(): void {
@@ -558,7 +472,7 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     );
   }
   selectedMapId(): string {
-    return this.neighborsMaps[this.selectedNeighborsMapIndex]?.config.id ?? "";
+    return this.selectedMap?.config.id ?? "";
   }
   strokeWidth(): number {
     return this.rendererInit.lineWidth ?? 1;
@@ -570,8 +484,59 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     style?: LineStyle,
     kind?: LineConnectType,
   ): void {
-    const layer = this.layers.find((l) => l.config.id === layerId) ?? this.active;
+    const layer = this.layerById(layerId) ?? this.active;
     layer.renderer.drawLine(p1, p2, style, kind);
+  }
+
+  // ---- neighbors maps ---------------------------------------------------------
+
+  get allNeighborsMaps(): readonly NeighborsMap[] {
+    return this.neighborsMaps;
+  }
+
+  get selectedNeighborsMapIdx(): number {
+    return this.selectedNeighborsMapIndex;
+  }
+
+  addNeighborsMap(): NeighborsMap {
+    const cfg = defaultNeighborsMap(this.neighborsMaps.map((n) => n.config));
+    const nm = this.spawnNeighborsMap(cfg);
+    this.selectedNeighborsMapIndex = this.neighborsMaps.length - 1;
+    this.persist();
+    this.emit();
+    return nm;
+  }
+
+  removeNeighborsMap(index: number): boolean {
+    if (this.neighborsMaps.length <= 1) return false;
+    if (!this.neighborsMaps[index]) return false;
+    this.neighborsMaps.splice(index, 1);
+    this.selectedNeighborsMapIndex = shiftAfterRemoval(
+      this.selectedNeighborsMapIndex,
+      index,
+      this.neighborsMaps.length,
+    );
+    this.persist();
+    this.emit();
+    return true;
+  }
+
+  selectNeighborsMap(index: number): void {
+    if (index < 0 || index >= this.neighborsMaps.length) return;
+    if (index === this.selectedNeighborsMapIndex) return;
+    this.selectedNeighborsMapIndex = index;
+    this.persist();
+    this.emit();
+  }
+
+  setNeighborsMapName(index: number, name: string): void {
+    const nm = this.neighborsMaps[index];
+    if (!nm) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === nm.config.name) return;
+    nm.setName(trimmed);
+    this.persist();
+    this.emit();
   }
 
   // ---- snapshot for persistence --------------------------------------------
@@ -647,57 +612,6 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     return nm;
   }
 
-  get allNeighborsMaps(): readonly NeighborsMap[] {
-    return this.neighborsMaps;
-  }
-
-  get selectedNeighborsMapIdx(): number {
-    return this.selectedNeighborsMapIndex;
-  }
-
-  addNeighborsMap(): NeighborsMap {
-    const cfg = defaultNeighborsMap(this.neighborsMaps.map((n) => n.config));
-    const nm = this.spawnNeighborsMap(cfg);
-    this.selectedNeighborsMapIndex = this.neighborsMaps.length - 1;
-    this.persist();
-    this.emit();
-    return nm;
-  }
-
-  removeNeighborsMap(index: number): boolean {
-    if (this.neighborsMaps.length <= 1) return false;
-    if (!this.neighborsMaps[index]) return false;
-    this.neighborsMaps.splice(index, 1);
-    if (this.selectedNeighborsMapIndex >= this.neighborsMaps.length) {
-      this.selectedNeighborsMapIndex = this.neighborsMaps.length - 1;
-    } else if (this.selectedNeighborsMapIndex > index) {
-      this.selectedNeighborsMapIndex -= 1;
-    } else if (this.selectedNeighborsMapIndex === index) {
-      this.selectedNeighborsMapIndex = Math.max(0, index - 1);
-    }
-    this.persist();
-    this.emit();
-    return true;
-  }
-
-  selectNeighborsMap(index: number): void {
-    if (index < 0 || index >= this.neighborsMaps.length) return;
-    if (index === this.selectedNeighborsMapIndex) return;
-    this.selectedNeighborsMapIndex = index;
-    this.persist();
-    this.emit();
-  }
-
-  setNeighborsMapName(index: number, name: string): void {
-    const nm = this.neighborsMaps[index];
-    if (!nm) return;
-    const trimmed = name.trim();
-    if (!trimmed || trimmed === nm.config.name) return;
-    nm.setName(trimmed);
-    this.persist();
-    this.emit();
-  }
-
   private applyStyleTo(r: IRenderer): void {
     if (this.rendererInit.lineWidth !== undefined) r.setLineWidth(this.rendererInit.lineWidth);
     if (this.rendererInit.strokeStyle !== undefined) r.setStrokeStyle(this.rendererInit.strokeStyle);
@@ -709,6 +623,8 @@ export class LayerManager implements IRenderer, NeighborFinder, ConnectRouter {
     for (const fn of this.listeners) fn();
   }
 
+  // The live config (uncloned) used for persistence; getConfig() deep-clones it
+  // for undo snapshots.
   private snapshot(): LayersConfig {
     return {
       maxLayers: this.maxLayers,
