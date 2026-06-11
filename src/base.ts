@@ -21,46 +21,42 @@ import type { PixelLog, BrushType } from "./pixel-log";
 export { DASH_STYLES, DASH_PATTERNS, DASH_ICONS };
 export type { DashStyle };
 
+// Fields shared by every setting kind; `key` doubles as the persistence key
+// suffix (brush.<name>.<key>).
+type BrushSettingCommon = {
+  key: string;
+  label: string;
+  section?: string;
+};
+
 export type BrushSetting =
-  | {
+  | (BrushSettingCommon & {
       kind: "number";
-      key: string;
-      label: string;
-      section?: string;
       min: number;
       max: number;
       step?: number;
       value: number;
       onChange: (v: number) => void;
-    }
-  | {
+    })
+  | (BrushSettingCommon & {
       kind: "color";
-      key: string;
-      label: string;
-      section?: string;
       value: string;
       onChange: (v: string) => void;
-    }
-  | {
+    })
+  | (BrushSettingCommon & {
       kind: "select";
-      key: string;
-      label: string;
-      section?: string;
       options: readonly string[];
       // Optional friendly labels keyed by option value (e.g. layer id -> name).
       optionLabels?: Record<string, string>;
       icons?: Record<string, string>;
       value: string;
       onChange: (v: string) => void;
-    }
-  | {
+    })
+  | (BrushSettingCommon & {
       kind: "boolean";
-      key: string;
-      label: string;
-      section?: string;
       value: boolean;
       onChange: (v: boolean) => void;
-    };
+    });
 
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
@@ -319,37 +315,20 @@ export abstract class BrushBase {
     return this.rng();
   }
 
+  // Wrap every setting's onChange so the new value is also persisted under
+  // brush.<name>.<key>. The value type varies per setting kind, but the wrapper
+  // is the same for all of them: forward, then store.
   protected persistSettings(settings: BrushSetting[]): BrushSetting[] {
     if (!this.store) return settings;
     const store = this.store;
     const brushName = this.name();
     for (const s of settings) {
       const key = `brush.${brushName}.${s.key}`;
-      if (s.kind === "number") {
-        const orig = s.onChange;
-        s.onChange = (v) => {
-          orig(v);
-          store.set(key, v);
-        };
-      } else if (s.kind === "color") {
-        const orig = s.onChange;
-        s.onChange = (v) => {
-          orig(v);
-          store.set(key, v);
-        };
-      } else if (s.kind === "boolean") {
-        const orig = s.onChange;
-        s.onChange = (v) => {
-          orig(v);
-          store.set(key, v);
-        };
-      } else {
-        const orig = s.onChange;
-        s.onChange = (v) => {
-          orig(v);
-          store.set(key, v);
-        };
-      }
+      const orig = s.onChange as (v: unknown) => void;
+      s.onChange = (v: unknown) => {
+        orig(v);
+        store.set(key, v);
+      };
     }
     return settings;
   }
@@ -358,17 +337,8 @@ export abstract class BrushBase {
     if (!this.store) return;
     const brushName = this.name();
     for (const s of this.getSettings()) {
-      const key = `brush.${brushName}.${s.key}`;
-      if (s.kind === "number") {
-        const saved = this.store.get<number>(key);
-        if (saved !== undefined) s.onChange(saved);
-      } else if (s.kind === "boolean") {
-        const saved = this.store.get<boolean>(key);
-        if (saved !== undefined) s.onChange(saved);
-      } else {
-        const saved = this.store.get<string>(key);
-        if (saved !== undefined) s.onChange(saved);
-      }
+      const saved = this.store.get<unknown>(`brush.${brushName}.${s.key}`);
+      if (saved !== undefined) (s.onChange as (v: unknown) => void)(saved);
     }
   }
 }

@@ -130,6 +130,45 @@ export class CanvasRenderer implements IRenderer {
     if (init.eraseMode) this.ctx.globalCompositeOperation = "destination-out";
   }
 
+  // ---- scoped style helpers --------------------------------------------------
+
+  // Apply a per-call LineStyle on top of the context's persistent stroke state.
+  // Callers are responsible for save()/restore() around it.
+  private applyLineStyle(style?: LineStyle): void {
+    if (!style) return;
+    if (style.color !== undefined) this.ctx.strokeStyle = style.color;
+    if (style.width !== undefined) this.ctx.lineWidth = style.width;
+    if (style.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
+    if (style.cap !== undefined) this.ctx.lineCap = style.cap;
+    if (style.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
+    if (style.dashOffset !== undefined)
+      this.ctx.lineDashOffset = style.dashOffset;
+  }
+
+  // Run `draw` inside save()/restore() with the optional stroke style applied.
+  private styled(style: LineStyle | undefined, draw: () => void): void {
+    this.ctx.save();
+    this.applyLineStyle(style);
+    draw();
+    this.ctx.restore();
+  }
+
+  // Run `draw` inside save()/restore() set up for filling: the fill colour
+  // falls back to the current stroke colour so fills inherit the brush colour.
+  private filled(
+    color: string | undefined,
+    alpha: number | undefined,
+    draw: () => void,
+  ): void {
+    this.ctx.save();
+    this.ctx.fillStyle = color ?? (this.ctx.strokeStyle as string);
+    if (alpha !== undefined) this.ctx.globalAlpha = alpha;
+    draw();
+    this.ctx.restore();
+  }
+
+  // ---- persistent state --------------------------------------------------------
+
   setLineWidth(w: number): void {
     this.ctx.lineWidth = w;
   }
@@ -142,6 +181,8 @@ export class CanvasRenderer implements IRenderer {
   setEraseMode(on: boolean): void {
     this.ctx.globalCompositeOperation = on ? "destination-out" : "source-over";
   }
+
+  // ---- whole-canvas operations -------------------------------------------------
 
   fillBackground(color: string): void {
     this.ctx.save();
@@ -186,6 +227,12 @@ export class CanvasRenderer implements IRenderer {
     });
   }
 
+  clear(): void {
+    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+  }
+
+  // ---- raw path building ---------------------------------------------------------
+
   moveTo(x: number, y: number): void {
     this.ctx.moveTo(x, y);
   }
@@ -208,9 +255,7 @@ export class CanvasRenderer implements IRenderer {
     this.ctx.stroke();
   }
 
-  clear(): void {
-    this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-  }
+  // ---- stroked shapes -------------------------------------------------------------
 
   strokeRect(
     x: number,
@@ -220,58 +265,23 @@ export class CanvasRenderer implements IRenderer {
     style?: LineStyle,
     angle?: number,
   ): void {
-    this.ctx.save();
-    if (style?.color !== undefined) this.ctx.strokeStyle = style.color;
-    if (style?.width !== undefined) this.ctx.lineWidth = style.width;
-    if (style?.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
-    if (style?.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
-
-    if (angle !== undefined && angle !== 0) {
-      this.ctx.translate(x, y);
-      this.ctx.rotate(angle);
-      this.ctx.strokeRect(-w / 2, -h / 2, w, h);
-    } else {
-      this.ctx.strokeRect(x - w / 2, y - h / 2, w, h);
-    }
-
-    this.ctx.restore();
+    this.styled(style, () => {
+      if (angle) {
+        this.ctx.translate(x, y);
+        this.ctx.rotate(angle);
+        this.ctx.strokeRect(-w / 2, -h / 2, w, h);
+      } else {
+        this.ctx.strokeRect(x - w / 2, y - h / 2, w, h);
+      }
+    });
   }
 
-  strokeCircle(
-    x: number,
-    y: number,
-    radius: number,
-    style?: LineStyle,
-  ): void {
-    if (style) this.ctx.save();
-    if (style?.color !== undefined) this.ctx.strokeStyle = style.color;
-    if (style?.width !== undefined) this.ctx.lineWidth = style.width;
-    if (style?.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
-    if (style?.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
-
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-    this.ctx.stroke();
-
-    if (style) this.ctx.restore();
-  }
-
-  fillEllipse(
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    angle: number,
-    color?: string,
-    alpha?: number,
-  ): void {
-    this.ctx.save();
-    this.ctx.fillStyle = color ?? (this.ctx.strokeStyle as string);
-    if (alpha !== undefined) this.ctx.globalAlpha = alpha;
-    this.ctx.beginPath();
-    this.ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.restore();
+  strokeCircle(x: number, y: number, radius: number, style?: LineStyle): void {
+    this.styled(style, () => {
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+    });
   }
 
   strokeEllipse(
@@ -282,15 +292,29 @@ export class CanvasRenderer implements IRenderer {
     angle: number,
     style?: LineStyle,
   ): void {
-    this.ctx.save();
-    if (style?.color !== undefined) this.ctx.strokeStyle = style.color;
-    if (style?.width !== undefined) this.ctx.lineWidth = style.width;
-    if (style?.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
-    if (style?.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
-    this.ctx.beginPath();
-    this.ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
-    this.ctx.stroke();
-    this.ctx.restore();
+    this.styled(style, () => {
+      this.ctx.beginPath();
+      this.ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+      this.ctx.stroke();
+    });
+  }
+
+  // ---- filled shapes ---------------------------------------------------------------
+
+  fillEllipse(
+    x: number,
+    y: number,
+    rx: number,
+    ry: number,
+    angle: number,
+    color?: string,
+    alpha?: number,
+  ): void {
+    this.filled(color, alpha, () => {
+      this.ctx.beginPath();
+      this.ctx.ellipse(x, y, rx, ry, angle, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
   }
 
   fillRect(
@@ -302,17 +326,15 @@ export class CanvasRenderer implements IRenderer {
     angle?: number,
     alpha?: number,
   ): void {
-    this.ctx.save();
-    this.ctx.fillStyle = color ?? (this.ctx.strokeStyle as string);
-    if (alpha !== undefined) this.ctx.globalAlpha = alpha;
-    if (angle !== undefined && angle !== 0) {
-      this.ctx.translate(x, y);
-      this.ctx.rotate(angle);
-      this.ctx.fillRect(-w / 2, -h / 2, w, h);
-    } else {
-      this.ctx.fillRect(x - w / 2, y - h / 2, w, h);
-    }
-    this.ctx.restore();
+    this.filled(color, alpha, () => {
+      if (angle) {
+        this.ctx.translate(x, y);
+        this.ctx.rotate(angle);
+        this.ctx.fillRect(-w / 2, -h / 2, w, h);
+      } else {
+        this.ctx.fillRect(x - w / 2, y - h / 2, w, h);
+      }
+    });
   }
 
   fillCircle(
@@ -322,14 +344,14 @@ export class CanvasRenderer implements IRenderer {
     color?: string,
     alpha?: number,
   ): void {
-    this.ctx.save();
-    this.ctx.fillStyle = color ?? (this.ctx.strokeStyle as string);
-    if (alpha !== undefined) this.ctx.globalAlpha = alpha;
-    this.ctx.beginPath();
-    this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.restore();
+    this.filled(color, alpha, () => {
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
   }
+
+  // ---- lines -----------------------------------------------------------------------
 
   drawLine(
     p1: Pixel,
@@ -337,19 +359,16 @@ export class CanvasRenderer implements IRenderer {
     style?: LineStyle,
     kind: LineConnectType = "line",
   ): void {
-    if (style) this.ctx.save();
-    if (style?.color !== undefined) this.ctx.strokeStyle = style.color;
-    if (style?.width !== undefined) this.ctx.lineWidth = style.width;
-    if (style?.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
-    if (style?.cap !== undefined) this.ctx.lineCap = style.cap;
-    if (style?.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
-    if (style?.dashOffset !== undefined) this.ctx.lineDashOffset = style.dashOffset;
-
+    // Hot path (one call per stroke segment): skip save/restore when there's
+    // no per-call style to apply.
+    if (style) {
+      this.ctx.save();
+      this.applyLineStyle(style);
+    }
     this.ctx.beginPath();
     this.ctx.moveTo(p1.x, p1.y);
     this.tracePath(p1, p2, kind, style?.curve);
     this.ctx.stroke();
-
     if (style) this.ctx.restore();
   }
 
@@ -362,27 +381,21 @@ export class CanvasRenderer implements IRenderer {
     this.drawLine(p1, p2, style, kind);
   }
 
-  drawChisel(
-    p1: Pixel,
-    p2: Pixel,
-    angle: number,
-    style?: LineStyle,
-  ): void {
-    this.ctx.save();
-    if (style?.alpha !== undefined) this.ctx.globalAlpha = style.alpha;
-    const color = style?.color ?? (this.ctx.strokeStyle as string);
+  // A flat-ended stroke of constant width, drawn as a filled quad — the canvas
+  // line API can't vary cap angle, so the chisel builds its own outline.
+  drawChisel(p1: Pixel, p2: Pixel, angle: number, style?: LineStyle): void {
     const width = style?.width ?? this.ctx.lineWidth;
     const dx = (Math.cos(angle) * width) / 2;
     const dy = (Math.sin(angle) * width) / 2;
-    this.ctx.fillStyle = color;
-    this.ctx.beginPath();
-    this.ctx.moveTo(p1.x + dx, p1.y + dy);
-    this.ctx.lineTo(p2.x + dx, p2.y + dy);
-    this.ctx.lineTo(p2.x - dx, p2.y - dy);
-    this.ctx.lineTo(p1.x - dx, p1.y - dy);
-    this.ctx.closePath();
-    this.ctx.fill();
-    this.ctx.restore();
+    this.filled(style?.color, style?.alpha, () => {
+      this.ctx.beginPath();
+      this.ctx.moveTo(p1.x + dx, p1.y + dy);
+      this.ctx.lineTo(p2.x + dx, p2.y + dy);
+      this.ctx.lineTo(p2.x - dx, p2.y - dy);
+      this.ctx.lineTo(p1.x - dx, p1.y - dy);
+      this.ctx.closePath();
+      this.ctx.fill();
+    });
   }
 
   private tracePath(
