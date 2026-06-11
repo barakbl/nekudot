@@ -8,11 +8,7 @@ import { SymmetryController } from "./symmetry/controller";
 import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
 import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
-import {
-  bindShortcuts,
-  createShortcutsPanel,
-  type Shortcut,
-} from "./shortcuts";
+import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel } from "./settings-panel";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
 import { DEFAULT_ART_STYLE } from "./brushes/round";
@@ -28,7 +24,7 @@ import { exportArt, shareArt } from "./export";
 import { saveArtwork } from "./save-artwork";
 import { pixelLog } from "./pixel-log";
 import type { UndoSnapshot } from "./undo";
-import { attachHelp, toggleHelpMode } from "./help";
+import { attachHelp } from "./help";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./window-stack";
 import {
@@ -43,6 +39,7 @@ import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
 import { createPresetsController } from "./app/presets";
+import { buildAppShortcuts } from "./app/app-shortcuts";
 
 const store = new LocalStorageStore();
 
@@ -708,12 +705,10 @@ void presets.restore().then((loaded) => {
 
 // ---- panels visibility + shortcuts --------------------------------------------------
 
-let savedPanelState: boolean[] | null = null;
-
-// Shared by the `h` key and the 4-finger swipe-up gesture. Hides every panel
-// (remembering which were open) or restores them; flashes a hint when hiding.
-const toggleAllPanels = (source: "key" | "touch") => {
-  const panels = [
+const shortcuts = buildAppShortcuts({
+  // Lazy: the Shortcuts panel below is itself built from this table. The list
+  // leads with the navbar — the default restore state shows only it.
+  panels: () => [
     menu.el,
     brushSettings.el,
     connectingSettings.el,
@@ -721,127 +716,18 @@ const toggleAllPanels = (source: "key" | "touch") => {
     symmetryBox.el,
     mapsBox.el,
     shortcutsPanel.el,
-  ];
-  const isVisible = (el: HTMLElement) => el.style.display !== "none";
-  if (panels.some(isVisible)) {
-    savedPanelState = panels.map(isVisible);
-    for (const el of panels) el.style.display = "none";
-    showChip(
-      source === "touch"
-        ? "Menus hidden · 4-finger swipe up to show"
-        : "Menus hidden · press H to show",
-    );
-  } else {
-    const restore = savedPanelState ?? [true, false, false, false, false, false, false];
-    panels.forEach((el, i) => {
-      el.style.display = restore[i] ? "" : "none";
-    });
-    savedPanelState = null;
-  }
-};
-
-const shortcuts: Shortcut[] = [
-  {
-    key: "h",
-    group: "Panels",
-    description: "Hide/show all panels",
-    onPress: () => toggleAllPanels("key"),
-  },
-  {
-    key: "m",
-    group: "Panels",
-    description: "Show the maps box",
-    onPress: () => showMaps(),
-  },
-  {
-    key: "l",
-    group: "Panels",
-    description: "Show layers",
-    onPress: () => showLayers(),
-  },
-  {
-    key: "y",
-    group: "Panels",
-    description: "Show symmetry",
-    onPress: () => showSymmetry(),
-  },
-  {
-    key: "b",
-    group: "Panels",
-    description: "Show brush settings",
-    onPress: () => showSettings(),
-  },
-  {
-    key: "c",
-    group: "Panels",
-    description: "Show connecting settings",
-    onPress: () => showConnecting(),
-  },
-  {
-    key: "s",
-    group: "Panels",
-    description: "Toggle more menu",
-    onPress: () => menu.toggleCanvasMenu(),
-  },
-  {
-    key: "/",
-    group: "Help",
-    description: "Show shortcuts",
-    onPress: () => showShortcuts(),
-  },
-  {
-    key: "?",
-    group: "Help",
-    description: "Toggle help hints",
-    onPress: () => toggleHelpMode(),
-  },
-  // Brush hotkeys, generated from the registry (e.g. shortcut "1" → Digit1).
-  ...BRUSH_DEFS.filter((d) => d.shortcut).map((d) => ({
-    code: `Digit${d.shortcut}`,
-    shift: false,
-    label: d.shortcut as string,
-    group: "Brushes",
-    description: `${d.name} brush`,
-    onPress: () => selectBrush(d.name),
-  })),
-  {
-    key: "z",
-    cmdOrCtrl: true,
-    shift: false,
-    label: "Z",
-    group: "Edit",
-    description: "Undo",
-    onPress: () => doUndo(),
-  },
-  {
-    key: "z",
-    cmdOrCtrl: true,
-    shift: true,
-    label: "Z",
-    group: "Edit",
-    description: "Redo",
-    onPress: () => doRedo(),
-  },
-  {
-    fingers: 2,
-    group: "Edit",
-    description: "Undo",
-    onPress: () => doUndo(),
-  },
-  {
-    fingers: 3,
-    group: "Edit",
-    description: "Redo",
-    onPress: () => doRedo(),
-  },
-  {
-    fingers: 4,
-    swipe: "up",
-    group: "Panels",
-    description: "Hide/show all panels",
-    onPress: () => toggleAllPanels("touch"),
-  },
-];
+  ],
+  showMaps,
+  showLayers,
+  showSymmetry,
+  showSettings,
+  showConnecting,
+  toggleCanvasMenu: () => menu.toggleCanvasMenu(),
+  showShortcuts: () => showShortcuts(),
+  selectBrush,
+  undo: doUndo,
+  redo: doRedo,
+});
 const shortcutsPanel = createShortcutsPanel(shortcuts);
 document.body.appendChild(shortcutsPanel.el);
 registerWindow(shortcutsPanel.el);
