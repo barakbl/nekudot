@@ -109,7 +109,7 @@ export function createSizePicker(opts: SizePickerOptions): {
     const uploadBtn = document.createElement("button");
     uploadBtn.type = "button";
     uploadBtn.className = "canvas-action";
-    uploadBtn.textContent = "Upload artwork…";
+    uploadBtn.textContent = "Load artwork…";
     uploadBtn.addEventListener("click", () => {
       close();
       opts.onUpload?.();

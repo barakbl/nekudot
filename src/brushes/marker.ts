@@ -5,10 +5,10 @@ import type { BrushContext } from "./registry";
 const CHISEL_ANGLE = -Math.PI / 4;
 
 export const icon =
-  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
-  '<path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z" fill="#ffd83b" stroke="#8a6500" stroke-width="1.4" stroke-linejoin="round"/>' +
-  '<path d="M13 6 L18 11" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/>' +
-  '<path d="M4 13 L10 19" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/>' +
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z"/>' +
+  '<path d="M13 6 L18 11"/>' +
+  '<path d="M4 13 L10 19"/>' +
   "</svg>";
 
 export function create(c: BrushContext): MarkerBrush {
