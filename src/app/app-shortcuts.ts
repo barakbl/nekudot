@@ -93,7 +93,7 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
     {
       key: "/",
       group: "Help",
-      description: "Show shortcuts",
+      description: "Show/hide shortcuts",
       onPress: () => actions.showShortcuts(),
     },
     {

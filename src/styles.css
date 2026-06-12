@@ -659,9 +659,9 @@ body {
   position: fixed;
   top: 64px;
   left: 96px;
-  width: 440px;
+  width: 380px;
   max-width: calc(100vw - 32px);
-  max-height: 80vh;
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
   padding: 12px 14px;
@@ -673,7 +673,22 @@ body {
   z-index: 20;
 }
 .shortcuts-body {
-  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-stronger) transparent;
+}
+.shortcuts-body::-webkit-scrollbar {
+  width: 8px;
+}
+.shortcuts-body::-webkit-scrollbar-thumb {
+  background: var(--border-stronger);
+  border-radius: 4px;
+}
+.shortcuts-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 .shortcuts-panel h3 {
   margin: 0;
@@ -683,20 +698,15 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.shortcuts-hint {
-  margin: 0 0 12px;
-  font-size: 10px;
-  color: var(--text-faint);
-}
 .shortcuts-group {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .shortcuts-group:last-child {
-  margin-bottom: 0;
+  margin-bottom: 4px;
 }
 .shortcuts-group-title {
-  margin: 0 0 6px;
-  padding-bottom: 4px;
+  margin: 0 0 4px;
+  padding: 0 8px 5px;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 10px;
   font-weight: 600;
@@ -706,62 +716,90 @@ body {
 }
 .shortcuts-table {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  row-gap: 2px;
-  column-gap: 12px;
+  grid-template-columns: 1fr auto;
+  row-gap: 1px;
 }
 .shortcuts-row {
   display: contents;
   cursor: pointer;
 }
+/* The two cells of a row read as one continuous bar: no column gap, shared
+   hover background, radius split across the outer corners. */
 .shortcuts-row > .shortcuts-desc,
-.shortcuts-row > .shortcuts-keys,
-.shortcuts-row > .shortcuts-touch {
-  padding: 5px 8px;
-  border-radius: 5px;
+.shortcuts-row > .shortcuts-bind {
   display: flex;
   align-items: center;
-  gap: 4px;
+  min-height: 30px;
+  box-sizing: border-box;
+  padding: 3px 8px;
 }
 .shortcuts-row > .shortcuts-desc {
   color: var(--text-body);
   font-weight: 500;
+  border-radius: 7px 0 0 7px;
 }
-.shortcuts-row > .shortcuts-keys,
-.shortcuts-row > .shortcuts-touch {
+.shortcuts-row > .shortcuts-bind {
   justify-content: flex-end;
+  gap: 6px;
   white-space: nowrap;
+  border-radius: 0 7px 7px 0;
 }
 .shortcuts-row:hover > .shortcuts-desc,
-.shortcuts-row:hover > .shortcuts-keys,
-.shortcuts-row:hover > .shortcuts-touch {
+.shortcuts-row:hover > .shortcuts-bind {
   background: var(--hover-bg-strong);
 }
 .shortcuts-row:focus {
   outline: none;
 }
 .shortcuts-row:focus > .shortcuts-desc,
-.shortcuts-row:focus > .shortcuts-keys,
-.shortcuts-row:focus > .shortcuts-touch {
+.shortcuts-row:focus > .shortcuts-bind {
   background: var(--hover-bg-strong);
-  box-shadow: inset 0 0 0 1px var(--accent);
 }
-.shortcuts-card kbd {
-  min-width: 22px;
-  padding: 1px 6px;
+.shortcuts-row:focus > .shortcuts-desc {
+  box-shadow: inset 1px 1px 0 var(--accent), inset 0 -1px 0 var(--accent);
+}
+.shortcuts-row:focus > .shortcuts-bind {
+  box-shadow: inset -1px 1px 0 var(--accent), inset 0 -1px 0 var(--accent);
+}
+.key-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.shortcuts-panel kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  box-sizing: border-box;
   background: var(--pill-bg);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-stronger);
+  border-bottom-width: 2px; /* key-cap depth */
   border-radius: 5px;
-  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-align: center;
+  font: 600 11px ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text-primary);
 }
-.shortcuts-card kbd.kbd-gesture {
-  font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+.kbd-gesture {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  padding: 0 9px;
+  border: 1px dashed var(--border-stronger);
+  border-radius: 999px;
+  font-size: 10px;
   font-weight: 500;
-  background: transparent;
-  border-color: var(--border-subtle);
   color: var(--text-muted);
+}
+.shortcuts-footnote {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 10px;
+  color: var(--text-faint);
+  text-align: center;
 }
 
 .settings-panel {

@@ -732,7 +732,11 @@ const shortcuts = buildAppShortcuts({
 const shortcutsPanel = createShortcutsPanel(shortcuts);
 document.body.appendChild(shortcutsPanel.el);
 registerWindow(shortcutsPanel.el);
-showShortcuts = () => showWindow(shortcutsPanel.el);
+// "/" (and the Windows menu) toggles: open when hidden, dismiss when shown.
+showShortcuts = () => {
+  if (shortcutsPanel.el.style.display === "none") showWindow(shortcutsPanel.el);
+  else shortcutsPanel.el.style.display = "none";
+};
 bindShortcuts(shortcuts);
 
 // ---- help hints (press ? to toggle visibility) ---------------------------------------

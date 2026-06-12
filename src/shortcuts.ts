@@ -147,16 +147,19 @@ function fingerLabel(s: Shortcut): string {
   return `${s.fingers}-finger ${s.swipe === "up" ? "swipe up" : "tap"}`;
 }
 
-function shortcutLabel(s: Shortcut): string {
-  if (s.fingers !== undefined) {
-    return fingerLabel(s);
-  }
+// One key cap per part, in each platform's modifier order: ⇧⌘Z on mac
+// (Apple HIG: shift before command), Ctrl Shift Z elsewhere.
+function shortcutParts(s: Shortcut): string[] {
   const parts: string[] = [];
-  if (s.cmdOrCtrl) parts.push(IS_MAC ? "⌘" : "Ctrl");
-  if (s.shift) parts.push(IS_MAC ? "⇧" : "Shift");
-  const main = s.label ?? s.key?.toUpperCase() ?? s.code ?? "";
-  parts.push(main);
-  return IS_MAC ? parts.join("") : parts.join("+");
+  if (IS_MAC) {
+    if (s.shift) parts.push("⇧");
+    if (s.cmdOrCtrl) parts.push("⌘");
+  } else {
+    if (s.cmdOrCtrl) parts.push("Ctrl");
+    if (s.shift) parts.push("Shift");
+  }
+  parts.push(s.label ?? s.key?.toUpperCase() ?? s.code ?? "");
+  return parts;
 }
 
 // Stable group order — groups not listed here appear after, in insertion order.
@@ -165,7 +168,7 @@ const GROUP_ORDER = ["Brushes", "Panels", "Edit", "Help", "Other"];
 type GroupedShortcut = {
   description: string;
   group: string;
-  keyboardLabels: string[];
+  keyboardCombos: string[][]; // one entry per binding, one cap per part
   touchLabels: string[];
   onPress: () => void;
 };
@@ -184,7 +187,7 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
       entry = {
         description: s.description,
         group,
-        keyboardLabels: [],
+        keyboardCombos: [],
         touchLabels: [],
         onPress: s.onPress,
       };
@@ -194,7 +197,7 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
     if (s.fingers !== undefined) {
       entry.touchLabels.push(fingerLabel(s));
     } else {
-      entry.keyboardLabels.push(shortcutLabel(s));
+      entry.keyboardCombos.push(shortcutParts(s));
     }
   }
 
@@ -217,12 +220,11 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
   return ordered;
 }
 
-// A draggable, persistent Shortcuts window (toggled from the Windows menu / "/").
-// It only closes via its × button — not on outside-click or Escape — and
-// running a row's action leaves it open.
+// A draggable, persistent Shortcuts window (toggled from the Windows menu /
+// "/"). It closes via its × button or the "/" toggle — not on outside-click
+// or Escape — and running a row's action leaves it open.
 export function createShortcutsPanel(shortcuts: Shortcut[]): {
   el: HTMLElement;
-  toggle: () => void;
 } {
   const panel = document.createElement("div");
   panel.className = "shortcuts-panel";
@@ -244,11 +246,6 @@ export function createShortcutsPanel(shortcuts: Shortcut[]): {
   const card = document.createElement("div");
   card.className = "shortcuts-body";
   panel.appendChild(card);
-
-  const hint = document.createElement("p");
-  hint.className = "shortcuts-hint";
-  hint.textContent = "Click a row to run it · drag the title to move · × to close.";
-  card.appendChild(hint);
 
   for (const [groupName, items] of groupShortcuts(shortcuts)) {
     const section = document.createElement("section");
@@ -282,24 +279,27 @@ export function createShortcutsPanel(shortcuts: Shortcut[]): {
       descCell.textContent = item.description;
       row.appendChild(descCell);
 
-      const kbdCell = document.createElement("div");
-      kbdCell.className = "shortcuts-keys";
-      for (const k of item.keyboardLabels) {
-        const kbd = document.createElement("kbd");
-        kbd.textContent = k;
-        kbdCell.appendChild(kbd);
+      // All bindings in one right-aligned cell: key combos as individual
+      // caps, gestures as soft badges.
+      const bindCell = document.createElement("div");
+      bindCell.className = "shortcuts-bind";
+      for (const combo of item.keyboardCombos) {
+        const comboEl = document.createElement("span");
+        comboEl.className = "key-combo";
+        for (const part of combo) {
+          const kbd = document.createElement("kbd");
+          kbd.textContent = part;
+          comboEl.appendChild(kbd);
+        }
+        bindCell.appendChild(comboEl);
       }
-      row.appendChild(kbdCell);
-
-      const touchCell = document.createElement("div");
-      touchCell.className = "shortcuts-touch";
       for (const t of item.touchLabels) {
-        const kbd = document.createElement("kbd");
-        kbd.className = "kbd-gesture";
-        kbd.textContent = t;
-        touchCell.appendChild(kbd);
+        const gesture = document.createElement("span");
+        gesture.className = "kbd-gesture";
+        gesture.textContent = t;
+        bindCell.appendChild(gesture);
       }
-      row.appendChild(touchCell);
+      row.appendChild(bindCell);
 
       table.appendChild(row);
     }
@@ -307,9 +307,11 @@ export function createShortcutsPanel(shortcuts: Shortcut[]): {
     card.appendChild(section);
   }
 
-  const toggle = () => {
-    panel.style.display = panel.style.display === "none" ? "" : "none";
-  };
+  // Pinned under the scrolling list, so it's always visible.
+  const foot = document.createElement("p");
+  foot.className = "shortcuts-footnote";
+  foot.textContent = "Click a row to run its action";
+  panel.appendChild(foot);
 
-  return { el: panel, toggle };
+  return { el: panel };
 }
