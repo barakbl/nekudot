@@ -340,8 +340,7 @@ layerManager.subscribe(() => {
 // ---- undo + paint persistence ---------------------------------------------------
 
 const history = new AppHistory(layerManager, MAX_UNDO);
-const undoManager = history.undoManager;
-const pushUndo = (description: string) => history.push(description);
+const pushUndo = (description: string) => void history.push(description);
 const persistPaint = () => history.persistPaint();
 
 const activeLayerName = (): string =>
@@ -355,17 +354,17 @@ const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   persistPaint();
 };
 
+// Undo/redo go through the history queue (behind any in-flight stroke pushes,
+// serialized with each other); the chip shows once the restore completed.
 const doUndo = () => {
-  const result = undoManager.undo();
-  if (!result) return;
-  applyUndoSnapshot(result.snap);
-  if (result.action) showChip(`Undo: ${result.action}`);
+  void history.undo(applyUndoSnapshot).then((action) => {
+    if (action) showChip(`Undo: ${action}`);
+  });
 };
 const doRedo = () => {
-  const result = undoManager.redo();
-  if (!result) return;
-  applyUndoSnapshot(result.snap);
-  if (result.action) showChip(`Redo: ${result.action}`);
+  void history.redo(applyUndoSnapshot).then((action) => {
+    if (action) showChip(`Redo: ${action}`);
+  });
 };
 
 // ---- boxes: layers / symmetry / maps ----------------------------------------------
@@ -402,19 +401,16 @@ const showMaps = () => {
   mapsBox.render(); // fresh dot counts each time it opens
 };
 
-// Async-restore paint state + undo stack from IDB on startup.
-(async () => {
-  const paintSnap = await history.loadPaint();
+// Async-restore paint state + undo stack from IDB on startup. Called here
+// (during module evaluation) so it's first in the history queue — a stroke
+// finished while the load is still running queues behind it.
+void history.init(async (paintSnap) => {
   if (paintSnap) {
     await layerManager.applyPaintData(paintSnap);
     layersBox.refreshPreviews();
   }
   await pixelLog.init();
-  await undoManager.init();
-  if (undoManager.isEmpty()) {
-    pushUndo("Initial state");
-  }
-})();
+});
 
 // ---- new art / delete canvas / load artwork ------------------------------------
 
@@ -463,7 +459,7 @@ loadFileInput.addEventListener("change", async () => {
   renderActiveBrush();
   store.set(CANVAS_SIZE_KEY, size);
   persistPaint();
-  undoManager.clear();
+  void history.clear();
   pushUndo("Load artwork");
   showChip("Artwork loaded");
 });
@@ -494,7 +490,7 @@ const sizePicker = createSizePicker({
         resetArtState();
         store.set(CANVAS_SIZE_KEY, size);
         persistPaint();
-        undoManager.clear();
+        void history.clear();
         pushUndo("New art");
       },
     });
@@ -647,8 +643,8 @@ const menu = createMenu(
   {
     onUndo: () => doUndo(),
     onRedo: () => doRedo(),
-    canUndo: () => undoManager.canUndo(),
-    canRedo: () => undoManager.canRedo(),
+    canUndo: () => history.canUndo(),
+    canRedo: () => history.canRedo(),
   },
   [
     { label: "Brushes", shortcut: "b", open: showSettings },
@@ -678,7 +674,7 @@ const menu = createMenu(
     subscribe: (fn) => layerManager.subscribe(fn),
   },
 );
-undoManager.subscribe(() => menu.refreshHistoryState());
+history.subscribe(() => menu.refreshHistoryState());
 document.body.appendChild(menu.el);
 
 // Ensure the only connecting brush starts on the persisted art style, then draw

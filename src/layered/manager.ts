@@ -542,16 +542,22 @@ export class LayerManager implements PaintHost {
   // ---- snapshot for persistence --------------------------------------------
 
   async getPaintData(): Promise<PaintSnapshot> {
-    const layers = await Promise.all(
-      this.layers.map(async (layer) => ({
-        layerIndex: layer.config.index,
-        blob: await layer.renderer.toBlob("image/png"),
-      })),
-    );
+    // Sample everything before the first await so the snapshot is
+    // point-in-time: the map points and layer indices here, and the layer
+    // bitmaps via toBlob (which copies the bitmap at invocation — only the
+    // encoding is async). Strokes landing while blobs encode can't bleed in.
     const neighborsMaps = this.neighborsMaps.map((nm, i) => ({
       index: i,
       pixels: nm.finder.allPixels().map((p) => ({ x: p.x, y: p.y })),
     }));
+    const layers = await Promise.all(
+      this.layers.map((layer) => {
+        const layerIndex = layer.config.index;
+        return layer.renderer
+          .toBlob("image/png")
+          .then((blob) => ({ layerIndex, blob }));
+      }),
+    );
     return {
       version: 2,
       layers,
