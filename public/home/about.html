@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>About - Nekudot</title>
+    <meta
+      name="description"
+      content="The story behind Nekudot: why a drawing tool should remember, the maker, and the work that inspired it."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,400..600,0..100,0..1;1,9..144,400..600,0..100,0..1&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/home/home.css" />
+  </head>
+  <body>
+    <nav class="nav">
+      <a class="brand" href="/home/">Neku<span class="dot">dot</span></a>
+      <span class="nav-links">
+        <a href="/home/about.html" class="current">About</a>
+        <a href="/home/license.html">License</a>
+        <a href="/book/">Book</a>
+      </span>
+      <span class="spacer"></span>
+      <a class="cta" href="/">Open the canvas →</a>
+    </nav>
+
+    <main>
+      <p class="section-label reveal d1">About</p>
+      <h1
+        class="reveal d2"
+        style="font-family: var(--display); font-weight: 500; font-size: clamp(34px, 6vw, 60px); line-height: 1.05; letter-spacing: -0.025em; color: var(--paper); margin: 0 0 28px; font-variation-settings: 'SOFT' 50, 'WONK' 1, 'opsz' 90;"
+      >
+        Why a drawing tool<br />should <em>remember</em>.
+      </h1>
+
+      <div class="prose">
+        <p class="lede-line reveal d3">
+          Most software treats a drawing as a pile of pixels. Nekudot treats it
+          as a <em>place</em> - one your marks keep returning to.
+        </p>
+
+        <p>
+          The name is the Hebrew word <span lang="he" style="color: var(--gold-soft)">נקודות</span>
+          - <em>nekudot</em>, "points." That's the whole premise. A drawing isn't
+          only the strokes you can see; it's also the constellation of points
+          underneath them. Give a tool a memory of those points, and something
+          quietly magical happens: new marks reach back toward old ones, threads
+          bloom across the gaps, and a loose scribble turns into a web with a
+          life of its own.
+        </p>
+
+        <p>
+          Nekudot was built around that single idea and then kept deliberately
+          calm. There's no account to make, no canvas size you have to commit to,
+          no cloud quietly storing your work. You open it, and there's a page and
+          a patient brush. Everything else - the connection styles, the symmetry,
+          the layers - is just a way of shaping how the bloom falls.
+        </p>
+
+        <h2 style="margin-top: clamp(40px, 7vw, 72px)">A lineage, not an invention</h2>
+        <p>
+          The connecting-line idea isn't new, and Nekudot is happy to say so. It
+          stands on the shoulders of
+          <a href="https://mrdoob.github.io/harmony/" target="_blank" rel="noopener">mrdoob's Harmony</a>,
+          the sketch tool that made those gossamer, spider-web strokes famous a
+          generation of browsers ago. Nekudot takes that spark and asks what else
+          it could be: what if the memory were <em>shared</em> across the whole
+          canvas, reusable, layerable - something you could compose with, not just
+          stumble into.
+        </p>
+
+        <div class="quote" style="margin: 40px auto; padding: 0;">
+          <blockquote style="font-size: clamp(22px, 3.4vw, 32px);">
+            Tools shape the marks we're willing to make.
+            <span class="hl">A tool that remembers</span> invites a different kind
+            of drawing.
+          </blockquote>
+        </div>
+
+        <h2>Who made it</h2>
+        <p>
+          Nekudot is a personal, open-source project by <strong>Barak Bloch</strong>
+          - made in the open, for the love of the medium, and released as free
+          software so anyone can use it, study it, and build on it. It isn't a
+          startup or a product with a roadmap to sell you; it's a small, careful
+          thing put on the web because drawing should be playful and the good
+          ideas should stay free.
+        </p>
+        <p class="muted">
+          If it sparks something for you - a bug, an idea, a brush you wish
+          existed - the workshop door is open on
+          <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+
+        <dl class="meta-grid">
+          <div>
+            <dt>Made by</dt>
+            <dd>Barak Bloch</dd>
+          </div>
+          <div>
+            <dt>Inspired by</dt>
+            <dd><a href="https://mrdoob.github.io/harmony/" target="_blank" rel="noopener">mrdoob's Harmony</a></dd>
+          </div>
+          <div>
+            <dt>Runs</dt>
+            <dd>Entirely in your browser</dd>
+          </div>
+          <div>
+            <dt>License</dt>
+            <dd><a href="/home/license.html">GPL v2 · free software</a></dd>
+          </div>
+        </dl>
+
+        <p class="signature">- with care, for anyone who likes to make a mark.</p>
+      </div>
+    </main>
+
+    <section class="closer">
+      <h2>Enough talk. Make something.</h2>
+      <p class="lead">The fastest way to understand Nekudot is to scribble in it.</p>
+      <a class="cta" href="/">Open the canvas →</a>
+    </section>
+
+    <footer>
+      <a class="brand" href="/home/">Neku<span class="dot">dot</span></a>
+      <span class="dot-row" aria-hidden="true"><i class="on"></i><i></i><i class="on"></i><i></i></span>
+      <span class="spacer"></span>
+      <a href="/home/">Home</a>
+      <a href="/home/license.html">License · GPL v2</a>
+      <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a>
+    </footer>
+  </body>
+</html>
