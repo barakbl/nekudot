@@ -312,7 +312,8 @@ body {
   border-radius: 5px;
   cursor: pointer;
 }
-/* Mode buttons stack a glyph over the label; axis buttons stay text-only. */
+/* Mode buttons stack a glyph over the label; the Mirror axis buttons sit the
+   glyph beside the label (two wide buttons, not four). */
 .sym-mode-btn {
   display: flex;
   flex-direction: column;
@@ -324,6 +325,17 @@ body {
 .sym-mode-btn svg {
   width: 16px;
   height: 16px;
+}
+.sym-axis-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.sym-axis-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 .sym-seg-btn:hover {
   color: var(--text-primary);

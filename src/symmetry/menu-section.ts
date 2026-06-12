@@ -13,6 +13,15 @@ const ICON: Record<SymmetryMode, string> = {
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2.4" y="2.4" width="4.6" height="4.6" rx="0.8"/><rect x="9" y="2.4" width="4.6" height="4.6" rx="0.8"/><rect x="2.4" y="9" width="4.6" height="4.6" rx="0.8"/><rect x="9" y="9" width="4.6" height="4.6" rx="0.8"/></svg>',
 };
 
+// Mirror-axis glyphs: the dashed reflection line with arrows mirroring across
+// it. A vertical line flips left/right — the Mirror mode glyph already draws
+// exactly that, so reuse it; horizontal is the same picture rotated 90°.
+const AXIS_ICON: Record<"vertical" | "horizontal", string> = {
+  vertical: ICON.mirror,
+  horizontal:
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="8" x2="14" y2="8" stroke-dasharray="2 2"/><path d="M5 6 L8 3 L11 6 Z"/><path d="M5 10 L8 13 L11 10 Z"/></svg>',
+};
+
 // The Symmetry controls: a None / Tile / Radial / Mirror segmented control plus the
 // params for the chosen mode. Reads/writes the controller and rebuilds the
 // params when the mode changes. Hosted in the Symmetry box (its own panel).
@@ -162,8 +171,9 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
       for (const ax of axes) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "sym-seg-btn" + (c.mirror.axis === ax.id ? " active" : "");
-        btn.textContent = ax.label;
+        btn.className =
+          "sym-seg-btn sym-axis-btn" + (c.mirror.axis === ax.id ? " active" : "");
+        btn.innerHTML = AXIS_ICON[ax.id] + `<span class="sym-seg-lbl">${ax.label}</span>`;
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           c.setMirror({ axis: ax.id });
