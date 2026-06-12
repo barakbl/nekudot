@@ -3,6 +3,7 @@ import type { Pixel } from "../neighbor-finder";
 import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
 import { hasConnection } from "./connections/registry";
+import { DEFAULT_ART_STYLE } from "./round";
 import type { BrushContext } from "./registry";
 
 // Menu glyph for the toolbar — the classic eraser block.
@@ -31,7 +32,7 @@ export class EraserBrush extends BrushBase {
     super(host, seed, store);
     // Attach a connection so the Connecting combo/box engage like Round, but
     // start with "no connect" routing so the eraser only wipes its own line.
-    this.initConnection("classic");
+    this.initConnection(DEFAULT_ART_STYLE);
     this.applyRoutingPreset("no_connect");
   }
 
@@ -60,10 +61,10 @@ export class EraserBrush extends BrushBase {
 
   // Match the navbar Connecting combo so a chosen art style applies to the
   // erased web too; routing (the "no connect" default) is preserved across the
-  // swap. Falls back to "classic" until a custom preset finishes loading.
+  // swap. Falls back to the default style until a custom preset finishes loading.
   onSelect(): void {
-    const name = this.store?.get<string>("app.artStyle") ?? "classic";
-    this.applyArtStylePreset(hasConnection(name) ? name : "classic");
+    const name = this.store?.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
+    this.applyArtStylePreset(hasConnection(name) ? name : DEFAULT_ART_STYLE);
   }
 
   // Erase at full strength regardless of the connection style's stroke alpha.

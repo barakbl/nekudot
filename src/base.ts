@@ -289,18 +289,12 @@ export abstract class BrushBase {
     this.connection = next;
   }
 
-  // Apply only a routing preset (e.g. a brush whose default is "no connect").
+  // Apply only a routing preset (e.g. "no_connect" for the eraser's default,
+  // "classic" for the standard selected-map routing on New art).
   applyRoutingPreset(name: string): void {
     if (!this.connection) return;
     const routing = (ROUTING_PRESETS as Record<string, RoutingSettings>)[name];
     if (routing) this.connection.applyFlat(flattenRouting(routing));
-  }
-
-  // Apply the named routing + art-style presets together (New art / load).
-  applyConnectingPreset(name: string = "classic"): void {
-    if (!this.connection) return;
-    this.applyArtStylePreset(name);
-    this.applyRoutingPreset(name);
   }
 
   setSeed(seed: number): void {

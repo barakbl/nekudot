@@ -422,7 +422,8 @@ const showMaps = () => {
 const resetArtState = () => {
   for (const b of Object.values(brushes)) {
     b.clear();
-    b.applyConnectingPreset("classic");
+    b.applyArtStylePreset(DEFAULT_ART_STYLE);
+    b.applyRoutingPreset("classic"); // standard routing: selected map, mode "both"
   }
   currentArtStyle = DEFAULT_ART_STYLE;
   store.set("app.artStyle", currentArtStyle);

@@ -20,7 +20,8 @@ export function create(c: BrushContext): RoundBrush {
 
 // Art style applied when Round is first used / on selection. The art style is
 // otherwise chosen from the navbar Connecting combo (persisted under app.artStyle).
-export const DEFAULT_ART_STYLE = "classic";
+// "shaded" (the Shading style): dense distance-faded lines, no core line.
+export const DEFAULT_ART_STYLE = "shaded";
 
 // The Round brush: a continuous round-capped line plus the connecting web. It is
 // the only connecting brush — the connection art style (classic, web, arc,
