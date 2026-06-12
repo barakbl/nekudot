@@ -387,7 +387,8 @@ document.body.appendChild(symmetryBox.el);
 registerWindow(symmetryBox.el);
 
 // The memory-maps editor, opened from the navbar Maps pill. Holds all the
-// per-map controls; the pill only shows the active map's name + a flash button.
+// per-map controls; the pill shows the active map's live point count + a
+// flash button (the name lives in its tooltips).
 const mapsControl = createMapsControl(layerManager, highlightNeighborsMap, pushUndo);
 const mapsBox = createMapsBox(mapsControl);
 document.body.appendChild(mapsBox.el);
@@ -667,9 +668,10 @@ const menu = createMenu(
     onExport: () => presets.export(),
   },
   {
-    getActiveName: () => {
+    getActiveInfo: () => {
       const { maps } = mapsControl.getInfo();
-      return maps.find((m) => m.active)?.name ?? "Map";
+      const active = maps.find((m) => m.active);
+      return { name: active?.name ?? "Map", dots: active?.dots ?? 0 };
     },
     onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
     onOpen: () => showMaps(),
@@ -771,10 +773,11 @@ bindDrawingInput({
   layerManager,
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
-    // A stroke may have added points to the active map; refresh the maps box so
-    // its live dot counts reflect them (strokes add pixels directly without an
-    // emit, so the box wouldn't otherwise update while open).
+    // A stroke may have added points to the active map; refresh the maps box
+    // and the navbar pill's point count (strokes add pixels directly without
+    // an emit, so neither would otherwise update).
     mapsBox.render();
+    menu.refreshMapsPill();
     persistPaint();
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
   },

@@ -61,13 +61,14 @@ export type ConnectingControl = {
   onExport?: () => void; // export (↑) on the Custom group header
 };
 
-// The navbar Maps quick-access: a small pill showing the active map's name plus
-// a Flash button. Clicking the name opens the full Maps box (see maps-box.ts).
+// The navbar Maps quick-access: a small pill showing the active map's live
+// point count plus a Flash button. Clicking the count opens the full Maps box
+// (see maps-box.ts); the map's name lives in the tooltips.
 export type MapsPillControl = {
-  getActiveName: () => string; // active map name, shown on the pill
+  getActiveInfo: () => { name: string; dots: number }; // active map, read live
   onFlashActive: () => void; // flash button → flash the active map's dots
-  onOpen: () => void; // click the name → open/toggle the Maps box
-  subscribe: (fn: () => void) => () => void; // refresh the name when maps change
+  onOpen: () => void; // click the count → open/toggle the Maps box
+  subscribe: (fn: () => void) => () => void; // refresh when maps change
 };
 
 export function createMenu<T extends string>(
@@ -89,6 +90,7 @@ export function createMenu<T extends string>(
   setConnectingVisible: (v: boolean) => void;
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
   refreshHistoryState: () => void;
+  refreshMapsPill: () => void;
   toggleCanvasMenu: () => void;
 } {
   const bar = document.createElement("div");
@@ -102,7 +104,12 @@ export function createMenu<T extends string>(
     bar.appendChild(el);
   }
   if (windows && windows.length) bar.appendChild(makeWindowsMenu(windows));
-  if (maps) bar.appendChild(makeMapsPill(maps));
+  let refreshMapsPill = () => {};
+  if (maps) {
+    const pill = makeMapsPill(maps);
+    refreshMapsPill = pill.refresh;
+    bar.appendChild(pill.el);
+  }
   bar.appendChild(makeColorSwatch(colors));
   bar.appendChild(makeDivider());
   const flatOptions = flattenMenuEntries(options);
@@ -155,6 +162,7 @@ export function createMenu<T extends string>(
     setConnectingVisible,
     setConnectingOptions,
     refreshHistoryState,
+    refreshMapsPill,
     toggleCanvasMenu,
   };
 }
@@ -211,25 +219,32 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   return wrap;
 }
 
-// Navbar Maps quick-access: a small pill showing the active map's name plus a
-// Flash button. Clicking the name opens the full Maps box; the flash button
-// flashes the active map's dots on the canvas. The name stays in sync with the
-// active map via control.subscribe.
-function makeMapsPill(control: MapsPillControl): HTMLElement {
+// Navbar Maps quick-access: a small pill showing the active map's live point
+// count plus a Flash button. Clicking the count opens the full Maps box; the
+// flash button flashes the active map's dots on the canvas. The count stays in
+// sync via control.subscribe + an explicit refresh after strokes (which add
+// points without an emit) — see Menu.refreshMapsPill.
+function makeMapsPill(control: MapsPillControl): {
+  el: HTMLElement;
+  refresh: () => void;
+} {
   const wrap = document.createElement("span");
   wrap.className = "pill maps-pill";
 
-  // The name area opens the Maps box: a small map glyph + the active map's name.
+  // The count area opens the Maps box: a point-cloud glyph (dots joined by
+  // faint connections — what a memory map is) + the live "<n> pts" count.
   const open = document.createElement("button");
   open.type = "button";
   open.className = "maps-pill-open";
-  open.title = "Open Memory Maps";
   const icon = document.createElement("span");
   icon.className = "maps-pill-icon";
   icon.innerHTML =
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M9 4 L3 6 V20 L9 18 L15 20 L21 18 V4 L15 6 L9 4 Z"/>' +
-    '<path d="M9 4 V18"/><path d="M15 6 V20"/>' +
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5.5 16.5 L10 6.5 L18.5 10.5 L14 17.5 Z M10 6.5 L14 17.5" stroke-width="1.1" stroke-opacity="0.55"/>' +
+    '<circle cx="5.5" cy="16.5" r="2" fill="currentColor" stroke="none"/>' +
+    '<circle cx="10" cy="6.5" r="2" fill="currentColor" stroke="none"/>' +
+    '<circle cx="18.5" cy="10.5" r="2" fill="currentColor" stroke="none"/>' +
+    '<circle cx="14" cy="17.5" r="2" fill="currentColor" stroke="none"/>' +
     "</svg>";
   const label = document.createElement("span");
   label.className = "maps-pill-label";
@@ -255,15 +270,16 @@ function makeMapsPill(control: MapsPillControl): HTMLElement {
   });
 
   const refresh = () => {
-    const name = control.getActiveName();
-    label.textContent = name;
+    const { name, dots } = control.getActiveInfo();
+    label.textContent = `${dots} ${dots === 1 ? "pt" : "pts"}`;
+    open.title = `Open Memory Maps — active: ${name}`;
     flash.title = `Flash ${name} on canvas`;
   };
   control.subscribe(refresh);
   refresh();
 
   wrap.append(open, flash);
-  return wrap;
+  return { el: wrap, refresh };
 }
 
 function makeCanvasMenu(opts: CanvasMenuOptions): {
