@@ -12,7 +12,7 @@ export function bindDrawingInput(opts: {
   symmetry: SymmetryController;
   layerManager: LayerManager;
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
-}): void {
+}): { commitActiveStroke: () => void } {
   const { stage, symmetry, layerManager } = opts;
   let drawingId: number | null = null;
 
@@ -52,8 +52,7 @@ export function bindDrawingInput(opts: {
     }
   });
 
-  const end = (e: PointerEvent) => {
-    if (e.pointerId !== drawingId) return;
+  const finish = () => {
     drawingId = null;
     const brush = opts.brush();
     brush.strokeEnd();
@@ -63,6 +62,23 @@ export function bindDrawingInput(opts: {
     opts.onStrokeEnd(brush);
   };
 
+  const end = (e: PointerEvent) => {
+    if (e.pointerId !== drawingId) return;
+    finish();
+  };
+
   stage.addEventListener("pointerup", end);
   stage.addEventListener("pointercancel", end);
+
+  // For the page-hide path (wired in main): commit an in-progress stroke
+  // through the normal end pipeline. Browsers don't reliably fire
+  // pointercancel when the tab hides or closes mid-drag, and an uncommitted
+  // stroke exists only on canvas — it would die with the tab. A later
+  // pointerup/cancel for the committed stroke is ignored (drawingId is gone),
+  // same as any stray pointer event.
+  return {
+    commitActiveStroke: () => {
+      if (drawingId !== null) finish();
+    },
+  };
 }

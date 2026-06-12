@@ -759,7 +759,7 @@ attachToHeading(
 
 // ---- drawing input ----------------------------------------------------------------------
 
-bindDrawingInput({
+const drawingInput = bindDrawingInput({
   stage,
   brush: () => brush,
   symmetry,
@@ -776,3 +776,20 @@ bindDrawingInput({
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
   },
 });
+
+// ---- durability on hide/close -----------------------------------------------------
+
+// When the tab hides (switch/minimize/close), commit any in-progress stroke —
+// its paint exists only on canvas until the stroke-end push — and flush any
+// dirty pixel-log rows. Everything else is already persisted at stroke end;
+// in-flight IDB transactions drain on their own. Both events because older
+// Safari closes tabs without firing visibilitychange; running twice is a
+// no-op (no active stroke, clean log).
+const persistOnHide = () => {
+  drawingInput.commitActiveStroke();
+  void pixelLog.flush();
+};
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") persistOnHide();
+});
+window.addEventListener("pagehide", persistOnHide);
