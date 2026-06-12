@@ -47,7 +47,15 @@ export type ConnectionSpec = {
   name: string; // stable id (storage key / createConnection) — not the display name
   label?: string; // display name in the navbar combo (defaults to capitalized name)
   info?: string;
+  // Menu glyph (inline SVG). Trusted on BUILT-IN specs only (bundled JSON /
+  // module code) — it feeds an innerHTML sink. Custom presets never carry one:
+  // their glyph is derived from `base`, and normalizeCustomSpecs strips this
+  // field from anything imported or persisted.
   icon?: string;
+  // For custom presets: the built-in style this preset was saved from (a name,
+  // e.g. "shaded"). The only icon source for customs. Always one hop —
+  // re-saving a custom preset propagates its base instead of chaining.
+  base?: string;
   // Opacity for the owning brush's continuous stroke line when this style is
   // active, matching the corresponding Harmony brush (sketchy 0.05, web 0.5,
   // shaded 0 = no line). Omitted → the brush keeps its own default. Applied by
@@ -355,13 +363,21 @@ export class ConnectionBase {
   // opacity, reusing this style's class (file) and glyph. Stored in IndexedDB
   // and re-instantiated via createConnection().
   toCustomSpec(name: string, strokeAlpha: number): ConnectionSpec {
+    // No icon copied: custom specs reference their built-in parent via `base`
+    // and the menu derives the glyph from it (an icon string on a custom spec
+    // would be untrusted markup once the preset round-trips through a file).
+    // Saving from a built-in: that style is the base. Saving from a custom:
+    // propagate ITS base (one hop, no chains) and keep its "based on" info,
+    // which already names the original style.
     return {
       name,
       label: name,
       file: this.spec.file,
-      icon: this.spec.icon,
+      base: this.spec.base ?? this.spec.name,
       strokeAlpha,
-      info: `Custom preset based on ${this.spec.label ?? this.spec.name}`,
+      info: this.spec.base
+        ? this.spec.info
+        : `Custom preset based on ${this.spec.label ?? this.spec.name}`,
       defaults: this.toFlat(),
     };
   }

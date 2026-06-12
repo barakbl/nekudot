@@ -21,6 +21,8 @@ const GROUPS = connectionsIndex as GroupedSpecs;
 const BUILTIN_GROUP_ORDER = Object.keys(GROUPS).filter((g) => g !== "Custom");
 const BUILTIN_SPECS: ConnectionSpec[] = BUILTIN_GROUP_ORDER.flatMap((g) => GROUPS[g] ?? []);
 
+const BUILTIN_BY_NAME = new Map(BUILTIN_SPECS.map((s) => [s.name, s]));
+
 let customSpecs: ConnectionSpec[] = [];
 let specByName = new Map<string, ConnectionSpec>();
 
@@ -32,10 +34,48 @@ function rebuild(): void {
 rebuild();
 
 // Replace the Custom group (loaded from IndexedDB). Rebuilds the lookup so
-// createConnection() and connectionGroups() see the new presets.
+// createConnection() and connectionGroups() see the new presets. Normalized
+// here too, so no caller can slip an un-normalized spec into the registry.
 export function setCustomPresets(specs: ConnectionSpec[]): void {
-  customSpecs = specs;
+  customSpecs = normalizeCustomSpecs(specs);
   rebuild();
+}
+
+export function isBuiltinStyle(name: string): boolean {
+  return BUILTIN_BY_NAME.has(name);
+}
+
+// A built-in style's menu glyph (from its JSON row, else its module export).
+function builtinIcon(name: string): string {
+  const s = BUILTIN_BY_NAME.get(name);
+  return s ? (s.icon ?? moduleFor(s.file).icon ?? "") : "";
+}
+
+// icon markup → built-in style name, to infer `base` for legacy custom specs
+// (saved before `base` existed, when the built-in icon was copied verbatim
+// into the spec). Exact match only — anything else is untrusted input.
+const BASE_BY_ICON = new Map<string, string>();
+for (const s of BUILTIN_SPECS) {
+  const icon = builtinIcon(s.name);
+  if (icon && !BASE_BY_ICON.has(icon)) BASE_BY_ICON.set(icon, s.name);
+}
+
+// Normalize custom specs from any untrusted source (imported .preset file,
+// the persisted IDB array, a save commit). The spec's own `icon` is NEVER
+// kept — it feeds an innerHTML sink, so markup here would be stored XSS.
+// `base` survives only if it names a real built-in style; legacy specs
+// without one get it inferred from an exact icon match, anything else just
+// loses its glyph (fallback icon).
+export function normalizeCustomSpecs(specs: ConnectionSpec[]): ConnectionSpec[] {
+  return specs.map(({ icon, ...rest }) => ({
+    ...rest,
+    base:
+      rest.base && isBuiltinStyle(rest.base)
+        ? rest.base
+        : icon !== undefined
+          ? BASE_BY_ICON.get(icon)
+          : undefined,
+  }));
 }
 
 export function hasConnection(name: string): boolean {
@@ -56,6 +96,9 @@ function moduleFor(file: string): ConnectionModule {
 }
 
 function iconFor(spec: ConnectionSpec): string {
+  // A spec with `base` is a custom preset: its glyph comes from the built-in
+  // parent, never from the spec itself (see normalizeCustomSpecs).
+  if (spec.base) return builtinIcon(spec.base);
   return spec.icon ?? moduleFor(spec.file).icon ?? "";
 }
 

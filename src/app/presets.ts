@@ -1,5 +1,8 @@
 import type { ConnectionBase, ConnectionSpec } from "../brushes/connections/base";
-import { setCustomPresets } from "../brushes/connections/registry";
+import {
+  setCustomPresets,
+  normalizeCustomSpecs,
+} from "../brushes/connections/registry";
 import {
   loadCustomPresets,
   saveCustomPresets,
@@ -31,8 +34,10 @@ export function createPresetsController(host: PresetsHost) {
   let presets: ConnectionSpec[] = [];
 
   // Push the new set everywhere it's read: registry, IndexedDB, navbar combo.
+  // Normalized first so what's persisted matches what the registry serves
+  // (no icon markup, base verified — see normalizeCustomSpecs).
   const commit = (next: ConnectionSpec[]): void => {
-    presets = next;
+    presets = normalizeCustomSpecs(next);
     setCustomPresets(presets);
     void saveCustomPresets(presets);
     host.refreshMenu();

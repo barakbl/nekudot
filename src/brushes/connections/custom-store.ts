@@ -1,4 +1,5 @@
 import { IndexedDbStore } from "../../store/indexeddb";
+import { sanitizeStoredSpecs } from "./preset-io";
 import type { ConnectionSpec } from "./base";
 
 // User-saved Custom connection presets, persisted in IndexedDB as one array.
@@ -8,7 +9,9 @@ const KEY = "custom";
 
 export async function loadCustomPresets(): Promise<ConnectionSpec[]> {
   try {
-    return (await db.get<ConnectionSpec[]>(KEY)) ?? [];
+    // Validated + normalized like an import: stored rows predate the current
+    // code (or were poisoned by an old import), so they're untrusted too.
+    return sanitizeStoredSpecs(await db.get<unknown>(KEY));
   } catch (e) {
     console.warn("loadCustomPresets failed", e);
     return [];
