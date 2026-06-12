@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DASH_STYLES } from "./connecting-types";
-import { IndexedDbStore } from "./store/indexeddb";
+import { AppendLogStore } from "./store/append-log";
 import { isKnownBrush } from "./brushes/registry";
 
 // brush_type is just the brush's name(); validated against the brush registry
@@ -27,25 +27,49 @@ export const PixelLogEntrySchema = z.object({
 });
 export type PixelLogEntry = z.infer<typeof PixelLogEntrySchema>;
 
-const DB_KEY = "entries";
 // Bound persisted/in-memory growth; drop oldest beyond this (append-only log).
 const MAX_ENTRIES = 100_000;
 
+// What PixelLog needs from persistence — AppendLogStore in the app, a fake in
+// tests. Rows are opaque here; validation is PixelLog's job.
+export type PixelLogBackend = {
+  load(): Promise<unknown[]>;
+  append(rows: unknown[], max: number): Promise<void>;
+  replaceAll(rows: unknown[]): Promise<void>;
+  clear(): Promise<void>;
+};
+
 export class PixelLog {
   private entries: PixelLogEntry[] = [];
-  private store = new IndexedDbStore("nekudot-pixel-log", "log");
-  private dirty = false;
+  // Rows appended since the last flush — the only thing a flush writes. The
+  // previous format rewrote the entire entries array per stroke.
+  private pending: PixelLogEntry[] = [];
+  // Set when the whole log is swapped (loadRawJSONL/clear): init() runs
+  // detached from the history queue and may resolve late — its stale rows
+  // must not overwrite a swap that landed meanwhile.
+  private superseded = false;
+  private store: PixelLogBackend | null;
 
-  // Restore persisted entries (validated; bad rows dropped).
+  constructor(store?: PixelLogBackend) {
+    this.store =
+      store ?? (typeof indexedDB === "undefined" ? null : new AppendLogStore());
+  }
+
+  // Restore persisted entries (validated; bad rows dropped). Strokes drawn
+  // while the load runs were flushed into the store (append-only) and so are
+  // already in `saved`; rows still pending are tacked on to stay complete.
   async init(): Promise<void> {
-    if (typeof indexedDB === "undefined") return;
+    if (!this.store) return;
     try {
-      const saved = await this.store.get<unknown[]>(DB_KEY);
-      if (Array.isArray(saved)) {
-        this.entries = saved
-          .map((e) => PixelLogEntrySchema.safeParse(e))
-          .filter((r): r is { success: true; data: PixelLogEntry } => r.success)
-          .map((r) => r.data);
+      const saved = await this.store.load();
+      if (this.superseded) return;
+      this.entries = saved
+        .map((e) => PixelLogEntrySchema.safeParse(e))
+        .filter((r): r is { success: true; data: PixelLogEntry } => r.success)
+        .map((r) => r.data)
+        .concat(this.pending);
+      if (this.entries.length > MAX_ENTRIES) {
+        this.entries.splice(0, this.entries.length - MAX_ENTRIES);
       }
     } catch (e) {
       console.warn("PixelLog.init failed", e);
@@ -58,25 +82,29 @@ export class PixelLog {
     if (this.entries.length > MAX_ENTRIES) {
       this.entries.splice(0, this.entries.length - MAX_ENTRIES);
     }
-    this.dirty = true;
+    this.pending.push(entry);
   }
 
   async flush(): Promise<void> {
-    if (!this.dirty || typeof indexedDB === "undefined") return;
-    this.dirty = false;
+    if (!this.store || this.pending.length === 0) return;
+    const batch = this.pending;
+    this.pending = [];
     try {
-      await this.store.put(DB_KEY, this.entries);
+      await this.store.append(batch, MAX_ENTRIES);
     } catch (e) {
+      // Put the batch back (in order) so the next flush retries it.
+      this.pending = [...batch, ...this.pending];
       console.warn("PixelLog.flush failed", e);
     }
   }
 
   async clear(): Promise<void> {
     this.entries = [];
-    this.dirty = false;
-    if (typeof indexedDB === "undefined") return;
+    this.pending = [];
+    this.superseded = true;
+    if (!this.store) return;
     try {
-      await this.store.delete(DB_KEY);
+      await this.store.clear();
     } catch (e) {
       console.warn("PixelLog.clear failed", e);
     }
@@ -106,8 +134,14 @@ export class PixelLog {
     }
     this.entries =
       parsed.length > MAX_ENTRIES ? parsed.slice(parsed.length - MAX_ENTRIES) : parsed;
-    this.dirty = true;
-    await this.flush();
+    this.pending = []; // the swap supersedes anything queued
+    this.superseded = true;
+    if (!this.store) return;
+    try {
+      await this.store.replaceAll(this.entries);
+    } catch (e) {
+      console.warn("PixelLog.loadRawJSONL: persist failed", e);
+    }
   }
 
   // Newline-delimited JSON, one validated entry per line (invalid rows skipped).

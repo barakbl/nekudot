@@ -409,8 +409,13 @@ void history.init(async (paintSnap) => {
     await layerManager.applyPaintData(paintSnap);
     layersBox.refreshPreviews();
   }
-  await pixelLog.init();
 });
+// Deliberately OUTSIDE the history queue: the log's IDB open can stall
+// indefinitely (version upgrade blocked by an old tab), and anything awaited
+// inside the queue's first op would deadlock every undo/push behind it.
+// Ordering is safe — the store is append-only, so a stroke flushed before
+// this load completes is simply included in what it returns.
+void pixelLog.init();
 
 // ---- new art / delete canvas / load artwork ------------------------------------
 
