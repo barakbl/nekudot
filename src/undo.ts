@@ -57,6 +57,12 @@ export class UndoManager {
     this.emit();
   }
 
+  // The snapshot the canvas currently corresponds to (stack tip after a push,
+  // the stepped-to entry after undo/redo). Null while the stack is empty.
+  current(): UndoSnapshot | null {
+    return this.stack[this.pointer] ?? null;
+  }
+
   canUndo(): boolean {
     return this.pointer > 0;
   }

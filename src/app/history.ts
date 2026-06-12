@@ -10,6 +10,13 @@ import type { LayerManager } from "../layered/manager";
 // moves back, then the late push re-appends the undone stroke on top, and the
 // visible canvas disagrees with the history tip. Queued, the pending push
 // lands first and the undo then undoes exactly that stroke.
+//
+// Persistence model: the undo row at the pointer IS the persisted paint.
+// Every push captures the full state (config + layer blobs + map points) and
+// stores it as one IDB row; boot restores the pointer row; undo/redo persist
+// only the pointer. There is no separate paint snapshot to keep in sync — the
+// standalone PaintStore remains read-only, as the restore source for stacks
+// saved before this scheme (and for seeding the very first snapshot).
 export class AppHistory {
   private readonly undoManager: UndoManager;
   private readonly paintStore = new PaintStore();
@@ -22,8 +29,7 @@ export class AppHistory {
     private readonly layerManager: LayerManager,
     maxUndo: number,
   ) {
-    const undoStore = new UndoStore<{ stack: UndoSnapshot[]; pointer: number }>();
-    this.undoManager = new UndoManager(undoStore, maxUndo);
+    this.undoManager = new UndoManager(new UndoStore<UndoSnapshot>(), maxUndo);
   }
 
   private enqueue(op: () => Promise<void> | void): Promise<void> {
@@ -36,17 +42,23 @@ export class AppHistory {
 
   // Boot restore. Call during module evaluation so it's first in the queue —
   // then a stroke finished while the async IDB load is still running waits
-  // behind it instead of being overwritten by the loaded stack. Restores the
-  // persisted paint via the caller's callback (which owns the UI refresh),
-  // loads the persisted undo stack, and seeds an initial snapshot when there
-  // is none.
+  // behind it instead of being overwritten by the loaded stack. Loads the
+  // persisted undo stack and restores the pointer row's paint via the
+  // caller's callback (which owns the UI refresh); with no stack, falls back
+  // to the legacy standalone paint snapshot and seeds an initial snapshot.
   init(
     restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
   ): Promise<void> {
     return this.enqueue(async () => {
-      await restorePaint(await this.paintStore.load());
       await this.undoManager.init();
-      if (this.undoManager.isEmpty()) {
+      const current = this.undoManager.current();
+      if (current) {
+        await restorePaint(current.paint);
+        // The stack rows are the paint source of truth now; drop the legacy
+        // snapshot so a later stack wipe can't resurface stale paint.
+        void this.paintStore.clear();
+      } else {
+        await restorePaint(await this.paintStore.load());
         this.undoManager.push(await this.capture("Initial state"));
       }
     });
@@ -91,10 +103,13 @@ export class AppHistory {
 
   // Wipe the history (New art / Load artwork). Queued, so a stroke snapshot
   // still encoding when the user confirms the dialog is wiped with the rest
-  // instead of resurfacing inside the fresh stack.
+  // instead of resurfacing inside the fresh stack. Also drops any legacy
+  // paint snapshot — if the tab closes before the caller's follow-up push
+  // lands, the next boot must not restore the pre-wipe paint.
   clear(): Promise<void> {
     return this.enqueue(() => {
       this.undoManager.clear();
+      void this.paintStore.clear();
     });
   }
 
@@ -108,16 +123,6 @@ export class AppHistory {
   }
   subscribe(fn: () => void): () => void {
     return this.undoManager.subscribe(fn);
-  }
-
-  // Persist the live paint to IDB. The snapshot is sampled at the call; the
-  // save runs in queue order, so a slow earlier snapshot can't finish late
-  // and overwrite a newer one.
-  persistPaint(): void {
-    const pending = this.layerManager.getPaintData();
-    void this.enqueue(async () => {
-      await this.paintStore.save(await pending);
-    });
   }
 
   private capture(description: string): Promise<UndoSnapshot> {

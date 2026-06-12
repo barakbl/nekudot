@@ -341,17 +341,17 @@ layerManager.subscribe(() => {
 
 const history = new AppHistory(layerManager, MAX_UNDO);
 const pushUndo = (description: string) => void history.push(description);
-const persistPaint = () => history.persistPaint();
 
 const activeLayerName = (): string =>
   layerManager.all[layerManager.activeIdx]?.config.name ?? "active layer";
 
+// No persist here: the undo/redo that triggered this already saved the new
+// pointer, and the pointer row is what boot restores from.
 const applyUndoSnapshot = async (snap: UndoSnapshot) => {
   layerManager.applyConfig(snap.config);
   await layerManager.applyPaintData(snap.paint);
   applyStageBackground();
   layersBox.refreshPreviews();
-  persistPaint();
 };
 
 // Undo/redo go through the history queue (behind any in-flight stroke pushes,
@@ -458,9 +458,8 @@ loadFileInput.addEventListener("change", async () => {
   layersBox.refreshPreviews();
   renderActiveBrush();
   store.set(CANVAS_SIZE_KEY, size);
-  persistPaint();
   void history.clear();
-  pushUndo("Load artwork");
+  pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
   showChip("Artwork loaded");
 });
 
@@ -489,7 +488,6 @@ const sizePicker = createSizePicker({
         resizeOverlays(size);
         resetArtState();
         store.set(CANVAS_SIZE_KEY, size);
-        persistPaint();
         void history.clear();
         pushUndo("New art");
       },
@@ -605,7 +603,6 @@ const menu = createMenu(
           onConfirm: () => {
             layerManager.reset(layerManager.currentSize);
             resetArtState();
-            persistPaint();
             pushUndo("Delete canvas");
           },
         });
@@ -774,7 +771,8 @@ bindDrawingInput({
     // an emit, so neither would otherwise update).
     mapsBox.render();
     menu.refreshMapsPill();
-    persistPaint();
+    // One capture serves both undo and persistence — the pushed row is the
+    // persisted paint, so this is the only blob-encode pass per stroke.
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
   },
 });
