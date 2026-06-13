@@ -41,6 +41,7 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
       brush: () => brush,
       symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
       layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => true,
       onStrokeEnd: () => void ends++,
     });
   });
@@ -71,5 +72,48 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
     stage.fire("pointercancel", { pointerId: 1 });
     expect(ends).toBe(1);
     expect(strokeEnds).toBe(1);
+  });
+});
+
+describe("drawing input: penEnabled gate", () => {
+  // Capture the pen sample each stroke() receives, for a pen pointer event.
+  const setup = (penEnabled: boolean) => {
+    const stage = makeStage();
+    const samples: { isPen: boolean; pressure: number }[] = [];
+    const brush = {
+      strokeStart() {},
+      stroke: (_x: number, _y: number, _s: boolean, pen: { isPen: boolean; pressure: number }) =>
+        void samples.push(pen),
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => penEnabled,
+      onStrokeEnd() {},
+    });
+    return { stage, samples };
+  };
+
+  it("passes real pen pressure through when enabled", () => {
+    const { stage, samples } = setup(true);
+    stage.fire("pointerdown", {
+      button: 0, pointerId: 1, offsetX: 5, offsetY: 5, pointerType: "pen", pressure: 0.5,
+    });
+    expect(samples[0].isPen).toBe(true);
+    expect(samples[0].pressure).toBeCloseTo(0.5);
+  });
+
+  it("feeds a neutral mouse sample for a pen event when disabled", () => {
+    const { stage, samples } = setup(false);
+    stage.fire("pointerdown", {
+      button: 0, pointerId: 1, offsetX: 5, offsetY: 5, pointerType: "pen", pressure: 0.5,
+    });
+    expect(samples[0].isPen).toBe(false);
+    expect(samples[0].pressure).toBe(1); // MOUSE_SAMPLE — no modulation
   });
 });

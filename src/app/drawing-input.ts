@@ -1,7 +1,7 @@
 import type { BrushBase } from "../base";
 import type { LayerManager } from "../layered/manager";
 import type { SymmetryController } from "../symmetry/controller";
-import { readPenSample } from "../pen";
+import { readPenSample, MOUSE_SAMPLE } from "../pen";
 
 // Pointer wiring for the stage: start/feed/end brush strokes. Freezes the
 // symmetry transforms per stroke, opens the wet-stroke buffer around
@@ -13,10 +13,15 @@ export function bindDrawingInput(opts: {
   brush: () => BrushBase; // read per event — the active brush can change
   symmetry: SymmetryController;
   layerManager: LayerManager;
+  // Pen support gate (the More-menu toggle). When off, every sample is read as
+  // a neutral mouse sample, so a stylus draws with no pressure/tilt modulation.
+  penEnabled: () => boolean;
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
 }): { commitActiveStroke: () => void } {
   const { stage, symmetry, layerManager } = opts;
   let drawingId: number | null = null;
+  const sampleOf = (e: PointerEvent) =>
+    opts.penEnabled() ? readPenSample(e) : MOUSE_SAMPLE;
   // Whether THIS stroke opened the wet buffer — latched at pointerdown so the
   // end matches the start even if settings change mid-stroke.
   let buffered = false;
@@ -27,7 +32,7 @@ export function bindDrawingInput(opts: {
     stage.setPointerCapture(e.pointerId);
     drawingId = e.pointerId;
     const brush = opts.brush();
-    const pen = readPenSample(e);
+    const pen = sampleOf(e);
     // Freeze the symmetry transforms for this stroke (Tile anchored to the start,
     // Radial/Mirror centred on the canvas) before any mark is drawn.
     symmetry.beginStroke(e.offsetX, e.offsetY, layerManager.currentSize);
@@ -60,7 +65,7 @@ export function bindDrawingInput(opts: {
         ev.offsetX,
         ev.offsetY,
         !frameCadence || i === list.length - 1,
-        readPenSample(ev),
+        sampleOf(ev),
       );
     }
   });

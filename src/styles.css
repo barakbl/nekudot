@@ -292,6 +292,48 @@ body {
   background: var(--border-subtle);
   margin: 4px 6px;
 }
+/* iOS-style switch (the Pen-pressure toggle). The row owns the click, so the
+   switch is inert; the hidden checkbox holds state and drives the slider. */
+.ios-toggle {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+  margin-left: auto; /* push to the right edge of the row */
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+.ios-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.ios-toggle-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--border-stronger);
+  transition: background 0.18s ease;
+}
+.ios-toggle-slider::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: transform 0.18s ease;
+}
+.ios-toggle input:checked + .ios-toggle-slider {
+  background: var(--accent);
+}
+.ios-toggle input:checked + .ios-toggle-slider::before {
+  transform: translateX(14px);
+}
 .sym-section {
   padding: 0 4px 4px;
 }

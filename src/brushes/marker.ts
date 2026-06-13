@@ -1,4 +1,4 @@
-import { BrushBase, type BrushSetting } from "../base";
+import { BrushBase, PEN_SECTION, type BrushSetting } from "../base";
 import type { Pixel } from "../neighbor-finder";
 import type { BrushContext } from "./registry";
 
@@ -62,7 +62,7 @@ export class MarkerBrush extends BrushBase {
         kind: "boolean",
         key: "penChisel",
         label: "Chisel follows pen",
-        section: "Pen",
+        section: PEN_SECTION,
         value: this.chiselFollowsPen,
         onChange: (v) => (this.chiselFollowsPen = v),
       },

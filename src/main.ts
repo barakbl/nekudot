@@ -219,6 +219,11 @@ let brush: BrushBase = brushes[initialBrushKey];
 // persisted; Round applies it on select (see RoundBrush.onSelect).
 let currentArtStyle = store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
 
+// Pen support (pressure/tilt modulation + the Pen settings section). Toggled
+// from the More menu; default on. When off, a stylus draws like a mouse (the
+// drawing input feeds neutral samples) and the Pen section is hidden.
+let penEnabled = store.get<boolean>("app.penEnabled") ?? true;
+
 // Registry groups → navbar combo option groups, flagging Custom rows (which get
 // a delete ×). Rebuilt whenever the custom set changes.
 const connectingComboGroups = () =>
@@ -252,6 +257,7 @@ const presets = createPresetsController({
 // own params.
 const brushSettings = createSettingsPanel({
   scope: "brush",
+  showPen: () => penEnabled,
   brushControls: {
     size: {
       get: () => store.get<number>("app.size") ?? initialSize,
@@ -531,6 +537,12 @@ const canvasMenuOptions = {
     applyTheme(t);
     store.set("app.theme", t);
   },
+  penEnabled,
+  onTogglePen: (on: boolean) => {
+    penEnabled = on;
+    store.set("app.penEnabled", on);
+    brushSettings.render(brush); // show/hide the Pen section live
+  },
   onShareImage: shareImageFn,
   onExportImage: exportImageFn,
   onSaveArtwork: () => {
@@ -773,6 +785,7 @@ const drawingInput = bindDrawingInput({
   brush: () => brush,
   symmetry,
   layerManager,
+  penEnabled: () => penEnabled,
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
     // A stroke may have added points to the active map; refresh the maps box

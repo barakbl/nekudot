@@ -1,4 +1,9 @@
-import { applySettingValue, type BrushBase, type BrushSetting } from "./base";
+import {
+  applySettingValue,
+  PEN_SECTION,
+  type BrushBase,
+  type BrushSetting,
+} from "./base";
 import { makeDraggable } from "./drag";
 import { attachHelp } from "./help";
 import { ROUTING_PRESETS, flattenRouting } from "./brushes/connections/routing";
@@ -126,6 +131,9 @@ export type SettingsPanelOpts = {
   onSavePreset?: () => void; // connecting: save the dials as a new custom preset
   onUpdatePreset?: () => void; // connecting: overwrite the active custom preset
   activeCustomName?: () => string | null; // the active custom preset's name, or null
+  // Whether the Pen section is shown (the More-menu "Pen pressure" toggle).
+  // Defaults to shown; gates only the brush scope (Pen is a brush setting).
+  showPen?: () => boolean;
 };
 
 const isConnectingSetting = (s: BrushSetting): boolean =>
@@ -174,11 +182,13 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
       content.appendChild(buildBrushControls(opts.brushControls));
     }
 
+    const penHidden = opts.showPen ? !opts.showPen() : false;
     const settings = brush
       .getSettings()
       .filter((s) =>
         opts.scope === "connecting" ? isConnectingSetting(s) : !isConnectingSetting(s),
-      );
+      )
+      .filter((s) => !(penHidden && s.section === PEN_SECTION));
 
     if (settings.length === 0) {
       if (opts.scope === "connecting") {

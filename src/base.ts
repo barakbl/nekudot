@@ -87,6 +87,10 @@ export function isStyleDial(s: BrushSetting): boolean {
   return s.section === STYLE_SECTION;
 }
 
+// The pen-modulation settings group. Hidden in Brush settings (and its
+// modulation switched off) when pen support is toggled off in the More menu.
+export const PEN_SECTION = "Pen";
+
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -297,7 +301,7 @@ export abstract class BrushBase {
   // only the connecting web (Soft Pencil). The web bindings appear only for
   // connecting brushes.
   protected penSettings(opts: { stroke?: boolean } = {}): BrushSetting[] {
-    const PEN = "Pen";
+    const PEN = PEN_SECTION;
     const items: BrushSetting[] = [];
     if (opts.stroke !== false) {
       items.push(

@@ -26,6 +26,8 @@ export type Theme = "auto" | "light" | "dark";
 export type CanvasMenuOptions = {
   initialTheme: Theme;
   onThemeChange: (theme: Theme) => void;
+  penEnabled: boolean; // initial state of the "Pen pressure" toggle
+  onTogglePen: (on: boolean) => void;
   onShareImage: () => void;
   onExportImage: () => void;
   onSaveArtwork: () => void;
@@ -389,6 +391,51 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   const sep = document.createElement("div");
   sep.className = "canvas-menu-sep";
   popover.appendChild(sep);
+
+  // Pen support toggle — gates pressure/tilt modulation and the Pen settings
+  // section. Off makes a stylus draw like a mouse.
+  popover.appendChild(sectionLabel("Input"));
+  let penOn = opts.penEnabled;
+  const penRow = document.createElement("div");
+  penRow.className = "brush-option canvas-menu-toggle";
+  const penIc = document.createElement("span");
+  penIc.className = "opt-icon";
+  penIc.innerHTML =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M12 19l7-7 3 3-7 7-3-3z"/>' +
+    '<path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>' +
+    '<circle cx="11" cy="11" r="2"/></svg>';
+  const penLbl = document.createElement("span");
+  penLbl.className = "opt-label";
+  penLbl.textContent = "Pen pressure";
+  // iOS-style switch: a checkbox (holds state, drives the CSS) + a sliding
+  // track. The row owns the click, so the switch is pointer-events:none.
+  const penSwitch = document.createElement("span");
+  penSwitch.className = "ios-toggle";
+  const penBox = document.createElement("input");
+  penBox.type = "checkbox";
+  penBox.checked = penOn;
+  const penSlider = document.createElement("span");
+  penSlider.className = "ios-toggle-slider";
+  penSwitch.append(penBox, penSlider);
+  penRow.append(penIc, penLbl, penSwitch);
+  penRow.setAttribute("role", "switch");
+  penRow.setAttribute("aria-checked", String(penOn));
+  const setPen = (on: boolean) => {
+    penOn = on;
+    penBox.checked = on;
+    penRow.setAttribute("aria-checked", String(on));
+    opts.onTogglePen(on);
+  };
+  penRow.addEventListener("click", (e) => {
+    e.stopPropagation(); // keep the popover open while toggling
+    setPen(!penOn);
+  });
+  popover.appendChild(penRow);
+
+  const sep2 = document.createElement("div");
+  sep2.className = "canvas-menu-sep";
+  popover.appendChild(sep2);
 
   // Share as PNG — flatten + hand to the native share sheet (download +
   // clipboard-caption fallback on desktop).
