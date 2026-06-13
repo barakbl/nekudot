@@ -91,7 +91,12 @@ if (savedTheme !== "auto") {
 // If present, route it into the new LayersConfig.background defaults below.
 const legacyBgColor = store.get<string>("app.canvas.bg");
 
-const initialSize = Math.min(10, Math.max(1, store.get<number>("app.size") ?? 1));
+// Default stroke width (1–10); the value Reset returns Size to.
+const DEFAULT_BRUSH_SIZE = 1;
+const initialSize = Math.min(
+  10,
+  Math.max(1, store.get<number>("app.size") ?? DEFAULT_BRUSH_SIZE),
+);
 const initialAlpha = store.get<number>("app.opacity") ?? 1;
 const initialMainColor = store.get<string>("app.color.main") ?? "#000000";
 const initialSecondaryColor =
@@ -255,8 +260,10 @@ const presets = createPresetsController({
 // The settings live in two boxes. The Brush box heads with the app-global size
 // + opacity stroke controls (they used to be navbar pills), then the brush's
 // own params.
-const brushSettings = createSettingsPanel({
-  scope: "brush",
+// One settings window with Brush + Connecting tabs (the Connecting tab shows
+// only for brushes that connect). The Reset button reverts the active brush +
+// its art style to defaults.
+const settingsPanel = createSettingsPanel({
   showPen: () => penEnabled,
   brushControls: {
     size: {
@@ -280,32 +287,43 @@ const brushSettings = createSettingsPanel({
       },
     },
   },
-});
-document.body.appendChild(brushSettings.el);
-registerWindow(brushSettings.el);
-
-// The Connecting box holds the routing + art-style dials; it's opened from the
-// navbar Connecting combo's gear (only Round connects).
-const connectingSettings = createSettingsPanel({
-  scope: "connecting",
   onSavePreset: () => presets.save(),
   onUpdatePreset: () => presets.update(),
   activeCustomName: () =>
     presets.isCustom(currentArtStyle) ? currentArtStyle : null,
+  onReset: () => {
+    brush.resetSettings(); // brush params + art-style dials
+    // Size + opacity are app-global (not part of getSettings), so reset them
+    // here: Size to the default, opacity to the brush's preferred value — same
+    // as a fresh brush selection (getSelectOpacity ?? 1).
+    layerManager.setLineWidth(DEFAULT_BRUSH_SIZE);
+    store.set("app.size", DEFAULT_BRUSH_SIZE);
+    const op = brush.getSelectOpacity() ?? 1;
+    layerManager.setGlobalAlpha(op);
+    store.set("app.opacity", op);
+    renderActiveBrush();
+  },
 });
-document.body.appendChild(connectingSettings.el);
-registerWindow(connectingSettings.el);
+document.body.appendChild(settingsPanel.el);
+registerWindow(settingsPanel.el);
 
-// The navbar buttons + keyboard shortcuts reveal a window and bring it to the
-// front (rather than toggling it shut); each window closes via its × button.
-const showSettings = () => showWindow(brushSettings.el);
-const showConnecting = () => showWindow(connectingSettings.el);
+// The navbar buttons + keyboard shortcuts reveal the window on the right tab
+// and bring it to the front (rather than toggling it shut); it closes via its
+// × button.
+const showSettings = () => {
+  settingsPanel.showTab("brush");
+  showWindow(settingsPanel.el);
+};
+const showConnecting = () => {
+  settingsPanel.showTab("connecting");
+  showWindow(settingsPanel.el);
+};
 
-// Render both boxes for the active brush and sync the Connecting combo's
-// visibility + value. `menu` is defined below; this only runs after it exists.
+// Render the settings window for the active brush and sync the Connecting
+// combo's visibility + value. `menu` is defined below; this only runs after it
+// exists.
 const renderActiveBrush = () => {
-  brushSettings.render(brush);
-  connectingSettings.render(brush);
+  settingsPanel.render(brush);
   const supports = brush.supportsConnecting();
   menu.setConnectingVisible(supports);
   if (supports) menu.setConnectingValue(currentArtStyle);
@@ -321,26 +339,24 @@ const applyBrushStrokeOpacity = (force: boolean) => {
   if (op === undefined) return;
   layerManager.setGlobalAlpha(op);
   store.set("app.opacity", op);
-  brushSettings.render(brush); // reflect the new value in the Opacity slider
+  settingsPanel.render(brush); // reflect the new value in the Opacity slider
 };
 
 // Pick an art style from the combo: apply it to the active brush, match its
-// Harmony stroke-line opacity, persist it, and refresh the Connecting box.
+// Harmony stroke-line opacity, persist it, and refresh the settings window.
 const setArtStyle = (name: string) => {
   currentArtStyle = name;
   store.set("app.artStyle", name);
   brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
   applyBrushStrokeOpacity(true);
-  connectingSettings.render(brush);
+  settingsPanel.render(brush);
   menu.setConnectingValue(name);
 };
 
 // Keep the connecting "Connect to" / "Map" dropdowns in sync when layers or
 // neighbors maps are renamed/added/removed. Only re-render while visible.
 layerManager.subscribe(() => {
-  if (connectingSettings.el.style.display !== "none")
-    connectingSettings.render(brush);
-  if (brushSettings.el.style.display !== "none") brushSettings.render(brush);
+  if (settingsPanel.el.style.display !== "none") settingsPanel.render(brush);
 });
 
 // ---- undo + paint persistence ---------------------------------------------------
@@ -541,7 +557,7 @@ const canvasMenuOptions = {
   onTogglePen: (on: boolean) => {
     penEnabled = on;
     store.set("app.penEnabled", on);
-    brushSettings.render(brush); // show/hide the Pen section live
+    settingsPanel.render(brush); // show/hide the Pen section live
   },
   onShareImage: shareImageFn,
   onExportImage: exportImageFn,
@@ -662,7 +678,6 @@ const menu = createMenu(
   },
   [
     { label: "Brushes", shortcut: "b", open: showSettings },
-    { label: "Connecting", shortcut: "c", open: showConnecting },
     { label: "Layers", shortcut: "l", open: showLayers },
     { label: "Maps", shortcut: "m", open: showMaps },
     { label: "Symmetry", shortcut: "y", open: showSymmetry },
@@ -723,8 +738,7 @@ const shortcuts = buildAppShortcuts({
   // leads with the navbar — the default restore state shows only it.
   panels: () => [
     menu.el,
-    brushSettings.el,
-    connectingSettings.el,
+    settingsPanel.el,
     layersBox.el,
     symmetryBox.el,
     mapsBox.el,
@@ -762,12 +776,8 @@ attachToHeading(
   "Drawing layers. Each layer holds its own canvas plus its connections sub-layers; the active layer is the target for strokes and connection drawings.",
 );
 attachToHeading(
-  brushSettings.el,
-  "Settings for the currently selected brush: its size, opacity and brush-specific options.",
-);
-attachToHeading(
-  connectingSettings.el,
-  "How the Round brush weaves its connecting web: where it connects (routing) and the art-style dials. Pick a preset from the navbar Connecting combo.",
+  settingsPanel.el,
+  "Settings for the selected brush. The Brush tab has size, opacity and brush-specific options; the Connecting tab (for brushes that weave a web) has routing and the art-style dials. Reset reverts both to defaults.",
 );
 attachToHeading(
   symmetryBox.el,

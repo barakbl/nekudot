@@ -864,8 +864,9 @@ body {
   font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   z-index: 15;
 }
-/* Header (drag handle + close) is fixed; the dials scroll under it. */
-.settings-panel > .panel-header {
+/* Header (drag handle + actions) and the tab bar are fixed; dials scroll. */
+.settings-panel > .panel-header,
+.settings-panel > .settings-tabs {
   flex: 0 0 auto;
 }
 .settings-panel > .panel-content {
@@ -912,6 +913,59 @@ body {
 .panel-close-btn:hover {
   background: var(--hover-bg-strong);
   color: var(--text-primary);
+}
+/* Header right side: Reset + close, kept together. */
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.panel-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--border-stronger);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font: 600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.panel-reset-btn:hover {
+  background: var(--hover-bg-strong);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+/* Brush / Connecting tab bar. */
+.settings-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 10px;
+  background: var(--pill-bg);
+  border-radius: 8px;
+}
+.settings-tab {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.settings-tab:hover {
+  color: var(--text-primary);
+}
+.settings-tab.active {
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .settings-empty {
   margin: 0;

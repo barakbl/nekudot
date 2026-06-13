@@ -134,4 +134,31 @@ describe("brush settings persistence", () => {
     a.selectArtStyle("web");
     expect(valueOf(a, "connecting_mode")).toBe("stroke");
   });
+
+  it("resetSettings reverts brush-own params and art-style dials to defaults", () => {
+    const a = newRound(store);
+    a.restore(); // captures the brush-own defaults
+    const dashDefault = valueOf(a, "strokeDash");
+    const densityDefault = valueOf(a, "density");
+    change(a, "strokeDash", "dotted");
+    change(a, "density", 3);
+    change(a, "connecting_mode", "stroke"); // routing — should be PRESERVED
+    a.resetSettings();
+    expect(valueOf(a, "strokeDash")).toBe(dashDefault);
+    expect(valueOf(a, "density")).toBe(densityDefault);
+    expect(valueOf(a, "connecting_mode")).toBe("stroke"); // routing kept
+  });
+
+  it("reset persists — a reloaded brush is default too", () => {
+    const a = newRound(store);
+    a.restore();
+    const densityDefault = valueOf(a, "density");
+    change(a, "density", 3);
+    a.resetSettings();
+
+    const b = newRound(store);
+    b.restore();
+    b.selectArtStyle("shaded");
+    expect(valueOf(b, "density")).toBe(densityDefault);
+  });
 });

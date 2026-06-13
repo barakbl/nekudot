@@ -1,5 +1,6 @@
 import {
   applySettingValue,
+  isConnectingSetting,
   PEN_SECTION,
   type BrushBase,
   type BrushSetting,
@@ -120,46 +121,82 @@ export type BrushControl = {
 };
 export type BrushControls = { size: BrushControl; opacity: BrushControl };
 
-// The app shows two settings boxes, both built here:
-//   scope "brush"      — size/opacity + the brush's own params (Dash, etc.).
-//   scope "connecting" — the connecting routing + art-style dials, shown only
-//                        for brushes that connect (Round). Preset quick-pick is
-//                        in the navbar, so no preset pills here.
+// One settings window with two tabs:
+//   Brush      — size/opacity + the brush's own params (Dash, Pen, …).
+//   Connecting — the connecting routing + art-style dials (only for brushes
+//                that connect: Round/Eraser/Soft Pencil). Preset quick-pick is
+//                in the navbar, so no preset pills here.
+// A Reset button in the header reverts both to the brush's defaults + the
+// selected art style's defaults (wired in main.ts).
+export type SettingsTab = "brush" | "connecting";
+
 export type SettingsPanelOpts = {
-  scope: "brush" | "connecting";
-  brushControls?: BrushControls; // brush scope only
+  brushControls: BrushControls; // size/opacity, always at the top of the Brush tab
   onSavePreset?: () => void; // connecting: save the dials as a new custom preset
   onUpdatePreset?: () => void; // connecting: overwrite the active custom preset
   activeCustomName?: () => string | null; // the active custom preset's name, or null
+  onReset?: () => void; // header Reset button
   // Whether the Pen section is shown (the More-menu "Pen pressure" toggle).
-  // Defaults to shown; gates only the brush scope (Pen is a brush setting).
+  // Defaults to shown; gates only the Brush tab (Pen is a brush setting).
   showPen?: () => boolean;
 };
-
-const isConnectingSetting = (s: BrushSetting): boolean =>
-  s.section === ROUTING_SECTION || s.section === STYLE_SECTION;
 
 export function createSettingsPanel(opts: SettingsPanelOpts): {
   el: HTMLElement;
   render: (brush: BrushBase) => void;
+  showTab: (tab: SettingsTab) => void;
 } {
   const panel = document.createElement("div");
-  panel.className =
-    "settings-panel " +
-    (opts.scope === "connecting" ? "connecting-panel" : "brush-panel");
+  panel.className = "settings-panel brush-panel";
   panel.style.display = "none";
 
   const header = document.createElement("div");
   header.className = "panel-header";
   const title = document.createElement("h3");
   header.appendChild(title);
-  header.appendChild(
+  const headerActions = document.createElement("div");
+  headerActions.className = "panel-header-actions";
+  if (opts.onReset) {
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "panel-reset-btn";
+    reset.title = "Reset this brush + its art style to defaults";
+    reset.innerHTML =
+      '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M3 9 A9 9 0 1 1 5 15"/><path d="M3 4 V9 H8"/></svg>' +
+      "<span>Reset</span>";
+    reset.addEventListener("click", () => opts.onReset?.());
+    headerActions.appendChild(reset);
+  }
+  headerActions.appendChild(
     makeCloseButton(() => {
       panel.style.display = "none";
     }),
   );
+  header.appendChild(headerActions);
   panel.appendChild(header);
   makeDraggable(panel, header);
+
+  // Tab bar (hidden for brushes that don't connect — only the Brush tab then).
+  let activeTab: SettingsTab = "brush";
+  let lastBrush: BrushBase | null = null;
+  const tabBar = document.createElement("div");
+  tabBar.className = "settings-tabs";
+  const mkTab = (label: string, tab: SettingsTab) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "settings-tab";
+    b.textContent = label;
+    b.addEventListener("click", () => {
+      activeTab = tab;
+      if (lastBrush) render(lastBrush);
+    });
+    return b;
+  };
+  const brushTab = mkTab("Brush", "brush");
+  const connTab = mkTab("Connecting", "connecting");
+  tabBar.append(brushTab, connTab);
+  panel.appendChild(tabBar);
 
   const content = document.createElement("div");
   content.className = "panel-content";
@@ -169,81 +206,50 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   let advancedOpen = false;
 
   const render = (brush: BrushBase) => {
-    title.textContent =
-      opts.scope === "connecting" ? "Connecting" : `${brush.name()} settings`;
+    lastBrush = brush;
+    const connects = brush.supportsConnecting();
+    if (activeTab === "connecting" && !connects) activeTab = "brush"; // tab gone
+
+    title.textContent = `${brush.name()} settings`;
+    tabBar.style.display = connects ? "" : "none";
+    brushTab.classList.toggle("active", activeTab === "brush");
+    connTab.classList.toggle("active", activeTab === "connecting");
+
     content.replaceChildren();
-
-    // Every value change routes here so the brush persists it.
     const persist: PersistFn = (s, v) => brush.persistSetting(s, v);
+    if (activeTab === "connecting") renderConnectingTab(brush, persist);
+    else renderBrushTab(brush, persist);
+  };
 
-    // Size + opacity head the Brush box (they affect every brush's stroke).
-    // They self-persist via their own onChange (wired in main.ts), so no persist.
-    if (opts.scope === "brush" && opts.brushControls) {
-      content.appendChild(buildBrushControls(opts.brushControls));
-    }
+  const renderBrushTab = (brush: BrushBase, persist: PersistFn) => {
+    // Size + opacity head the tab (they affect every brush's stroke). They
+    // self-persist via their own onChange (wired in main.ts), so no persist.
+    content.appendChild(buildBrushControls(opts.brushControls));
 
     const penHidden = opts.showPen ? !opts.showPen() : false;
     const settings = brush
       .getSettings()
-      .filter((s) =>
-        opts.scope === "connecting" ? isConnectingSetting(s) : !isConnectingSetting(s),
-      )
+      .filter((s) => !isConnectingSetting(s))
       .filter((s) => !(penHidden && s.section === PEN_SECTION));
+    appendSettingGroups(settings, brush, persist);
+  };
 
+  const renderConnectingTab = (brush: BrushBase, persist: PersistFn) => {
+    const settings = brush.getSettings().filter(isConnectingSetting);
     if (settings.length === 0) {
-      if (opts.scope === "connecting") {
-        const empty = document.createElement("p");
-        empty.className = "settings-empty";
-        empty.textContent = brush.supportsConnecting()
-          ? "No connection settings."
-          : "This brush doesn't draw connections.";
-        content.appendChild(empty);
-      } else if (!opts.brushControls) {
-        const empty = document.createElement("p");
-        empty.className = "settings-empty";
-        empty.textContent = "No settings.";
-        content.appendChild(empty);
-      }
+      const empty = document.createElement("p");
+      empty.className = "settings-empty";
+      empty.textContent = brush.supportsConnecting()
+        ? "No connection settings."
+        : "This brush doesn't draw connections.";
+      content.appendChild(empty);
       return;
     }
+    appendSettingGroups(settings, brush, persist);
 
-    // Walk runs of settings sharing a section. The Connection (routing) group
-    // keeps its preset row; the art-style group folds its extras under "More".
-    let i = 0;
-    while (i < settings.length) {
-      const section = settings[i].section;
-      const run: BrushSetting[] = [];
-      while (i < settings.length && settings[i].section === section) {
-        run.push(settings[i]);
-        i++;
-      }
-
-      if (section === ROUTING_SECTION) {
-        content.appendChild(buildRoutingGroup(run, () => render(brush), persist));
-      } else if (section === STYLE_SECTION) {
-        const openKeys = new Set(brush.activeConnection()?.defaultOpenKeys() ?? []);
-        content.appendChild(
-          buildStyleGroup(
-            run,
-            {
-              get: () => advancedOpen,
-              set: (v) => {
-                advancedOpen = v;
-              },
-            },
-            openKeys,
-            persist,
-          ),
-        );
-      } else {
-        if (section) content.appendChild(makeSectionHeader(section));
-        for (const s of run) content.appendChild(makeRow(s, persist));
-      }
-    }
-
-    // Connecting box: save the current dials as a Custom preset. When a custom
-    // preset is already active, offer to update it in place or save a new one.
-    if (opts.scope === "connecting" && opts.onSavePreset && brush.supportsConnecting()) {
+    // Save the current dials as a Custom preset. When a custom preset is already
+    // active, offer to update it in place or save a new one.
+    if (opts.onSavePreset && brush.supportsConnecting()) {
       const mkBtn = (label: string, fn?: () => void) => {
         const b = document.createElement("button");
         b.type = "button";
@@ -267,7 +273,49 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
     }
   };
 
-  return { el: panel, render };
+  // Walk runs of settings sharing a section into the content. The Connection
+  // (routing) group keeps its preset row; the art-style group folds its extras
+  // under "More".
+  const appendSettingGroups = (
+    settings: BrushSetting[],
+    brush: BrushBase,
+    persist: PersistFn,
+  ) => {
+    let i = 0;
+    while (i < settings.length) {
+      const section = settings[i].section;
+      const run: BrushSetting[] = [];
+      while (i < settings.length && settings[i].section === section) {
+        run.push(settings[i]);
+        i++;
+      }
+      if (section === ROUTING_SECTION) {
+        content.appendChild(buildRoutingGroup(run, () => render(brush), persist));
+      } else if (section === STYLE_SECTION) {
+        const openKeys = new Set(brush.activeConnection()?.defaultOpenKeys() ?? []);
+        content.appendChild(
+          buildStyleGroup(
+            run,
+            { get: () => advancedOpen, set: (v) => (advancedOpen = v) },
+            openKeys,
+            persist,
+          ),
+        );
+      } else {
+        if (section) content.appendChild(makeSectionHeader(section));
+        for (const s of run) content.appendChild(makeRow(s, persist));
+      }
+    }
+  };
+
+  // Switch tab (e.g. opening the window to the Connecting tab from the combo
+  // gear). Re-renders with the current brush; the caller reveals the window.
+  const showTab = (tab: SettingsTab) => {
+    activeTab = tab;
+    if (lastBrush) render(lastBrush);
+  };
+
+  return { el: panel, render, showTab };
 }
 
 function makeSectionHeader(text: string): HTMLElement {

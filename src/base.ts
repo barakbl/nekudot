@@ -6,6 +6,7 @@ import {
   DASH_STYLES,
   DASH_PATTERNS,
   DASH_ICONS,
+  ROUTING_SECTION,
   STYLE_SECTION,
   type DashStyle,
   type ConnectingFlat,
@@ -85,6 +86,12 @@ export function applySettingValue(s: BrushSetting, v: unknown): void {
 // persistSetting.
 export function isStyleDial(s: BrushSetting): boolean {
   return s.section === STYLE_SECTION;
+}
+
+// A connecting setting (routing or art-style dial), shown on the Connecting
+// tab; everything else is a brush-own setting on the Brush tab.
+export function isConnectingSetting(s: BrushSetting): boolean {
+  return s.section === ROUTING_SECTION || s.section === STYLE_SECTION;
 }
 
 // The pen-modulation settings group. Hidden in Brush settings (and its
@@ -552,16 +559,48 @@ export abstract class BrushBase {
     return `brush.${this.name()}.${suffix}`;
   }
 
+  // Brush-own setting defaults, snapshotted before restore overwrites them, so
+  // the Reset button can revert to them.
+  private ownDefaults: Record<string, unknown> | null = null;
+
   // Restore the brush's own params + routing from storage. Art-style dials are
   // NOT restored here — the active style isn't decided yet at boot; they load
   // when the style is selected (selectArtStyle → restoreConnectionStyle).
   restore(): void {
+    this.captureOwnDefaults(); // fields are at their initial defaults right now
     if (!this.store) return;
     for (const s of this.getSettings()) {
       if (isStyleDial(s)) continue;
       const saved = this.store.get<unknown>(this.brushKey(s.key));
       if (saved !== undefined) applySettingValue(s, saved);
     }
+  }
+
+  private captureOwnDefaults(): void {
+    if (this.ownDefaults) return;
+    const d: Record<string, unknown> = {};
+    for (const s of this.getSettings()) {
+      if (!isConnectingSetting(s)) d[s.key] = s.value; // brush-own only
+    }
+    this.ownDefaults = d;
+  }
+
+  // Revert this brush to defaults: its own params to their initial values, and
+  // the connecting dials to the active art style's preset defaults (routing is
+  // preserved). Persisted, so the reset survives a reload. Wired to the
+  // settings window's Reset button.
+  resetSettings(): void {
+    if (this.ownDefaults) {
+      for (const s of this.getSettings()) {
+        if (isConnectingSetting(s)) continue;
+        const d = this.ownDefaults[s.key];
+        if (d !== undefined) {
+          applySettingValue(s, d);
+          this.persistSetting(s, d);
+        }
+      }
+    }
+    if (this.connection) this.resetArtStyle(this.connection.styleName());
   }
 
   // Persist one setting the panel just changed. An art-style dial saves the
