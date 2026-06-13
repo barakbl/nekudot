@@ -6,7 +6,9 @@ import {
   DASH_STYLES,
   DASH_PATTERNS,
   DASH_ICONS,
+  STYLE_SECTION,
   type DashStyle,
+  type ConnectingFlat,
 } from "./connecting-types";
 import {
   ROUTING_PRESETS,
@@ -66,6 +68,24 @@ export type BrushSetting =
       value: boolean;
       onChange: (v: boolean) => void;
     });
+
+// Push a stored/loaded value into a setting's binding, dispatching on kind so
+// a malformed stored value (wrong type) is ignored rather than applied. The
+// one place "a raw value becomes a setting change" lives — used by restore,
+// the panel's preset application, and elsewhere.
+export function applySettingValue(s: BrushSetting, v: unknown): void {
+  if (s.kind === "number" && typeof v === "number") s.onChange(v);
+  else if (s.kind === "boolean" && typeof v === "boolean") s.onChange(v);
+  else if ((s.kind === "select" || s.kind === "color") && typeof v === "string")
+    s.onChange(v);
+}
+
+// Art-style dials are persisted per art style (so each style keeps its own
+// look); every other setting is a plain per-key value. See BrushBase.restore /
+// persistSetting.
+export function isStyleDial(s: BrushSetting): boolean {
+  return s.section === STYLE_SECTION;
+}
 
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
@@ -430,11 +450,15 @@ export abstract class BrushBase {
     this.host.clearPixels(); // every neighbor cloud — not touched by canvas clear
   }
 
+  // The brush's settings descriptors for the panel. Pure: each onChange only
+  // mutates brush/connection state. Persistence is separate (the panel calls
+  // persistSetting on change; restore reads at boot) — so this is just the UI
+  // + live-binding view, rebuilt freely on every render.
   getSettings(): BrushSetting[] {
-    return this.persistSettings([
+    return [
       ...(this.connection ? this.connection.sliders() : []),
       ...this.penSettings(),
-    ]);
+    ];
   }
 
   // Called when this brush becomes the active tool. Default no-op; brushes can
@@ -468,13 +492,31 @@ export abstract class BrushBase {
     };
   }
 
-  // Swap the active connection style (web → fur …), preserving routing choices.
-  // A no-op for brushes that don't connect (no connection attached).
+  // Swap the active connection style (web → fur …) to the preset's own
+  // defaults, preserving routing choices. A no-op for brushes that don't
+  // connect. Use selectArtStyle to also load this brush's saved dials for the
+  // style; this bare form is the "reset to defaults" path (resetArtStyle).
   applyArtStylePreset(name: string): void {
     if (!this.connection) return;
     const next = createConnection(name, this.connectionDeps());
     next.copyRoutingFrom(this.connection);
     this.connection = next;
+  }
+
+  // Switch to an art style AND restore this brush's saved dials for it, so each
+  // style remembers its own look across reloads and style switches. The path
+  // used when selecting a brush or picking a style from the combo.
+  selectArtStyle(name: string): void {
+    this.applyArtStylePreset(name);
+    this.restoreConnectionStyle(name);
+  }
+
+  // Reset an art style to its preset defaults and persist them — overwriting
+  // any saved per-style dials (New art / Delete canvas), so the fresh default
+  // look survives a reload.
+  resetArtStyle(name: string): void {
+    this.applyArtStylePreset(name);
+    this.persistConnectionStyle();
   }
 
   // Apply only a routing preset (e.g. "no_connect" for the eraser's default,
@@ -494,30 +536,50 @@ export abstract class BrushBase {
     return this.rng();
   }
 
-  // Wrap every setting's onChange so the new value is also persisted under
-  // brush.<name>.<key>. The value type varies per setting kind, but the wrapper
-  // is the same for all of them: forward, then store.
-  protected persistSettings(settings: BrushSetting[]): BrushSetting[] {
-    if (!this.store) return settings;
-    const store = this.store;
-    const brushName = this.name();
-    for (const s of settings) {
-      const key = `brush.${brushName}.${s.key}`;
-      const orig = s.onChange as (v: unknown) => void;
-      s.onChange = (v: unknown) => {
-        orig(v);
-        store.set(key, v);
-      };
-    }
-    return settings;
+  // --- persistence -----------------------------------------------------------
+  // Two domains, keyed under "brush.<name>":
+  //   - art-style dials  -> ".style.<styleName>" holds the whole flat, so each
+  //     style keeps its own look (density for Shading ≠ density for String Art).
+  //   - everything else  -> ".<key>" holds the plain value (brush params,
+  //     routing). Unchanged layout, so existing saved settings keep loading.
+  // The panel calls persistSetting after a change; restore runs once at boot.
+
+  private brushKey(suffix: string): string {
+    return `brush.${this.name()}.${suffix}`;
   }
 
+  // Restore the brush's own params + routing from storage. Art-style dials are
+  // NOT restored here — the active style isn't decided yet at boot; they load
+  // when the style is selected (selectArtStyle → restoreConnectionStyle).
   restore(): void {
     if (!this.store) return;
-    const brushName = this.name();
     for (const s of this.getSettings()) {
-      const saved = this.store.get<unknown>(`brush.${brushName}.${s.key}`);
-      if (saved !== undefined) (s.onChange as (v: unknown) => void)(saved);
+      if (isStyleDial(s)) continue;
+      const saved = this.store.get<unknown>(this.brushKey(s.key));
+      if (saved !== undefined) applySettingValue(s, saved);
     }
+  }
+
+  // Persist one setting the panel just changed. An art-style dial saves the
+  // whole style flat (one write, correctly partitioned by style); anything
+  // else saves its single value.
+  persistSetting(s: BrushSetting, value: unknown): void {
+    if (!this.store) return;
+    if (isStyleDial(s)) this.persistConnectionStyle();
+    else this.store.set(this.brushKey(s.key), value);
+  }
+
+  private persistConnectionStyle(): void {
+    if (!this.store || !this.connection) return;
+    this.store.set(
+      this.brushKey(`style.${this.connection.styleName()}`),
+      this.connection.toFlat(),
+    );
+  }
+
+  private restoreConnectionStyle(name: string): void {
+    if (!this.store || !this.connection) return;
+    const flat = this.store.get<ConnectingFlat>(this.brushKey(`style.${name}`));
+    if (flat) this.connection.applyFlat(flat);
   }
 }

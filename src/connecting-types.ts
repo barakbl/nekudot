@@ -67,6 +67,14 @@ export type ConnectMode = z.infer<typeof ConnectModeSchema>;
 // layer/map union fields are encoded to strings, everything else is primitive.
 export type ConnectingFlat = Record<string, string | number | boolean>;
 
+// Settings-panel section labels for the two connecting groups. The single
+// source of truth, shared by the connection sliders (which tag each dial with
+// a section), the panel (which groups by it) and persistence (which routes
+// art-style dials to per-style storage). "Connection" = where/which-map
+// routing; "Connection art style" = the look (the dials).
+export const ROUTING_SECTION = "Connection";
+export const STYLE_SECTION = "Connection art style";
+
 // String<->union codecs so the flat select-based settings UI can carry these.
 // Ids are UUIDs, so they never collide with the literal sentinels.
 export function encodeConnectMap(c: ConnectMap): string {

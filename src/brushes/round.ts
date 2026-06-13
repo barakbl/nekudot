@@ -37,7 +37,7 @@ export class RoundBrush extends BrushBase {
   constructor(host: PaintHost, seed?: number, store?: Store) {
     super(host, seed, store);
     // Round is a connecting brush: attach the default connection (the navbar
-    // combo / onSelect swaps it via applyArtStylePreset).
+    // combo / onSelect swaps it via selectArtStyle).
     this.initConnection(DEFAULT_ART_STYLE);
   }
 
@@ -85,7 +85,7 @@ export class RoundBrush extends BrushBase {
   // Re-apply the last-chosen art style (persisted by main.ts) so the connecting
   // web matches the navbar Connecting combo whenever Round becomes active.
   onSelect(): void {
-    this.applyArtStylePreset(
+    this.selectArtStyle(
       this.store?.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE,
     );
   }
@@ -99,7 +99,7 @@ export class RoundBrush extends BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([
+    return [
       {
         kind: "select",
         key: "strokeDash",
@@ -113,6 +113,6 @@ export class RoundBrush extends BrushBase {
       },
       ...(this.connection?.sliders() ?? []),
       ...this.penSettings(),
-    ]);
+    ];
   }
 }

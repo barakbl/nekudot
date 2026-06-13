@@ -323,7 +323,7 @@ const applyBrushStrokeOpacity = (force: boolean) => {
 const setArtStyle = (name: string) => {
   currentArtStyle = name;
   store.set("app.artStyle", name);
-  brush.applyArtStylePreset(name);
+  brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
   applyBrushStrokeOpacity(true);
   connectingSettings.render(brush);
   menu.setConnectingValue(name);
@@ -424,7 +424,7 @@ void pixelLog.init();
 const resetArtState = () => {
   for (const b of Object.values(brushes)) {
     b.clear();
-    b.applyArtStylePreset(DEFAULT_ART_STYLE);
+    b.resetArtStyle(DEFAULT_ART_STYLE); // default look, persisted (overwrites saved dials)
     b.applyRoutingPreset("classic"); // standard routing: selected map, mode "both"
   }
   currentArtStyle = DEFAULT_ART_STYLE;
@@ -686,7 +686,7 @@ document.body.appendChild(menu.el);
 // darkening far faster than Harmony.
 // Custom presets load async (below), so a persisted custom name isn't known yet
 // — fall back to the default until presets.restore() brings it back.
-brushes["Round"]?.applyArtStylePreset(
+brushes["Round"]?.selectArtStyle(
   hasConnection(currentArtStyle) ? currentArtStyle : DEFAULT_ART_STYLE,
 );
 // Apply the persisted brush's own onSelect (art style) + erase mode. The initial

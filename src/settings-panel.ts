@@ -1,13 +1,17 @@
-import type { BrushBase, BrushSetting } from "./base";
+import { applySettingValue, type BrushBase, type BrushSetting } from "./base";
 import { makeDraggable } from "./drag";
 import { attachHelp } from "./help";
 import { ROUTING_PRESETS, flattenRouting } from "./brushes/connections/routing";
-import type { ConnectingFlat } from "./connecting-types";
+import {
+  ROUTING_SECTION,
+  STYLE_SECTION,
+  type ConnectingFlat,
+} from "./connecting-types";
 
-// Two distinct connecting groups. Routing keeps its preset row; the art-style
-// preset quick-pick now lives in the navbar Connecting combo, not here.
-const ROUTING_SECTION = "Connection";
-const STYLE_SECTION = "Connection art style";
+// A row's value changed: forward to the brush so it persists (art-style dials
+// per style, everything else per key). Threaded down to every input handler.
+type PersistFn = (s: BrushSetting, value: unknown) => void;
+const NO_PERSIST: PersistFn = () => {};
 
 // Short what/why help for each art-style option, keyed by setting key.
 const ART_STYLE_HELP: Record<string, string> = {
@@ -161,7 +165,11 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
       opts.scope === "connecting" ? "Connecting" : `${brush.name()} settings`;
     content.replaceChildren();
 
+    // Every value change routes here so the brush persists it.
+    const persist: PersistFn = (s, v) => brush.persistSetting(s, v);
+
     // Size + opacity head the Brush box (they affect every brush's stroke).
+    // They self-persist via their own onChange (wired in main.ts), so no persist.
     if (opts.scope === "brush" && opts.brushControls) {
       content.appendChild(buildBrushControls(opts.brushControls));
     }
@@ -201,7 +209,7 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
       }
 
       if (section === ROUTING_SECTION) {
-        content.appendChild(buildRoutingGroup(run, () => render(brush)));
+        content.appendChild(buildRoutingGroup(run, () => render(brush), persist));
       } else if (section === STYLE_SECTION) {
         const openKeys = new Set(brush.activeConnection()?.defaultOpenKeys() ?? []);
         content.appendChild(
@@ -214,11 +222,12 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
               },
             },
             openKeys,
+            persist,
           ),
         );
       } else {
         if (section) content.appendChild(makeSectionHeader(section));
-        for (const s of run) content.appendChild(makeRow(s));
+        for (const s of run) content.appendChild(makeRow(s, persist));
       }
     }
 
@@ -291,6 +300,7 @@ function makePresetRow<T>(
   presets: Record<string, T>,
   flatten: (p: T) => ConnectingFlat,
   rerender: () => void,
+  persist: PersistFn,
   // Preset names that should wrap onto a fresh line (e.g. the texture presets
   // sit on a line after the Harmony-derived ones).
   newLineBefore?: Set<string>,
@@ -312,7 +322,7 @@ function makePresetRow<T>(
     btn.textContent = pretty.charAt(0).toUpperCase() + pretty.slice(1);
     if (presetMatches(flat, current)) btn.classList.add("active");
     btn.addEventListener("click", () => {
-      applyPreset(items, flat);
+      applyPreset(items, flat, persist);
       rerender();
     });
     row.appendChild(btn);
@@ -325,6 +335,7 @@ function makePresetRow<T>(
 function buildRoutingGroup(
   items: BrushSetting[],
   rerender: () => void,
+  persist: PersistFn,
 ): HTMLElement {
   const box = document.createElement("div");
   box.className = "settings-group settings-group-routing";
@@ -332,14 +343,16 @@ function buildRoutingGroup(
   title.className = "settings-group-title";
   title.textContent = "Connection";
   box.appendChild(title);
-  box.appendChild(makePresetRow(items, ROUTING_PRESETS, flattenRouting, rerender));
-  for (const s of items) box.appendChild(makeRow(s));
+  box.appendChild(
+    makePresetRow(items, ROUTING_PRESETS, flattenRouting, rerender, persist),
+  );
+  for (const s of items) box.appendChild(makeRow(s, persist));
   return box;
 }
 
 // One art-style row + its "?" help, kept together on the left.
-function styleRow(s: BrushSetting): HTMLElement {
-  const row = makeRow(s);
+function styleRow(s: BrushSetting, persist: PersistFn): HTMLElement {
+  const row = makeRow(s, persist);
   const help = ART_STYLE_HELP[s.key];
   const label = row.querySelector("label");
   if (help && label) {
@@ -359,6 +372,7 @@ function buildStyleGroup(
   items: BrushSetting[],
   advanced: { get: () => boolean; set: (v: boolean) => void },
   openKeys: ReadonlySet<string>,
+  persist: PersistFn,
 ): HTMLElement {
   const box = document.createElement("div");
   box.className = "settings-group settings-group-style";
@@ -370,7 +384,7 @@ function buildStyleGroup(
 
   const primary = items.filter((s) => styleInUse(s, openKeys));
   const rest = items.filter((s) => !styleInUse(s, openKeys));
-  for (const s of primary) box.appendChild(styleRow(s));
+  for (const s of primary) box.appendChild(styleRow(s, persist));
 
   if (rest.length) {
     const open = advanced.get();
@@ -387,7 +401,7 @@ function buildStyleGroup(
     const body = document.createElement("div");
     body.className = "settings-group-body";
     body.style.display = open ? "" : "none";
-    for (const s of rest) body.appendChild(styleRow(s));
+    for (const s of rest) body.appendChild(styleRow(s, persist));
 
     toggle.addEventListener("click", () => {
       const next = !advanced.get();
@@ -404,19 +418,19 @@ function buildStyleGroup(
   return box;
 }
 
-// Apply a preset by matching its keys to connecting settings' keys. Order
-// follows `items`, so radius is set before minDist (its onChange clamps minDist).
-function applyPreset(items: BrushSetting[], preset: ConnectingFlat): void {
+// Apply a preset by matching its keys to connecting settings' keys, persisting
+// each. Order follows `items`, so radius is set before minDist (its onChange
+// clamps minDist).
+function applyPreset(
+  items: BrushSetting[],
+  preset: ConnectingFlat,
+  persist: PersistFn,
+): void {
   for (const s of items) {
     const v = preset[s.key];
     if (v === undefined) continue;
-    if (s.kind === "number" && typeof v === "number") s.onChange(v);
-    else if (s.kind === "boolean" && typeof v === "boolean") s.onChange(v);
-    else if (
-      (s.kind === "select" || s.kind === "color") &&
-      typeof v === "string"
-    )
-      s.onChange(v);
+    applySettingValue(s, v);
+    persist(s, v);
   }
 }
 
@@ -450,7 +464,7 @@ function makeCloseButton(onClick: () => void): HTMLElement {
 
 export { makeCloseButton };
 
-function makeRow(s: BrushSetting): HTMLElement {
+function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement {
   const row = document.createElement("div");
   row.className = "settings-row";
 
@@ -474,6 +488,7 @@ function makeRow(s: BrushSetting): HTMLElement {
       const v = Number(input.value);
       display.textContent = String(v);
       s.onChange(v);
+      persist(s, v);
     });
     wrap.appendChild(input);
     wrap.appendChild(display);
@@ -483,14 +498,20 @@ function makeRow(s: BrushSetting): HTMLElement {
     input.type = "color";
     input.value = s.value;
     input.className = "settings-color";
-    input.addEventListener("input", () => s.onChange(input.value));
+    input.addEventListener("input", () => {
+      s.onChange(input.value);
+      persist(s, input.value);
+    });
     row.appendChild(input);
   } else if (s.kind === "boolean") {
     const input = document.createElement("input");
     input.type = "checkbox";
     input.className = "settings-checkbox";
     input.checked = s.value;
-    input.addEventListener("change", () => s.onChange(input.checked));
+    input.addEventListener("change", () => {
+      s.onChange(input.checked);
+      persist(s, input.checked);
+    });
     row.appendChild(input);
   } else {
     const select = document.createElement("select");
@@ -513,12 +534,16 @@ function makeRow(s: BrushSetting): HTMLElement {
       select.addEventListener("change", () => {
         preview.innerHTML = icons[select.value] ?? "";
         s.onChange(select.value);
+        persist(s, select.value);
       });
       wrap.appendChild(preview);
       wrap.appendChild(select);
       row.appendChild(wrap);
     } else {
-      select.addEventListener("change", () => s.onChange(select.value));
+      select.addEventListener("change", () => {
+        s.onChange(select.value);
+        persist(s, select.value);
+      });
       row.appendChild(select);
     }
   }

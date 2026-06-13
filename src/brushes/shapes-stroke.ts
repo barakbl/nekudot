@@ -106,7 +106,7 @@ export abstract class ShapesStrokeBrush extends BrushBase {
   // still deposit points into the cloud.
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([
+    return [
       {
         kind: "number",
         key: "sensitivity",
@@ -177,7 +177,7 @@ export abstract class ShapesStrokeBrush extends BrushBase {
         },
       },
       ...this.penSettings(),
-    ]);
+    ];
   }
 
   private resolveFillColor(): string | undefined | null {

@@ -20,7 +20,7 @@ export class SoftPencilBrush extends BrushBase {
   protected onStroke(): void {}
 
   onSelect(): void {
-    this.applyArtStylePreset("shaded");
+    this.selectArtStyle("shaded");
   }
 
   // No solid stroke to dim, so keep global opacity full — the shading comes
@@ -31,9 +31,9 @@ export class SoftPencilBrush extends BrushBase {
 
   getSettings(): BrushSetting[] {
     // stroke: false — the mark IS the web, so only the web bindings apply.
-    return this.persistSettings([
+    return [
       ...(this.connection?.sliders() ?? []),
       ...this.penSettings({ stroke: false }),
-    ]);
+    ];
   }
 }

@@ -51,7 +51,7 @@ export class InvisibleBrush extends BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([]);
+    return [];
   }
 
   clear(): void {

@@ -10,6 +10,10 @@ import {
   ConnectModeSchema,
   encodeConnectMap,
   decodeConnectMap,
+  // Slider section labels (shared source of truth): the routing group + the
+  // art-style group.
+  ROUTING_SECTION as ROUTE_SECTION,
+  STYLE_SECTION,
   type DashStyle,
   type ConnectMap,
   type ConnectMode,
@@ -21,11 +25,6 @@ import type { BrushSetting } from "../../base";
 const MAX_CONNECT_STRANDS = 12;
 // Sample spacing (px) at/above which `dynamics` treats the stroke as "fast".
 const DYNAMICS_SPEED_REF = 28;
-
-// Slider section labels — kept identical to the old connectingSettings() so the
-// settings panel groups them the same way (routing group + art-style group).
-const ROUTE_SECTION = "Connection";
-const STYLE_SECTION = "Connection art style";
 
 // Everything a connection needs from its owning brush. `host` is a live
 // accessor (not a snapshot) so a brush could swap its drawing surface
@@ -141,6 +140,12 @@ export class ConnectionBase {
   // undefined to leave the brush's default. See ConnectionSpec.strokeAlpha.
   strokeOpacity(): number | undefined {
     return this.spec.strokeAlpha;
+  }
+
+  // The art style's stable name (e.g. "shaded", or a custom preset's name) —
+  // the persistence key under which this brush remembers this style's dials.
+  styleName(): string {
+    return this.spec.name;
   }
 
   // Optional min travel (px) between web samples. 0 (default) = weave through

@@ -66,7 +66,7 @@ export class EraserBrush extends BrushBase {
   // swap. Falls back to the default style until a custom preset finishes loading.
   onSelect(): void {
     const name = this.store?.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
-    this.applyArtStylePreset(hasConnection(name) ? name : DEFAULT_ART_STYLE);
+    this.selectArtStyle(hasConnection(name) ? name : DEFAULT_ART_STYLE);
   }
 
   // Erase at full strength regardless of the connection style's stroke alpha.

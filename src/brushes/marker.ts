@@ -56,7 +56,7 @@ export class MarkerBrush extends BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([
+    return [
       ...this.penSettings(),
       {
         kind: "boolean",
@@ -66,6 +66,6 @@ export class MarkerBrush extends BrushBase {
         value: this.chiselFollowsPen,
         onChange: (v) => (this.chiselFollowsPen = v),
       },
-    ]);
+    ];
   }
 }
