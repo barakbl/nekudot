@@ -1,11 +1,13 @@
 import type { BrushBase } from "../base";
 import type { LayerManager } from "../layered/manager";
 import type { SymmetryController } from "../symmetry/controller";
+import { readPenSample } from "../pen";
 
 // Pointer wiring for the stage: start/feed/end brush strokes. Freezes the
-// symmetry transforms per stroke and opens the wet-stroke buffer around
+// symmetry transforms per stroke, opens the wet-stroke buffer around
 // continuous lines (see LayerManager.beginStroke) so a faint stroke
-// composites at one uniform alpha.
+// composites at one uniform alpha, and reads the pen sample (pressure/tilt)
+// off every pointer event — coalesced sub-samples each carry their own.
 export function bindDrawingInput(opts: {
   stage: HTMLElement;
   brush: () => BrushBase; // read per event — the active brush can change
@@ -15,6 +17,9 @@ export function bindDrawingInput(opts: {
 }): { commitActiveStroke: () => void } {
   const { stage, symmetry, layerManager } = opts;
   let drawingId: number | null = null;
+  // Whether THIS stroke opened the wet buffer — latched at pointerdown so the
+  // end matches the start even if settings change mid-stroke.
+  let buffered = false;
 
   stage.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
@@ -22,16 +27,19 @@ export function bindDrawingInput(opts: {
     stage.setPointerCapture(e.pointerId);
     drawingId = e.pointerId;
     const brush = opts.brush();
+    const pen = readPenSample(e);
     // Freeze the symmetry transforms for this stroke (Tile anchored to the start,
     // Radial/Mirror centred on the canvas) before any mark is drawn.
     symmetry.beginStroke(e.offsetX, e.offsetY, layerManager.currentSize);
     // Buffer the continuous line (Round) so a faint stroke composites as one
     // uniform alpha instead of dotting at the sample joints. Must start before the
     // first segment is drawn. Skipped under symmetry so each copy keeps its own
-    // fade (the buffer would flatten them to one alpha).
-    if (brush.bufferedStroke() && !symmetry.active()) layerManager.beginStroke();
+    // fade (the buffer would flatten them to one alpha), and skipped when the
+    // pen modulates opacity (see BrushBase.bufferedStroke).
+    buffered = brush.bufferedStroke(pen) && !symmetry.active();
+    if (buffered) layerManager.beginStroke();
     brush.strokeStart(e.offsetX, e.offsetY);
-    brush.stroke(e.offsetX, e.offsetY);
+    brush.stroke(e.offsetX, e.offsetY, true, pen);
   });
 
   stage.addEventListener("pointermove", (e) => {
@@ -48,7 +56,12 @@ export function bindDrawingInput(opts: {
     const frameCadence = brush.supportsConnecting();
     for (let i = 0; i < list.length; i++) {
       const ev = list[i];
-      brush.stroke(ev.offsetX, ev.offsetY, !frameCadence || i === list.length - 1);
+      brush.stroke(
+        ev.offsetX,
+        ev.offsetY,
+        !frameCadence || i === list.length - 1,
+        readPenSample(ev),
+      );
     }
   });
 
@@ -57,8 +70,9 @@ export function bindDrawingInput(opts: {
     const brush = opts.brush();
     brush.strokeEnd();
     // Commit the buffered line onto the active layer (one uniform-alpha composite)
-    // before previews/persist read the layer. (Matches the pointerdown guard.)
-    if (brush.bufferedStroke() && !symmetry.active()) layerManager.endStroke();
+    // before previews/persist read the layer. (Matches the pointerdown latch.)
+    if (buffered) layerManager.endStroke();
+    buffered = false;
     opts.onStrokeEnd(brush);
   };
 

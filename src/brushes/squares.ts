@@ -29,7 +29,7 @@ export class SquaresBrush extends ShapesStrokeBrush {
       p.cy,
       p.size,
       p.size,
-      { dash: p.dashPattern },
+      { dash: p.dashPattern, alpha: p.strokeAlpha },
       p.angle,
     );
   }

@@ -101,6 +101,9 @@ export interface ConnectRouter {
   activeConnectionLayerId(): string;
   selectedMapId(): string;
   strokeWidth(): number;
+  // The persistent stroke opacity (the Opacity slider) — the maximum that pen
+  // pressure/tilt modulation scales down from.
+  strokeAlpha(): number;
   drawConnectionToLayer(
     layerId: string,
     p1: Pixel,

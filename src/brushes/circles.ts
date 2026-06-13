@@ -17,6 +17,9 @@ export class CirclesBrush extends ShapesStrokeBrush {
     if (p.fillColor !== null) {
       this.renderer.fillCircle(p.cx, p.cy, r, p.fillColor, p.fillAlpha);
     }
-    this.renderer.strokeCircle(p.cx, p.cy, r, { dash: p.dashPattern });
+    this.renderer.strokeCircle(p.cx, p.cy, r, {
+      dash: p.dashPattern,
+      alpha: p.strokeAlpha,
+    });
   }
 }

@@ -18,6 +18,9 @@ export type ShapeDrawParams = {
   fillColor: string | undefined | null;
   fillAlpha: number;
   dashPattern: readonly number[];
+  // Pen-modulated outline opacity, or undefined to use the persistent
+  // globalAlpha (always undefined for a mouse).
+  strokeAlpha?: number;
 };
 
 // Stroke speed (px/ms) at which a shape reaches its Max size. Fixed, so the
@@ -59,9 +62,12 @@ export abstract class ShapesStrokeBrush extends BrushBase {
     const speed = dist / dt;
     // Map speed → size through a gamma curve. t is the linear (0..1) position;
     // gamma goes from 1 (linear) toward 0.4 (convex) as sensitivity rises.
+    // Pen pressure/tilt scale the speed-driven size (factor 1 for a mouse).
     const t = Math.min(1, speed / REF_SPEED);
     const gamma = 1 - (this.sensitivity / 100) * 0.6;
-    const newSize = this.minSize + (this.maxSize - this.minSize) * Math.pow(t, gamma);
+    const newSize =
+      (this.minSize + (this.maxSize - this.minSize) * Math.pow(t, gamma)) *
+      this.penWidthFactor();
 
     const step = this.placedSize / 2 + newSize / 2;
     if (dist < step) return;
@@ -71,14 +77,17 @@ export abstract class ShapesStrokeBrush extends BrushBase {
     const cx = this.placedX + ux * step;
     const cy = this.placedY + uy * step;
 
+    const alphaFactor = this.penAlphaFactor();
     this.drawAt({
       cx,
       cy,
       size: newSize,
       angle: Math.atan2(dy, dx),
       fillColor: this.resolveFillColor(),
-      fillAlpha: this.fillOpacity / 100,
+      fillAlpha: (this.fillOpacity / 100) * alphaFactor,
       dashPattern: DASH_PATTERNS[this.strokeDash],
+      strokeAlpha:
+        alphaFactor === 1 ? undefined : this.host.strokeAlpha() * alphaFactor,
     });
 
     this.placedX = cx;
@@ -167,6 +176,7 @@ export abstract class ShapesStrokeBrush extends BrushBase {
           this.strokeDash = v as DashStyle;
         },
       },
+      ...this.penSettings(),
     ]);
   }
 

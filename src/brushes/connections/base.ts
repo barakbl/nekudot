@@ -105,6 +105,10 @@ export class ConnectionBase {
   private prevSampleX = 0;
   private prevSampleY = 0;
   private sampleSpeed = 0;
+  // Pen-pressure factors for the dial bindings (1 = neutral). Pushed per
+  // sample by the owning brush (BrushBase.stroke) before connect().
+  private penDensityFactor = 1;
+  private penRadiusFactor = 1;
   // Size of the read (from) map at stroke start; the cutoff for stroke/map mode.
   private strokeCutoffId: number | null = null;
 
@@ -187,6 +191,11 @@ export class ConnectionBase {
     this.connectingNeighbors(current);
   }
 
+  setPenFactors(density: number, radius: number): void {
+    this.penDensityFactor = density;
+    this.penRadiusFactor = radius;
+  }
+
   resetStroke(): void {
     this.strokeCutoffId = null;
   }
@@ -194,9 +203,14 @@ export class ConnectionBase {
   // --- the connecting engine (moved verbatim from BrushBase) -----------------
 
   protected connectingNeighbors(current: Pixel): void {
-    const neighbors = this.searchNeighbors(current, this.searchRadius);
+    // Pen-bound dials: pressure scales the search radius and the per-neighbor
+    // density odds (both 1× without a binding/pen). The fade normalizes to the
+    // effective radius so the falloff shape is preserved at light pressure.
+    const radius = this.searchRadius * this.penRadiusFactor;
+    const density = this.connectDensity * this.penDensityFactor;
+    const neighbors = this.searchNeighbors(current, radius);
     const minSq = this.minConnectDist * this.minConnectDist;
-    const radiusSq = this.searchRadius * this.searchRadius;
+    const radiusSq = radius * radius;
     const fade = this.connectAlphaFade;
     const baseAlpha = this.connectionStyle.alpha ?? 1;
     const cutoff = this.strokeCutoffId ?? current.id;
@@ -215,7 +229,7 @@ export class ConnectionBase {
     for (const n of neighbors) {
       if (this.connectMode === "map" && n.id >= cutoff) continue;
       if (this.connectMode === "stroke" && n.id < cutoff) continue;
-      if (this.random() * 100 >= this.connectDensity) continue;
+      if (this.random() * 100 >= density) continue;
       const dx = n.x - current.x;
       const dy = n.y - current.y;
       const dsq = dx * dx + dy * dy;

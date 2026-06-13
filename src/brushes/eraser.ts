@@ -50,10 +50,12 @@ export class EraserBrush extends BrushBase {
   }
 
   protected onStroke(x: number, y: number, _current: Pixel): void {
+    // penStyle: pressure can narrow the eraser / soften the wipe (alpha in
+    // destination-out = partial erase). Empty for a mouse.
     this.renderer.drawLine(
       { id: 0, x: this.lastX, y: this.lastY },
       { id: 0, x, y },
-      { cap: "round" },
+      { cap: "round", ...this.penStyle() },
     );
     this.lastX = x;
     this.lastY = y;

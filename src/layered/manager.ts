@@ -477,6 +477,9 @@ export class LayerManager implements PaintHost {
   strokeWidth(): number {
     return this.rendererInit.lineWidth ?? 1;
   }
+  strokeAlpha(): number {
+    return this.rendererInit.globalAlpha ?? 1;
+  }
   drawConnectionToLayer(
     layerId: string,
     p1: Pixel,

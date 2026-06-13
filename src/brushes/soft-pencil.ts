@@ -30,6 +30,10 @@ export class SoftPencilBrush extends BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([...(this.connection?.sliders() ?? [])]);
+    // stroke: false — the mark IS the web, so only the web bindings apply.
+    return this.persistSettings([
+      ...(this.connection?.sliders() ?? []),
+      ...this.penSettings({ stroke: false }),
+    ]);
   }
 }

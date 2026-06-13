@@ -16,6 +16,15 @@ import {
 import { createConnection } from "./brushes/connections/registry";
 import type { ConnectionBase, ConnectionDeps } from "./brushes/connections/base";
 import type { PixelLog, BrushType } from "./pixel-log";
+import {
+  MOUSE_SAMPLE,
+  PenSmoother,
+  penFactor,
+  SIZE_FLOOR,
+  ALPHA_FLOOR,
+  DIAL_FLOOR,
+  type PenSample,
+} from "./pen";
 
 // Re-exported so brushes can keep importing dash helpers from "./base".
 export { DASH_STYLES, DASH_PATTERNS, DASH_ICONS };
@@ -90,6 +99,36 @@ export abstract class BrushBase {
     this.pixelLog = log;
   }
 
+  // --- pen (stylus) modulation ------------------------------------------------
+  // Which pen inputs modulate what — the "Pen" section in Brush settings,
+  // persisted per brush like every other setting. The bound sliders keep
+  // their meaning as the MAXIMUM; pen input scales down from there.
+  protected penPressureSize = true;
+  protected penPressureAlpha = false;
+  protected penTiltSize = false;
+  protected penTiltAlpha = false;
+  protected penWebDensity = false;
+  protected penWebRadius = false;
+  // Feel knobs (0..100 sliders). Smoothing 65 → EMA step 0.35 and Response 50
+  // → gamma 0.7, the original constants — defaults change nothing.
+  protected penSmoothing = 65;
+  protected penResponse = 50;
+
+  private penSmoother = new PenSmoother();
+  private pen: PenSample = MOUSE_SAMPLE;
+
+  // 0..100 → EMA step per sample: 0 = raw samples, 100 = heaviest smoothing.
+  private penSmoothStep(): number {
+    return Math.max(0.05, 1 - this.penSmoothing / 100);
+  }
+
+  // 0..100 → gamma 0.3..2, piecewise-linear with the default (0.7) at 50:
+  // lower = a light touch counts more, higher = demands firmer pressure.
+  private penGamma(): number {
+    const v = this.penResponse;
+    return v <= 50 ? 0.3 + (0.4 * v) / 50 : 0.7 + (1.3 * (v - 50)) / 50;
+  }
+
   // The dash of the visible stroke for this brush; "solid" unless overridden.
   protected strokeDashValue(): DashStyle {
     return "solid";
@@ -130,7 +169,18 @@ export abstract class BrushBase {
   // web samples once per frame (Harmony's per-move model) instead of at the
   // hardware's report rate — feeding every sub-sample made the web build up
   // ~quadratically with the pointer's rate. The line still draws every sample.
-  stroke(x: number, y: number, sample = true): void {
+  stroke(x: number, y: number, sample = true, pen: PenSample = MOUSE_SAMPLE): void {
+    // Smooth and latch this sample's pen state first: onStroke and connect()
+    // below both read it (via penStyle()/the connection factors).
+    this.pen = this.penSmoother.smooth(pen, this.penSmoothStep());
+    this.connection?.setPenFactors(
+      this.penWebDensity && this.pen.isPen
+        ? penFactor(this.pen.pressure, DIAL_FLOOR, this.penGamma())
+        : 1,
+      this.penWebRadius && this.pen.isPen
+        ? penFactor(this.pen.pressure, DIAL_FLOOR, this.penGamma())
+        : 1,
+    );
     // While erasing, paint (erase) the mark. The Eraser brush may also weave a
     // connection so the web gets erased too — run connect() with an ephemeral
     // point so erasing never grows the point cloud. connect() is a no-op when
@@ -182,6 +232,137 @@ export abstract class BrushBase {
   // Override in subclasses for brush-specific stroke drawing.
   protected onStroke(_x: number, _y: number, _current: Pixel): void {}
 
+  // --- pen factors for the current sample (read inside onStroke) -------------
+
+  // Size multiplier (1 with a mouse or with the bindings off). Pressure and
+  // tilt multiply when both are bound.
+  protected penWidthFactor(): number {
+    if (!this.pen.isPen) return 1;
+    const gamma = this.penGamma();
+    let f = 1;
+    if (this.penPressureSize) f *= penFactor(this.pen.pressure, SIZE_FLOOR, gamma);
+    if (this.penTiltSize) f *= penFactor(this.pen.tilt, SIZE_FLOOR, gamma);
+    return f;
+  }
+
+  protected penAlphaFactor(): number {
+    if (!this.pen.isPen) return 1;
+    const gamma = this.penGamma();
+    let f = 1;
+    if (this.penPressureAlpha) f *= penFactor(this.pen.pressure, ALPHA_FLOOR, gamma);
+    if (this.penTiltAlpha) f *= penFactor(this.pen.tilt, ALPHA_FLOOR, gamma);
+    return f;
+  }
+
+  // Per-call LineStyle overrides for the current sample. Empty when nothing
+  // modulates, so the persistent renderer state applies and a mouse stroke is
+  // pixel-identical to the pre-pen behaviour.
+  protected penStyle(): { width?: number; alpha?: number } {
+    const style: { width?: number; alpha?: number } = {};
+    const wf = this.penWidthFactor();
+    if (wf !== 1) style.width = Math.max(0.5, this.host.strokeWidth() * wf);
+    const af = this.penAlphaFactor();
+    if (af !== 1) style.alpha = this.host.strokeAlpha() * af;
+    return style;
+  }
+
+  // The pen's lean direction (radians), or null when there's no usable tilt
+  // (mouse, vertical pen, tilt-less stylus) — callers keep their fixed angle.
+  protected penAzimuth(): number | null {
+    return this.pen.isPen && this.pen.hasTilt ? this.pen.azimuth : null;
+  }
+
+  // The "Pen" section toggles. Brushes spread this into their getSettings();
+  // `stroke: false` omits the size/opacity bindings for brushes whose mark is
+  // only the connecting web (Soft Pencil). The web bindings appear only for
+  // connecting brushes.
+  protected penSettings(opts: { stroke?: boolean } = {}): BrushSetting[] {
+    const PEN = "Pen";
+    const items: BrushSetting[] = [];
+    if (opts.stroke !== false) {
+      items.push(
+        {
+          kind: "boolean",
+          key: "penPressureSize",
+          label: "Pressure → size",
+          section: PEN,
+          value: this.penPressureSize,
+          onChange: (v) => (this.penPressureSize = v),
+        },
+        {
+          kind: "boolean",
+          key: "penPressureAlpha",
+          label: "Pressure → opacity",
+          section: PEN,
+          value: this.penPressureAlpha,
+          onChange: (v) => (this.penPressureAlpha = v),
+        },
+        {
+          kind: "boolean",
+          key: "penTiltSize",
+          label: "Tilt → size",
+          section: PEN,
+          value: this.penTiltSize,
+          onChange: (v) => (this.penTiltSize = v),
+        },
+        {
+          kind: "boolean",
+          key: "penTiltAlpha",
+          label: "Tilt → opacity",
+          section: PEN,
+          value: this.penTiltAlpha,
+          onChange: (v) => (this.penTiltAlpha = v),
+        },
+      );
+    }
+    if (this.connection) {
+      items.push(
+        {
+          kind: "boolean",
+          key: "penWebDensity",
+          label: "Pressure → web density",
+          section: PEN,
+          value: this.penWebDensity,
+          onChange: (v) => (this.penWebDensity = v),
+        },
+        {
+          kind: "boolean",
+          key: "penWebRadius",
+          label: "Pressure → web radius",
+          section: PEN,
+          value: this.penWebRadius,
+          onChange: (v) => (this.penWebRadius = v),
+        },
+      );
+    }
+    // Feel knobs — they shape every binding above, so they're always present.
+    items.push(
+      {
+        kind: "number",
+        key: "penSmoothing",
+        label: "Smoothing",
+        section: PEN,
+        min: 0,
+        max: 100,
+        step: 1,
+        value: this.penSmoothing,
+        onChange: (v) => (this.penSmoothing = v),
+      },
+      {
+        kind: "number",
+        key: "penResponse",
+        label: "Response",
+        section: PEN,
+        min: 0,
+        max: 100,
+        step: 1,
+        value: this.penResponse,
+        onChange: (v) => (this.penResponse = v),
+      },
+    );
+    return items;
+  }
+
   // Whether this brush draws a connecting web (and so shows the navbar
   // Connecting combo + Connecting settings box).
   supportsConnecting(): boolean {
@@ -192,7 +373,10 @@ export abstract class BrushBase {
   // into one uniform-opacity stroke (see LayerManager.beginStroke) — so a faint
   // line doesn't show darker dots where each segment's round caps overlap.
   // Round does; shape/texture brushes (which stamp discrete marks) don't.
-  bufferedStroke(): boolean {
+  // The pointer's pen sample is passed in because the buffer flattens a stroke
+  // to ONE alpha — a pen with an opacity binding must draw unbuffered (the
+  // per-sample variation is the point).
+  bufferedStroke(_pen?: PenSample): boolean {
     return false;
   }
 
@@ -204,6 +388,7 @@ export abstract class BrushBase {
 
   strokeEnd(): void {
     this.hasConnectSample = false;
+    this.penSmoother.reset();
     this.connection?.resetStroke();
     void this.pixelLog?.flush();
   }
@@ -246,7 +431,10 @@ export abstract class BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings(this.connection ? this.connection.sliders() : []);
+    return this.persistSettings([
+      ...(this.connection ? this.connection.sliders() : []),
+      ...this.penSettings(),
+    ]);
   }
 
   // Called when this brush becomes the active tool. Default no-op; brushes can

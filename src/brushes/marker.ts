@@ -18,6 +18,9 @@ export function create(c: BrushContext): MarkerBrush {
 export class MarkerBrush extends BrushBase {
   private lastX = 0;
   private lastY = 0;
+  // Chisel nib rotates with the pen's lean direction (azimuth) like a real
+  // calligraphy marker; falls back to the fixed angle for mouse/vertical pen.
+  private chiselFollowsPen = true;
 
   name() {
     return "Marker";
@@ -29,11 +32,16 @@ export class MarkerBrush extends BrushBase {
   }
 
   protected onStroke(x: number, y: number, _current: Pixel): void {
-    // No per-stroke alpha: opacity comes from the global nav slider (globalAlpha).
+    const angle = this.chiselFollowsPen
+      ? (this.penAzimuth() ?? CHISEL_ANGLE)
+      : CHISEL_ANGLE;
+    // Base opacity comes from the global nav slider (globalAlpha); penStyle
+    // only overrides width/alpha when a pen binding modulates them.
     this.renderer.drawChisel(
       { id: 0, x: this.lastX, y: this.lastY },
       { id: 0, x, y },
-      CHISEL_ANGLE,
+      angle,
+      this.penStyle(),
     );
     this.lastX = x;
     this.lastY = y;
@@ -48,6 +56,16 @@ export class MarkerBrush extends BrushBase {
   }
 
   getSettings(): BrushSetting[] {
-    return this.persistSettings([]);
+    return this.persistSettings([
+      ...this.penSettings(),
+      {
+        kind: "boolean",
+        key: "penChisel",
+        label: "Chisel follows pen",
+        section: "Pen",
+        value: this.chiselFollowsPen,
+        onChange: (v) => (this.chiselFollowsPen = v),
+      },
+    ]);
   }
 }

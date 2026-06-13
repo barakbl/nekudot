@@ -101,6 +101,7 @@ export function createBareHost(
     activeConnectionLayerId: () => "",
     selectedMapId: () => "", // falsy → BrushBase skips pixel-log rows
     strokeWidth: () => 1,
+    strokeAlpha: () => 1,
     drawConnectionToLayer: (
       _layerId: string,
       p1: Pixel,

@@ -8,6 +8,7 @@ import {
 } from "../base";
 import type { Pixel } from "../neighbor-finder";
 import type { PaintHost } from "../paint-host";
+import type { PenSample } from "../pen";
 import type { Store } from "../store/base";
 import type { BrushContext } from "./registry";
 
@@ -45,8 +46,11 @@ export class RoundBrush extends BrushBase {
   }
 
   // Round draws one continuous line per stroke → buffer it so a faint stroke
-  // reads as uniform alpha instead of dotted at the sample joints.
-  bufferedStroke(): boolean {
+  // reads as uniform alpha instead of dotted at the sample joints. A pen with
+  // an opacity binding draws unbuffered — the buffer would flatten exactly the
+  // per-sample alpha variation the binding produces.
+  bufferedStroke(pen?: PenSample): boolean {
+    if (pen?.isPen && (this.penPressureAlpha || this.penTiltAlpha)) return false;
     return true;
   }
 
@@ -66,6 +70,7 @@ export class RoundBrush extends BrushBase {
         cap: "round",
         dash: DASH_PATTERNS[this.strokeDash],
         dashOffset: this.accumDist,
+        ...this.penStyle(), // pressure/tilt width+alpha; empty for a mouse
       },
     );
     this.accumDist += Math.hypot(dx, dy);
@@ -107,6 +112,7 @@ export class RoundBrush extends BrushBase {
         },
       },
       ...(this.connection?.sliders() ?? []),
+      ...this.penSettings(),
     ]);
   }
 }
