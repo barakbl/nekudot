@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pen &amp; pressure - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/book/">Neku<span>dot</span></a>
+      <a class="cta" href="/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Pen &amp; pressure</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg></span>Pen &amp; pressure</h1>
+      <p class="lead">Draw with a stylus and let pressure and tilt shape every mark.</p>
+
+      <h2>What it does</h2>
+      <p>
+        With a pressure-sensitive pen (Apple Pencil, Wacom, Surface Pen…),
+        Nekudot reads <strong>pressure</strong>, <strong>tilt</strong> and the
+        pen's <strong>lean direction</strong> on every point of a stroke, and
+        can bind them to the things you'd otherwise set with sliders: stroke
+        size, opacity - even how the connecting web grows. A mouse, trackpad or
+        finger draws exactly as before; nothing changes unless a real pen is on
+        the canvas.
+      </p>
+
+      <h2>The Pen section</h2>
+      <p>
+        Every brush has a <strong>Pen</strong> section in its settings panel
+        (press <span class="kbd">b</span>). The bindings are per-brush, so your
+        Marker can respond differently than Round, and they're remembered like
+        every other setting.
+      </p>
+      <dl class="settings">
+        <dt>Pressure → size</dt>
+        <dd>
+          Press harder for a wider mark. <strong>On by default.</strong> The
+          <em>Size</em> slider stays the maximum - a feather touch draws at
+          about 15% of it, full pressure reaches it exactly.
+        </dd>
+        <dt>Pressure → opacity</dt>
+        <dd>
+          Press harder for a stronger mark, fading down to nearly transparent
+          at a feather touch. The <em>Opacity</em> slider is the maximum.
+        </dd>
+        <dt>Tilt → size / Tilt → opacity</dt>
+        <dd>
+          The flatter you hold the pen, the bigger or stronger the mark - like
+          shading with the side of a pencil. A vertical pen draws at the
+          minimum. Tilt and pressure multiply when both are bound.
+        </dd>
+        <dt>Pressure → web density / web radius</dt>
+        <dd>
+          On connecting brushes (Round, the Eraser), pressure can drive the
+          <a href="/book/map.html">connecting web</a> itself: press harder and
+          the web grows denser and reaches further; glide lightly and it thins
+          to nothing.
+        </dd>
+        <dt>Chisel follows pen <span class="tag">Marker</span></dt>
+        <dd>
+          The Marker's chisel nib rotates with the direction the pen leans,
+          like a real calligraphy marker. <strong>On by default</strong>; with
+          a mouse (or a perfectly vertical pen) the nib keeps its classic 45°.
+        </dd>
+        <dt>Smoothing</dt>
+        <dd>
+          Evens out sensor wobble so pressure changes read as one confident
+          mark. <strong>0</strong> follows the raw samples instantly,
+          <strong>100</strong> is heaviest; the default sits at 65. Lower it if
+          the response feels laggy, raise it if marks look jittery.
+        </dd>
+        <dt>Response</dt>
+        <dd>
+          The pressure curve. Low values make a light touch count for a lot
+          (soft); high values demand a firm hand before the mark grows. The
+          midpoint (50) is the natural default. Shapes tilt the same way.
+        </dd>
+      </dl>
+
+      <div class="note">
+        <strong>Sliders are maxima.</strong> Binding pressure to a slider never
+        changes the slider - it makes your hand sweep from a floor up to the
+        slider's value. Set <em>Size</em> to the thickest line you want, then
+        let pressure do the rest.
+      </div>
+
+      <h2>Per brush</h2>
+      <div class="keys">
+        <div class="row"><span class="k">Round</span><span class="d">Line width &amp; opacity per point, plus the web bindings</span></div>
+        <div class="row"><span class="k">Marker</span><span class="d">Nib width &amp; opacity, and the chisel angle follows the pen</span></div>
+        <div class="row"><span class="k">Squares &amp; Circles</span><span class="d">Pressure/tilt scale the speed-driven shape size and its opacity</span></div>
+        <div class="row"><span class="k">Eraser</span><span class="d">Pressure narrows the eraser or softens the wipe (partial erase)</span></div>
+      </div>
+
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Pick Round with the <strong>Shading</strong> style, switch on
+        <em>Pressure → web density</em>, and shade like you would with a real
+        pencil: bear down where you want tone to build, ease off to let it
+        breathe. The web answers your hand instead of a slider.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

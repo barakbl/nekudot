@@ -21,6 +21,8 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M6.5 10v4.5H14" stroke-linecap="round"/></svg>',
     pencil:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L15 6l3 3L8 19z"/><path d="M13 8l3 3"/></svg>',
+    pen:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>',
     link:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg>',
     // brushes - the app's own glyphs
@@ -28,7 +30,7 @@
     squares: "▭",
     circles: "◯",
     marker:
-      '<svg viewBox="0 0 24 24"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z" fill="#ffd83b" stroke="#8a6500" stroke-width="1.4" stroke-linejoin="round"/><path d="M13 6 L18 11" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/><path d="M4 13 L10 19" stroke="#8a6500" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>',
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z"/><path d="M13 6 L18 11"/><path d="M4 13 L10 19"/></svg>',
     symmetry:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg>',
     invisible:
@@ -70,6 +72,7 @@
           ],
         },
         { label: "Symmetry", href: "/book/symmetry.html", icon: I.symmetry },
+        { label: "Pen & pressure", href: "/book/pen.html", icon: I.pen },
         {
           label: "Connections",
           href: "/book/connections.html",
