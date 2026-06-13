@@ -329,6 +329,12 @@ const renderActiveBrush = () => {
   if (supports) menu.setConnectingValue(currentArtStyle);
 };
 
+// Re-render the open settings window so the Primary/Secondary swatches in the
+// Color / Fill selects track the toolbar colours as they change.
+const refreshSettingsColors = () => {
+  if (settingsPanel.el.style.display !== "none") settingsPanel.render(brush);
+};
+
 // Push the active brush's preferred stroke opacity (per connection style — see
 // ConnectionSpec.strokeAlpha) to the renderer + Opacity slider. No-op for brushes
 // that don't pin one. `force` overrides a saved opacity (used on style switch);
@@ -658,12 +664,14 @@ const menu = createMenu(
       onChange: (c) => {
         layerManager.setStrokeStyle(c);
         store.set("app.color.main", c);
+        refreshSettingsColors();
       },
     },
     secondary: {
       initial: initialSecondaryColor,
       onChange: (c) => {
         store.set("app.color.secondary", c);
+        refreshSettingsColors();
       },
     },
   },

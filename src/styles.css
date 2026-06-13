@@ -1149,17 +1149,75 @@ body {
   outline: none;
 }
 
-.settings-select-with-icon {
+/* Custom dropdown for selects whose options carry an icon (Dash glyph, colour
+   swatch). The trigger reads like the native .settings-select pill; the open
+   popover lists each option with its own icon. */
+.icon-select {
+  position: relative;
+  display: inline-block;
+}
+.icon-select-trigger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
 }
-
-.settings-select-icon {
+.icon-select-trigger:hover {
+  background: var(--pill-hover);
+}
+.icon-select-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: currentColor;
+}
+.icon-select-chevron {
+  margin-left: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+}
+.icon-select-pop {
+  position: fixed;
+  /* Above the floating-window band (window-stack raises a focused panel to
+     ~100+, overriding its CSS z-index), below the modal/tooltip tier (200+).
+     At z 40 the dropdown opened BEHIND its own panel — invisible/unclickable. */
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-stronger);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.icon-select-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-body);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.icon-select-option:hover {
+  background: var(--hover-bg-strong);
+}
+.icon-select-option.active {
+  background: var(--hover-bg-strong);
+  color: var(--text-primary);
 }
 
 .layers-box {

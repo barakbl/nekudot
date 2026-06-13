@@ -20,6 +20,7 @@ import {
   type ConnectingFlat,
 } from "../../connecting-types";
 import type { BrushSetting } from "../../base";
+import { COLOR_SOURCE_LABELS, colorSourceIcons } from "../../color-source";
 
 // Cap how many hairs a single connection fans into (perf guard).
 const MAX_CONNECT_STRANDS = 12;
@@ -636,6 +637,8 @@ export class ConnectionBase {
         label: "Color",
         section: STYLE_SECTION,
         options: ["main", "secondary"] as const,
+        optionLabels: COLOR_SOURCE_LABELS,
+        icons: colorSourceIcons(this.deps.store),
         value: this.connectionColorSource,
         onChange: (v) => this.setKey("color", v),
       },

@@ -6,6 +6,7 @@ import {
   type BrushSetting,
   type DashStyle,
 } from "../base";
+import { COLOR_SOURCE_LABELS, colorSourceIcons } from "../color-source";
 import type { Pixel } from "../neighbor-finder";
 
 type FillMode = "none" | "main" | "secondary";
@@ -148,6 +149,8 @@ export abstract class ShapesStrokeBrush extends BrushBase {
         key: "fillMode",
         label: "Fill",
         options: ["none", "main", "secondary"] as const,
+        optionLabels: COLOR_SOURCE_LABELS,
+        icons: colorSourceIcons(this.store),
         value: this.fillMode,
         onChange: (v) => {
           this.fillMode = v as FillMode;

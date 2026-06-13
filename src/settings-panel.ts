@@ -65,7 +65,7 @@ const ART_STYLE_HELP: Record<string, string> = {
     "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
   dash: "Solid, dashed, or dotted connection lines.",
   color:
-    "Draw connections in the main color or the secondary color from the toolbar.",
+    "Draw connections in the primary or secondary color from the toolbar.",
 };
 
 // Per-preset slider visibility. The art-style group shows the dials a preset
@@ -206,6 +206,7 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   let advancedOpen = false;
 
   const render = (brush: BrushBase) => {
+    closeIconSelectPopover(); // body-anchored dropdowns would orphan otherwise
     lastBrush = brush;
     const connects = brush.supportsConnecting();
     if (activeTab === "connecting" && !connects) activeTab = "brush"; // tab gone
@@ -571,6 +572,10 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
       persist(s, input.checked);
     });
     row.appendChild(input);
+  } else if (s.icons) {
+    // Selects whose options carry a glyph/swatch (Dash, Color, Fill) get a
+    // custom dropdown so each option shows its icon — native <option> can't.
+    row.appendChild(makeIconSelect(s, persist));
   } else {
     const select = document.createElement("select");
     select.className = "settings-select";
@@ -581,30 +586,123 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
       select.appendChild(o);
     }
     select.value = s.value;
-
-    if (s.icons) {
-      const wrap = document.createElement("div");
-      wrap.className = "settings-select-with-icon";
-      const preview = document.createElement("span");
-      preview.className = "settings-select-icon";
-      const icons = s.icons;
-      preview.innerHTML = icons[s.value] ?? "";
-      select.addEventListener("change", () => {
-        preview.innerHTML = icons[select.value] ?? "";
-        s.onChange(select.value);
-        persist(s, select.value);
-      });
-      wrap.appendChild(preview);
-      wrap.appendChild(select);
-      row.appendChild(wrap);
-    } else {
-      select.addEventListener("change", () => {
-        s.onChange(select.value);
-        persist(s, select.value);
-      });
-      row.appendChild(select);
-    }
+    select.addEventListener("change", () => {
+      s.onChange(select.value);
+      persist(s, select.value);
+    });
+    row.appendChild(select);
   }
 
   return row;
+}
+
+// Only one icon-select dropdown is open at a time; closed on outside-click,
+// Escape, selection, or a panel re-render.
+let closeOpenIconSelect: (() => void) | null = null;
+function closeIconSelectPopover(): void {
+  closeOpenIconSelect?.();
+}
+
+// A custom dropdown for selects with per-option icons. Closed: a pill showing
+// the selected option's icon + label. Open: a body-anchored popover listing
+// every option with its own icon, so e.g. the Color select previews the live
+// Primary/Secondary colours next to each.
+function makeIconSelect(
+  s: BrushSetting & { kind: "select" },
+  persist: PersistFn,
+): HTMLElement {
+  const icons = s.icons ?? {};
+  const labelOf = (v: string) => s.optionLabels?.[v] ?? v;
+  let value = s.value;
+
+  const wrap = document.createElement("div");
+  wrap.className = "icon-select";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "icon-select-trigger";
+  wrap.appendChild(trigger);
+
+  const fillTrigger = () => {
+    trigger.replaceChildren();
+    const ic = document.createElement("span");
+    ic.className = "icon-select-icon";
+    ic.innerHTML = icons[value] ?? "";
+    const lbl = document.createElement("span");
+    lbl.className = "icon-select-label";
+    lbl.textContent = labelOf(value);
+    const chev = document.createElement("span");
+    chev.className = "icon-select-chevron";
+    chev.textContent = "⌄";
+    trigger.append(ic, lbl, chev);
+  };
+  fillTrigger();
+
+  let pop: HTMLElement | null = null;
+  const close = () => {
+    if (!pop) return;
+    pop.remove();
+    pop = null;
+    closeOpenIconSelect = null;
+    document.removeEventListener("mousedown", onOutside, true);
+  };
+  const onOutside = (e: MouseEvent) => {
+    if (wrap.contains(e.target as Node) || pop?.contains(e.target as Node)) return;
+    close();
+  };
+
+  const open = () => {
+    closeOpenIconSelect?.(); // close any other open dropdown
+    pop = document.createElement("div");
+    pop.className = "icon-select-pop";
+    for (const opt of s.options) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "icon-select-option" + (opt === value ? " active" : "");
+      const ic = document.createElement("span");
+      ic.className = "icon-select-icon";
+      ic.innerHTML = icons[opt] ?? "";
+      const lbl = document.createElement("span");
+      lbl.className = "icon-select-label";
+      lbl.textContent = labelOf(opt);
+      row.append(ic, lbl);
+      row.addEventListener("click", () => {
+        value = opt;
+        fillTrigger();
+        s.onChange(opt);
+        persist(s, opt);
+        close();
+      });
+      pop.appendChild(row);
+    }
+    document.body.appendChild(pop);
+
+    // Anchor under the trigger (viewport coords → position: fixed), flipping
+    // up / clamping in if it would run off-screen.
+    const t = trigger.getBoundingClientRect();
+    pop.style.left = `${t.left}px`;
+    pop.style.top = `${t.bottom + 4}px`;
+    pop.style.minWidth = `${t.width}px`;
+    const p = pop.getBoundingClientRect();
+    if (p.bottom > window.innerHeight - 8)
+      pop.style.top = `${Math.max(8, t.top - p.height - 4)}px`;
+    if (p.right > window.innerWidth - 8)
+      pop.style.left = `${Math.max(8, window.innerWidth - p.width - 8)}px`;
+
+    closeOpenIconSelect = close;
+    document.addEventListener("mousedown", onOutside, true);
+  };
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (pop) close();
+    else open();
+  });
+  return wrap;
+}
+
+// Dropdowns are body-anchored, so close any open one on Escape.
+if (typeof window !== "undefined") {
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeIconSelectPopover();
+  });
 }
