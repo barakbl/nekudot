@@ -1788,3 +1788,42 @@ body.help-mode .help-icon {
 .confirm-btn-destructive:hover {
   filter: brightness(1.1);
 }
+
+/* ---- Mobile: floating panels become bottom sheets ------------------------- */
+/* On phones the corner-anchored draggable boxes (Brush settings, Layers, Maps,
+   Symmetry, Shortcuts — all .settings-panel / .shortcuts-panel / .layers-box)
+   re-anchor to the bottom edge, full width, with a grab handle. They stay
+   non-modal (no backdrop) so you can still draw; the drag header becomes a
+   swipe-down-to-dismiss gesture (see drag.ts). */
+@media (max-width: 640px) {
+  .settings-panel,
+  .shortcuts-panel,
+  .layers-box {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 85vh;
+    box-sizing: border-box;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Grab handle at the top edge of the sheet. */
+  .settings-panel::before,
+  .shortcuts-panel::before,
+  .layers-box::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-stronger);
+    pointer-events: none;
+  }
+}
