@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build the app into ONE self-contained, minified HTML file (JS + CSS inlined).
-# Output goes to a directory (default: ./public, so the single-file app sits
-# next to about.html and book/ for static hosting).
+# Output is <output_dir>/nekudot.html (default dir: ./public, so the single-file
+# app sits next to the landing pages — index/about/license — and book/ for
+# static hosting; the site root index.html is the landing page).
 #
 # Usage: ./build.sh [output_dir]
 set -euo pipefail
@@ -16,7 +17,7 @@ npx vite build >/dev/null
 echo "▶ inlining JS + CSS into a single HTML…"
 mkdir -p "$OUT_DIR"
 
-DIST="$ROOT/dist" OUT="$OUT_DIR/index.html" node <<'NODE'
+DIST="$ROOT/dist" OUT="$OUT_DIR/nekudot.html" node <<'NODE'
 const fs = require("fs");
 const path = require("path");
 const dist = process.env.DIST;
@@ -33,6 +34,16 @@ if (jsCount > 1) {
 }
 
 let html = fs.readFileSync(path.join(dist, "index.html"), "utf8");
+
+// Guard: dist/index.html must be the app entry (references the built JS), not
+// the landing page. Vite keeps the build output when public/index.html (the
+// landing) collides, but bail loudly if that ever flips — otherwise we'd
+// silently inline the landing page as the app.
+if (!/<script\b[^>]*\bsrc="[^"]*\/assets\/[^"]*\.js"/.test(html)) {
+  console.error("dist/index.html is not the app entry (no /assets/*.js). Aborting.");
+  process.exit(1);
+}
+
 const read = (url) => fs.readFileSync(path.join(dist, url.replace(/^\//, "")), "utf8");
 
 // <script ... src="/assets/x.js"></script>  ->  inline module script
@@ -55,4 +66,4 @@ console.log(`  ${out}  (${(html.length / 1024).toFixed(1)} KB)`);
 NODE
 
 echo "✔ done"
-ls -lh "$OUT_DIR/index.html" | awk '{printf "  %-6s %s\n", $5, $NF}'
+ls -lh "$OUT_DIR/nekudot.html" | awk '{printf "  %-6s %s\n", $5, $NF}'

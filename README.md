@@ -5,8 +5,8 @@ every point and weaves faint lines between nearby ones - so a single gesture
 blooms into a web of its own. Inspired by
 [mrdoob's Harmony](https://mrdoob.github.io/harmony/).
 
-🎨 **[Open the tool online →](https://barakbl.github.io/nekudot/)**
-📖 **[About & usage book →](https://barakbl.github.io/nekudot/about.html)**
+🎨 **[Open the tool online →](https://barakbl.github.io/nekudot/nekudot.html)**
+🏠 **[Home →](https://barakbl.github.io/nekudot/)** · 📖 **[About & usage book →](https://barakbl.github.io/nekudot/about.html)**
 
 ## The idea
 
@@ -67,13 +67,14 @@ npm run smoke    # run the headless smoke test
 
 ### Single-file build
 
-`build.sh` produces one self-contained, minified `index.html` (JS + CSS inlined).
-It writes into `public/` by default, so the single-file app sits next to
-`about.html` and `book/` - ready to host the whole site statically
-(e.g. GitHub Pages):
+`build.sh` produces one self-contained, minified `nekudot.html` (JS + CSS
+inlined). It writes into `public/` by default, so the single-file app sits next
+to the landing pages (`index.html`, `about.html`) and `book/` - ready to host
+the whole site statically (e.g. GitHub Pages), with the landing page at the
+site root and the app at `/nekudot.html`:
 
 ```bash
-./build.sh           # output goes to ./public
+./build.sh           # writes ./public/nekudot.html
 ./build.sh out-dir   # or a directory of your choice
 ```
 
