@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Build the app into ONE self-contained, minified HTML file (JS + CSS inlined).
-# Output is <output_dir>/nekudot.html (default dir: ./docs, the GitHub-Pages
-# site folder, so the single-file app sits next to the landing pages
-# — index/about/license — and book/ for static hosting; the site root
-# index.html is the landing page).
+# Output is <output_dir>/app/index.html (default dir: ./docs, the GitHub-Pages
+# site folder), so the app is served at /app/ next to the landing pages
+# (index/about/license) and book/. The site root index.html is the landing page.
 #
 # Usage: ./build.sh [output_dir]
 set -euo pipefail
@@ -16,9 +15,9 @@ echo "▶ vite build…"
 npx vite build >/dev/null
 
 echo "▶ inlining JS + CSS into a single HTML…"
-mkdir -p "$OUT_DIR"
+mkdir -p "$OUT_DIR/app"
 
-DIST="$ROOT/dist" OUT="$OUT_DIR/nekudot.html" node <<'NODE'
+DIST="$ROOT/dist" OUT="$OUT_DIR/app/index.html" node <<'NODE'
 const fs = require("fs");
 const path = require("path");
 const dist = process.env.DIST;
@@ -67,4 +66,4 @@ console.log(`  ${out}  (${(html.length / 1024).toFixed(1)} KB)`);
 NODE
 
 echo "✔ done"
-ls -lh "$OUT_DIR/nekudot.html" | awk '{printf "  %-6s %s\n", $5, $NF}'
+ls -lh "$OUT_DIR/app/index.html" | awk '{printf "  %-6s %s\n", $5, $NF}'

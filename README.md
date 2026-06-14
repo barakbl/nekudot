@@ -5,8 +5,8 @@ every point and weaves faint lines between nearby ones - so a single gesture
 blooms into a web of its own. Inspired by
 [mrdoob's Harmony](https://mrdoob.github.io/harmony/).
 
-🎨 **[Open the tool online →](https://barakbl.github.io/nekudot/nekudot.html)**
-🏠 **[Home →](https://barakbl.github.io/nekudot/)** · 📖 **[About & usage book →](https://barakbl.github.io/nekudot/about.html)**
+🎨 **[Open the tool online →](https://nekudot.app/app/)**
+🏠 **[Home →](https://nekudot.app/)** · 📖 **[About & usage book →](https://nekudot.app/about.html)**
 
 ## The idea
 
@@ -67,22 +67,22 @@ npm run smoke    # run the headless smoke test
 
 ### Single-file build
 
-`build.sh` produces one self-contained, minified `nekudot.html` (JS + CSS
+`build.sh` produces one self-contained, minified `app/index.html` (JS + CSS
 inlined). It writes into `docs/` by default (the GitHub-Pages site folder), so
 the single-file app sits next to the landing pages (`index.html`, `about.html`)
 and `book/` - ready to host the whole site statically, with the landing page at
-the site root and the app at `/nekudot.html`:
+the site root and the app at `/app/`:
 
 ```bash
-./build.sh           # writes ./docs/nekudot.html
+./build.sh           # writes ./docs/app/index.html
 ./build.sh out-dir   # or a directory of your choice
 ```
 
 ## Documentation
 
-- **[Usage book](https://barakbl.github.io/nekudot/book/)** - how every brush, layer and map works.
-- **[Memory maps](https://barakbl.github.io/nekudot/book/map.html)** - the connecting idea, in depth.
-- **Developer docs** - [architecture](https://barakbl.github.io/nekudot/book/dev/architecture.html) and [writing a brush](https://barakbl.github.io/nekudot/book/dev/brushes.html).
+- **[Usage book](https://nekudot.app/book/)** - how every brush, layer and map works.
+- **[Memory maps](https://nekudot.app/book/map.html)** - the connecting idea, in depth.
+- **Developer docs** - [architecture](https://nekudot.app/book/dev/architecture.html) and [writing a brush](https://nekudot.app/book/dev/brushes.html).
 
 The same docs live in this repo under [`docs/`](docs/) (`about.html` and `book/`).
 
