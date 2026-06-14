@@ -68,13 +68,13 @@ npm run smoke    # run the headless smoke test
 ### Single-file build
 
 `build.sh` produces one self-contained, minified `nekudot.html` (JS + CSS
-inlined). It writes into `public/` by default, so the single-file app sits next
-to the landing pages (`index.html`, `about.html`) and `book/` - ready to host
-the whole site statically (e.g. GitHub Pages), with the landing page at the
-site root and the app at `/nekudot.html`:
+inlined). It writes into `docs/` by default (the GitHub-Pages site folder), so
+the single-file app sits next to the landing pages (`index.html`, `about.html`)
+and `book/` - ready to host the whole site statically, with the landing page at
+the site root and the app at `/nekudot.html`:
 
 ```bash
-./build.sh           # writes ./public/nekudot.html
+./build.sh           # writes ./docs/nekudot.html
 ./build.sh out-dir   # or a directory of your choice
 ```
 
@@ -84,7 +84,7 @@ site root and the app at `/nekudot.html`:
 - **[Memory maps](https://barakbl.github.io/nekudot/book/map.html)** - the connecting idea, in depth.
 - **Developer docs** - [architecture](https://barakbl.github.io/nekudot/book/dev/architecture.html) and [writing a brush](https://barakbl.github.io/nekudot/book/dev/brushes.html).
 
-The same docs live in this repo under [`public/`](public/) (`about.html` and `book/`).
+The same docs live in this repo under [`docs/`](docs/) (`about.html` and `book/`).
 
 ## Acknowledgements
 

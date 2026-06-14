@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Build the app into ONE self-contained, minified HTML file (JS + CSS inlined).
-# Output is <output_dir>/nekudot.html (default dir: ./public, so the single-file
-# app sits next to the landing pages — index/about/license — and book/ for
-# static hosting; the site root index.html is the landing page).
+# Output is <output_dir>/nekudot.html (default dir: ./docs, the GitHub-Pages
+# site folder, so the single-file app sits next to the landing pages
+# — index/about/license — and book/ for static hosting; the site root
+# index.html is the landing page).
 #
 # Usage: ./build.sh [output_dir]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT_DIR="${1:-$ROOT/public}"
+OUT_DIR="${1:-$ROOT/docs}"
 cd "$ROOT"
 
 echo "▶ vite build…"
@@ -36,7 +37,7 @@ if (jsCount > 1) {
 let html = fs.readFileSync(path.join(dist, "index.html"), "utf8");
 
 // Guard: dist/index.html must be the app entry (references the built JS), not
-// the landing page. Vite keeps the build output when public/index.html (the
+// the landing page. Vite keeps the build output when docs/index.html (the
 // landing) collides, but bail loudly if that ever flips — otherwise we'd
 // silently inline the landing page as the app.
 if (!/<script\b[^>]*\bsrc="[^"]*\/assets\/[^"]*\.js"/.test(html)) {

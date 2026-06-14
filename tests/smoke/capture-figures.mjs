@@ -1,5 +1,5 @@
 // Capture clean book figures: render each demo page in headless Chrome and grab
-// just the white <canvas> (no dark page chrome, no caption) into public/book/img.
+// just the white <canvas> (no dark page chrome, no caption) into docs/book/img.
 //
 //   node tests/smoke/capture-figures.mjs
 import { spawn } from "node:child_process";
@@ -7,7 +7,7 @@ import { existsSync, writeFileSync } from "node:fs";
 
 const PORT = 4401;
 const ROOT = new URL("../..", import.meta.url).pathname;
-const OUTDIR = ROOT + "public/book/img/";
+const OUTDIR = ROOT + "docs/book/img/";
 
 // page → [{ idx: canvas index, out: filename }]
 const TARGETS = [
