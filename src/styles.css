@@ -408,6 +408,14 @@ body {
   flex: 1;
   min-width: 0;
 }
+/* A param that the current settings make irrelevant (e.g. Reach/Falloff while
+   "Fill canvas" is on): dimmed and non-interactive. */
+.sym-row.disabled {
+  opacity: 0.4;
+}
+.sym-row.disabled input {
+  pointer-events: none;
+}
 .sym-rowval {
   flex: 0 0 30px;
   text-align: right;

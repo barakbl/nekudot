@@ -39,6 +39,7 @@ export type TileParams = {
   ySpacing: number;
   reach: number;
   falloffPct: number;
+  fillCanvas: boolean; // tile the whole canvas (reach + falloff ignored)
 };
 export type RadialParams = { segments: number; mirror: boolean };
 export type MirrorAxis = "vertical" | "horizontal";
@@ -72,20 +73,47 @@ function translate(dx: number, dy: number, aMul: number): Transform {
 // Cap on tile copies so a small spacing + large reach can't explode the work
 // (each copy also deposits mirrored points into the memory).
 const MAX_TILE_COPIES = 120;
+// Fill mode covers the whole canvas at full strength, so it legitimately needs
+// far more copies than reach mode — a higher budget, still bounded so a tiny
+// spacing on a huge canvas can't melt things (the live stroke redraws every
+// copy on every pointer move). Past the budget the grid is stepped over
+// uniformly, keeping coverage even rather than clustered near the stroke.
+const MAX_TILE_FILL_COPIES = 1600;
 
 // Tile: translated copies to each junction within `reach` of the anchor (the
 // junction nearest the stroke start), faded toward the edge. (= old Handfree.)
+// With `fillCanvas`, instead tile the whole canvas at full strength (reach +
+// falloff are ignored) — needs `size`.
 export function tileTransforms(
   p: TileParams,
   startX: number,
   startY: number,
+  size?: { width: number; height: number },
 ): Transform[] {
   const sx = p.xSpacing;
   const sy = p.ySpacing;
-  const r = p.reach;
-  if (sx <= 0 || sy <= 0 || r <= 0) return [IDENTITY];
+  if (sx <= 0 || sy <= 0) return [IDENTITY];
   const rx = Math.round(startX / sx) * sx; // anchor = nearest junction to start
   const ry = Math.round(startY / sy) * sy;
+
+  // Fill the canvas: a full-opacity copy at every grid junction across it (one
+  // cell of margin on each side so edge tiles aren't clipped). If the grid is
+  // denser than the budget, step over junctions uniformly (a coarser but still
+  // even grid) so coverage stays spread across the whole canvas instead of
+  // clustering around the stroke.
+  if (p.fillCanvas && size) {
+    const nx = Math.ceil(size.width / sx) + 3;
+    const ny = Math.ceil(size.height / sy) + 3;
+    const stride = Math.max(1, Math.ceil(Math.sqrt((nx * ny) / MAX_TILE_FILL_COPIES)));
+    const out: Transform[] = [];
+    for (let iy = 0; iy < ny; iy += stride)
+      for (let ix = 0; ix < nx; ix += stride)
+        out.push(translate((ix - 1) * sx - rx, (iy - 1) * sy - ry, 1));
+    return out.length ? out : [IDENTITY];
+  }
+
+  const r = p.reach;
+  if (r <= 0) return [IDENTITY];
   const power = (p.falloffPct / 100) * 2.5;
   const spanX = Math.ceil(r / sx) * sx;
   const spanY = Math.ceil(r / sy) * sy;

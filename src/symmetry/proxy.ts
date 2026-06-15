@@ -27,6 +27,14 @@ export function makeSymmetryProxy<T extends object>(
   base: T,
   getTransforms: () => readonly Transform[],
   getBaseOpacity: () => number,
+  // Whether deposited points are also mirrored into the searchable point cloud.
+  // Tile "Fill canvas" draws a copy in every tile but returns false here: a
+  // full-canvas stroke would deposit hundreds of copies per point, blow past the
+  // neighbor-finder's MAX_PIXELS cap, and evict the oldest points — which
+  // corrupts the connecting web (it survives only near the newest points, fading
+  // across the canvas). The marks are still drawn at every transform; only the
+  // cloud-deposit of the copies is skipped, so the web stays clean and even.
+  mirrorPoints: () => boolean = () => true,
 ): T {
   const b = base as Record<string, (...a: unknown[]) => unknown>;
   const off = () => isPassthrough(getTransforms());
@@ -117,7 +125,7 @@ export function makeSymmetryProxy<T extends object>(
     // the memory (and thus the connecting web) is mirrored too.
     addPixel(x: number, y: number): Pixel {
       const master = b.addPixel(x, y) as Pixel;
-      if (off()) return master;
+      if (off() || !mirrorPoints()) return master;
       for (const t of getTransforms()) {
         if (isIdentity(t)) continue;
         const q = applyPoint(t, x, y);
@@ -127,7 +135,7 @@ export function makeSymmetryProxy<T extends object>(
     },
     addPixelToMap(mapId: string, x: number, y: number): Pixel {
       const master = b.addPixelToMap(mapId, x, y) as Pixel;
-      if (off()) return master;
+      if (off() || !mirrorPoints()) return master;
       for (const t of getTransforms()) {
         if (isIdentity(t)) continue;
         const q = applyPoint(t, x, y);

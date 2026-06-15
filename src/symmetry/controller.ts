@@ -29,6 +29,7 @@ const K = {
   tileY: "app.symmetry.tile.y",
   tileReach: "app.symmetry.tile.reach",
   tileFalloff: "app.symmetry.tile.falloff",
+  tileFill: "app.symmetry.tile.fill",
   radialSegments: "app.symmetry.radial.segments",
   radialMirror: "app.symmetry.radial.mirror",
   mirrorAxis: "app.symmetry.mirror.axis",
@@ -58,6 +59,7 @@ export class SymmetryController {
       ySpacing: store.get<number>(K.tileY) ?? 40,
       reach: store.get<number>(K.tileReach) ?? 140,
       falloffPct: store.get<number>(K.tileFalloff) ?? 70,
+      fillCanvas: store.get<boolean>(K.tileFill) ?? false,
     };
     this.radial = {
       segments: store.get<number>(K.radialSegments) ?? 8,
@@ -75,6 +77,16 @@ export class SymmetryController {
 
   active(): boolean {
     return this.mode !== "none";
+  }
+
+  // Whether deposited points are mirrored into the searchable cloud. Fill mode
+  // draws a copy in every tile but does NOT deposit them — a full-canvas stroke
+  // would blow past the neighbor-finder cap (MAX_PIXELS) and evict older points,
+  // corrupting the connecting web. The proxy still draws every copy; it just
+  // skips the cloud-deposit of the copies. Other modes have few copies, so they
+  // deposit normally and the web spans the symmetry.
+  mirrorsPoints(): boolean {
+    return !(this.mode === "tile" && this.tile.fillCanvas);
   }
 
   subscribe(fn: () => void): () => void {
@@ -96,6 +108,7 @@ export class SymmetryController {
     this.store.set(K.tileY, this.tile.ySpacing);
     this.store.set(K.tileReach, this.tile.reach);
     this.store.set(K.tileFalloff, this.tile.falloffPct);
+    this.store.set(K.tileFill, this.tile.fillCanvas);
     this.notify();
   }
   setRadial(patch: Partial<RadialParams>): void {
@@ -130,7 +143,7 @@ export class SymmetryController {
   private computeTransforms(x: number, y: number, size: CanvasSize): readonly Transform[] {
     const cx = size.width / 2;
     const cy = size.height / 2;
-    if (this.mode === "tile") return tileTransforms(this.tile, x, y);
+    if (this.mode === "tile") return tileTransforms(this.tile, x, y, size);
     if (this.mode === "radial") return radialTransforms(this.radial, cx, cy);
     if (this.mode === "mirror") return mirrorTransforms(this.mirror, cx, cy);
     return [IDENTITY];

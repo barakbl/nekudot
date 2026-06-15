@@ -175,6 +175,7 @@ const symmetryProxy = makeSymmetryProxy(
   layerManager,
   () => symmetry.transforms(),
   () => store.get<number>("app.opacity") ?? 1,
+  () => symmetry.mirrorsPoints(),
 );
 
 // Symmetry guide overlay: the tile lattice, radial spokes or mirror line, shown

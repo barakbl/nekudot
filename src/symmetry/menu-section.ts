@@ -141,12 +141,46 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
   const renderParams = () => {
     params.replaceChildren();
     if (c.mode === "tile") {
+      // Reach + Falloff only shape the faded patch around the stroke; "Fill
+      // canvas" tiles the whole canvas at full strength, so they do nothing
+      // then — gray them out while it's on.
+      const reachRow = slider("Reach", 20, 800, c.tile.reach, (v) => c.setTile({ reach: v }));
+      const falloffRow = slider("Falloff", 0, 100, c.tile.falloffPct, (v) =>
+        c.setTile({ falloffPct: v }),
+      );
+      const setFillDisabled = (on: boolean) => {
+        for (const row of [reachRow, falloffRow]) {
+          row.classList.toggle("disabled", on);
+          const input = row.querySelector("input");
+          if (input) input.disabled = on;
+        }
+      };
+
+      const fillRow = document.createElement("div");
+      fillRow.className = "sym-row";
+      const fl = document.createElement("span");
+      fl.className = "sym-rowlabel";
+      fl.textContent = "Fill canvas";
+      const fcb = document.createElement("input");
+      fcb.type = "checkbox";
+      fcb.className = "sym-check";
+      fcb.checked = c.tile.fillCanvas;
+      fcb.addEventListener("click", (e) => e.stopPropagation());
+      fcb.addEventListener("change", (e) => {
+        e.stopPropagation();
+        c.setTile({ fillCanvas: fcb.checked });
+        setFillDisabled(fcb.checked);
+      });
+      fillRow.append(fl, fcb);
+
       params.append(
         slider("X spacing", 10, 200, c.tile.xSpacing, (v) => c.setTile({ xSpacing: v })),
         slider("Y spacing", 10, 200, c.tile.ySpacing, (v) => c.setTile({ ySpacing: v })),
-        slider("Reach", 20, 800, c.tile.reach, (v) => c.setTile({ reach: v })),
-        slider("Falloff", 0, 100, c.tile.falloffPct, (v) => c.setTile({ falloffPct: v })),
+        fillRow,
+        reachRow,
+        falloffRow,
       );
+      setFillDisabled(c.tile.fillCanvas);
     } else if (c.mode === "radial") {
       params.appendChild(
         slider("Segments", 2, 24, c.radial.segments, (v) => c.setRadial({ segments: v })),
