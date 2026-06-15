@@ -1,11 +1,12 @@
 import { SymmetryController, type SymmetryMode } from "./controller";
 
-// Mode glyphs: None = crossed circle (off); Radial = spoked circle; Mirror =
-// dashed axis with two mirrored arrows; Tile = a 2×2 lattice. Exported so the
-// navbar Symmetry combo shows the same icons.
+// Mode glyphs: None = a single freehand wave (one free stroke — positive, not a
+// crossed-out "off" badge, since None is the resting state shown in the navbar);
+// Radial = spoked circle; Mirror = dashed axis with two mirrored arrows; Tile =
+// a 2×2 lattice. Exported so the navbar Symmetry combo shows the same icons.
 export const SYMMETRY_MODE_ICONS: Record<SymmetryMode, string> = {
   none:
-    '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.8"/><line x1="4" y1="4" x2="12" y2="12"/></svg>',
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M2.5 8 C4.3 4.4 6.2 4.4 8 8 C9.8 11.6 11.7 11.6 13.5 8"/></svg>',
   radial:
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.8"/><path d="M8 2.2 V13.8 M2.2 8 H13.8 M3.9 3.9 L12.1 12.1 M12.1 3.9 L3.9 12.1"/></svg>',
   mirror:
