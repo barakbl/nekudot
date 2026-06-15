@@ -4,9 +4,10 @@ import {
   type BrushContext,
   type BrushDef,
 } from "./brushes/registry";
-import { SymmetryController } from "./symmetry/controller";
+import { SymmetryController, type SymmetryMode } from "./symmetry/controller";
 import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
+import { SYMMETRY_MODES, SYMMETRY_MODE_ICONS } from "./symmetry/menu-section";
 import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel } from "./settings-panel";
@@ -710,8 +711,21 @@ const menu = createMenu(
     onOpen: () => showMaps(),
     subscribe: (fn) => layerManager.subscribe(fn),
   },
+  {
+    modes: SYMMETRY_MODES.map((m) => ({
+      value: m.id,
+      label: m.label,
+      icon: SYMMETRY_MODE_ICONS[m.id],
+    })),
+    initial: symmetry.mode,
+    onChange: (m) => symmetry.setMode(m as SymmetryMode),
+    onSettings: () => showSymmetry(),
+  },
 );
 history.subscribe(() => menu.refreshHistoryState());
+// Keep the navbar Symmetry combo's icon in sync when the mode is changed from
+// the Symmetry panel (or anywhere). setMode → notify → here.
+symmetry.subscribe(() => menu.setSymmetryValue(symmetry.mode));
 document.body.appendChild(menu.el);
 
 // Ensure the only connecting brush starts on the persisted art style, then draw

@@ -73,6 +73,17 @@ export type MapsPillControl = {
   subscribe: (fn: () => void) => () => void; // refresh when maps change
 };
 
+// The navbar Symmetry combo: an icon-only pill (the selected mode's glyph) +
+// a gear that opens the Symmetry panel + a dropdown listing each mode as
+// icon + name. Mirrors the Connecting combo, minus the collapsed label.
+export type SymmetryModeOption = { value: string; label: string; icon: string };
+export type SymmetryControl = {
+  modes: SymmetryModeOption[];
+  initial: string;
+  onChange: (value: string) => void; // pick a mode
+  onSettings: () => void; // gear → open the Symmetry panel
+};
+
 export function createMenu<T extends string>(
   options: MenuEntry<T>[],
   onChange: (value: T) => void,
@@ -85,12 +96,14 @@ export function createMenu<T extends string>(
   windows?: WindowEntry[],
   connecting?: ConnectingControl,
   maps?: MapsPillControl,
+  symmetry?: SymmetryControl,
 ): {
   el: HTMLElement;
   setBrushValue: (value: T) => void;
   setConnectingValue: (v: string) => void;
   setConnectingVisible: (v: boolean) => void;
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
+  setSymmetryValue: (v: string) => void;
   refreshHistoryState: () => void;
   refreshMapsPill: () => void;
   toggleCanvasMenu: () => void;
@@ -134,6 +147,14 @@ export function createMenu<T extends string>(
     setConnectingOptions = combo.setOptions;
     bar.appendChild(combo.el);
   }
+  // Symmetry combo sits right after Connecting; always visible (symmetry
+  // applies to every brush).
+  let setSymmetryValue = (_v: string) => {};
+  if (symmetry) {
+    const combo = makeSymmetryCombo(symmetry);
+    setSymmetryValue = combo.setValue;
+    bar.appendChild(combo.el);
+  }
   bar.appendChild(makeDivider());
   const undoBtn = makeSvgButton(undoIcon, "Undo", history?.onUndo);
   const redoBtn = makeSvgButton(redoIcon, "Redo", history?.onRedo);
@@ -163,10 +184,81 @@ export function createMenu<T extends string>(
     setConnectingValue,
     setConnectingVisible,
     setConnectingOptions,
+    setSymmetryValue,
     refreshHistoryState,
     refreshMapsPill,
     toggleCanvasMenu,
   };
+}
+
+// The navbar Symmetry combo: icon-only pill + gear + a dropdown of modes
+// (icon + name). Selecting a mode calls onChange; the gear opens the panel.
+function makeSymmetryCombo(control: SymmetryControl): {
+  el: HTMLElement;
+  setValue: (v: string) => void;
+} {
+  const pill = document.createElement("span");
+  pill.className = "pill brush-pill sym-combo-pill";
+
+  const iconEl = document.createElement("span");
+  iconEl.className = "brush-icon";
+
+  const chevron = document.createElement("span");
+  chevron.className = "chevron";
+  chevron.textContent = "⌄";
+
+  pill.appendChild(iconEl);
+  pill.appendChild(makeGear("Symmetry settings", control.onSettings));
+  pill.appendChild(chevron);
+
+  const popover = document.createElement("div");
+  popover.className = "brush-popover";
+  pill.appendChild(popover);
+
+  const optionEls = new Map<string, HTMLElement>();
+  let current = control.initial;
+
+  const setValue = (v: string) => {
+    current = v;
+    const opt = control.modes.find((m) => m.value === v);
+    iconEl.innerHTML = opt?.icon ?? "";
+    pill.title = opt ? `Symmetry: ${opt.label}` : "Symmetry";
+    for (const [k, el] of optionEls) el.classList.toggle("active", k === v);
+  };
+
+  for (const m of control.modes) {
+    const optEl = document.createElement("div");
+    optEl.className = "brush-option";
+    const optIcon = document.createElement("span");
+    optIcon.className = "opt-icon";
+    optIcon.innerHTML = m.icon;
+    const optLabel = document.createElement("span");
+    optLabel.className = "opt-label";
+    optLabel.textContent = m.label;
+    optEl.append(optIcon, optLabel);
+    optEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setValue(m.value);
+      control.onChange(m.value);
+      popover.classList.remove("open");
+    });
+    popover.appendChild(optEl);
+    optionEls.set(m.value, optEl);
+  }
+
+  pill.addEventListener("click", (e) => {
+    if (e.target instanceof HTMLElement && e.target.closest(".brush-option"))
+      return;
+    popover.classList.toggle("open");
+  });
+  document.addEventListener("mousedown", (e) => {
+    if (!popover.classList.contains("open")) return;
+    if (pill.contains(e.target as Node)) return;
+    popover.classList.remove("open");
+  });
+
+  setValue(current);
+  return { el: pill, setValue };
 }
 
 // "Windows" dropdown: toggles each panel, shown as "[key] Label".

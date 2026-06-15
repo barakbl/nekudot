@@ -1,8 +1,9 @@
 import { SymmetryController, type SymmetryMode } from "./controller";
 
 // Mode glyphs: None = crossed circle (off); Radial = spoked circle; Mirror =
-// dashed axis with two mirrored arrows; Tile = a 2×2 lattice.
-const ICON: Record<SymmetryMode, string> = {
+// dashed axis with two mirrored arrows; Tile = a 2×2 lattice. Exported so the
+// navbar Symmetry combo shows the same icons.
+export const SYMMETRY_MODE_ICONS: Record<SymmetryMode, string> = {
   none:
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.8"/><line x1="4" y1="4" x2="12" y2="12"/></svg>',
   radial:
@@ -17,10 +18,19 @@ const ICON: Record<SymmetryMode, string> = {
 // it. A vertical line flips left/right — the Mirror mode glyph already draws
 // exactly that, so reuse it; horizontal is the same picture rotated 90°.
 const AXIS_ICON: Record<"vertical" | "horizontal", string> = {
-  vertical: ICON.mirror,
+  vertical: SYMMETRY_MODE_ICONS.mirror,
   horizontal:
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="8" x2="14" y2="8" stroke-dasharray="2 2"/><path d="M5 6 L8 3 L11 6 Z"/><path d="M5 10 L8 13 L11 10 Z"/></svg>',
 };
+
+// The selectable symmetry modes, in display order — shared by the panel's
+// segmented control and the navbar Symmetry combo.
+export const SYMMETRY_MODES: { id: SymmetryMode; label: string }[] = [
+  { id: "none", label: "None" },
+  { id: "radial", label: "Radial" },
+  { id: "mirror", label: "Mirror" },
+  { id: "tile", label: "Tile" },
+];
 
 // The Symmetry controls: a None / Tile / Radial / Mirror segmented control plus the
 // params for the chosen mode. Reads/writes the controller and rebuilds the
@@ -29,12 +39,7 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
   const root = document.createElement("div");
   root.className = "sym-section";
 
-  const modes: { id: SymmetryMode; label: string }[] = [
-    { id: "none", label: "None" },
-    { id: "radial", label: "Radial" },
-    { id: "mirror", label: "Mirror" },
-    { id: "tile", label: "Tile" },
-  ];
+  const modes = SYMMETRY_MODES;
   const seg = document.createElement("div");
   seg.className = "sym-seg";
   const segBtns = new Map<SymmetryMode, HTMLButtonElement>();
@@ -42,7 +47,8 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "sym-seg-btn sym-mode-btn";
-    btn.innerHTML = ICON[m.id] + `<span class="sym-seg-lbl">${m.label}</span>`;
+    btn.innerHTML =
+      SYMMETRY_MODE_ICONS[m.id] + `<span class="sym-seg-lbl">${m.label}</span>`;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       c.setMode(m.id);
@@ -191,5 +197,17 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
 
   syncMode();
   renderParams();
+
+  // Keep the panel's mode picker + params in sync when the mode is changed
+  // elsewhere (the navbar Symmetry combo). Only react to MODE changes — a
+  // param tweak (same mode) must not rebuild the params mid-slider-drag.
+  let lastMode = c.mode;
+  c.subscribe(() => {
+    if (c.mode === lastMode) return;
+    lastMode = c.mode;
+    syncMode();
+    renderParams();
+  });
+
   return root;
 }
