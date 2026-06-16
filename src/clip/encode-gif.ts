@@ -2,7 +2,7 @@ import { GIFEncoder, quantize, applyPalette } from "gifenc";
 
 // Provenance stamped into the GIF's metadata (a Comment Extension), not the
 // pixels - it travels with the file without touching a frame.
-const GIF_COMMENT = "build using nekudot app: https://nekudot.app/";
+const GIF_COMMENT = "Built using nekudot app: https://nekudot.app/";
 
 // Splice a GIF89a Comment Extension (0x21 0xFE, length-prefixed sub-blocks,
 // 0x00 terminator) in just before the trailer (0x3B). Comment blocks are legal
