@@ -22,17 +22,34 @@ const TAP_MAX_DURATION_MS = 400;
 const TAP_MAX_MOVEMENT_PX = 12;
 const SWIPE_MIN_PX = 50; // min upward travel for a multi-finger swipe
 
+// Input types that capture typed characters — single-key shortcuts must yield
+// to these (renaming a layer, a number field). Everything else an <input> can
+// be (range, checkbox, radio, color, button…) does NOT, and those fill the
+// panels: focus stays on a slider/checkbox after you use it, so suppressing
+// shortcuts for them killed every shortcut until you clicked the canvas.
+const TEXT_INPUT_TYPES = new Set([
+  "text",
+  "search",
+  "email",
+  "url",
+  "password",
+  "number",
+  "tel",
+]);
+
+function isTextEntry(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
+  if (el instanceof HTMLInputElement) return TEXT_INPUT_TYPES.has(el.type);
+  return false;
+}
+
 export function bindShortcuts(shortcuts: Shortcut[]): () => void {
   const onKey = (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement | null;
-    if (
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLSelectElement ||
-      target instanceof HTMLTextAreaElement ||
-      target?.isContentEditable
-    ) {
-      return;
-    }
+    // Only real text entry swallows shortcuts — not the sliders/toggles/colour
+    // pickers in panels (those keep focus but don't consume letter keys).
+    if (isTextEntry(e.target)) return;
     if (e.altKey) return;
     const hasMod = e.metaKey || e.ctrlKey;
     for (const s of shortcuts) {
