@@ -121,27 +121,18 @@ export abstract class ShapesStrokeBrush extends BrushBase {
         },
       },
       {
-        kind: "number",
-        key: "minSize",
-        label: "Min size",
+        // One two-handle slider: the low handle is the min size (slow strokes),
+        // the high handle is the max size (fast strokes).
+        kind: "range",
+        key: "size",
+        label: "Shape size",
         min: 1,
-        max: 50,
-        step: 1,
-        value: this.minSize,
-        onChange: (v) => {
-          this.minSize = v;
-        },
-      },
-      {
-        kind: "number",
-        key: "maxSize",
-        label: "Max size",
-        min: 50,
         max: MAX_SIZE_LIMIT,
         step: 1,
-        value: this.maxSize,
-        onChange: (v) => {
-          this.maxSize = v;
+        value: [this.minSize, this.maxSize],
+        onChange: (lo, hi) => {
+          this.minSize = lo;
+          this.maxSize = hi;
         },
       },
       {

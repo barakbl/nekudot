@@ -592,6 +592,60 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
       persist(s, input.checked);
     });
     row.appendChild(input);
+  } else if (s.kind === "range") {
+    // One two-handle slider for a [low, high] pair (e.g. Squares/Circles size).
+    const wrap = document.createElement("div");
+    wrap.className = "settings-number";
+    const dual = document.createElement("div");
+    dual.className = "settings-dual";
+    const rail = document.createElement("div");
+    rail.className = "settings-dual-rail";
+    const fill = document.createElement("div");
+    fill.className = "settings-dual-fill";
+    const mkInput = () => {
+      const i = document.createElement("input");
+      i.type = "range";
+      i.className = "settings-dual-input";
+      i.min = String(s.min);
+      i.max = String(s.max);
+      if (s.step !== undefined) i.step = String(s.step);
+      return i;
+    };
+    const loIn = mkInput();
+    const hiIn = mkInput();
+    let [lo, hi] = s.value;
+    loIn.value = String(lo);
+    hiIn.value = String(hi);
+    dual.append(rail, fill, loIn, hiIn);
+    const display = document.createElement("span");
+    display.className = "settings-value";
+    const span = Math.max(1, s.max - s.min);
+    const gap = s.step ?? 1;
+    const paint = () => {
+      fill.style.left = `${((lo - s.min) / span) * 100}%`;
+      fill.style.right = `${((s.max - hi) / span) * 100}%`;
+      // raise whichever handle sits in the busier half so it stays grabbable
+      loIn.style.zIndex = lo - s.min > s.max - hi ? "4" : "3";
+      display.textContent = `${lo}-${hi}`;
+    };
+    const commit = () => {
+      paint();
+      s.onChange(lo, hi);
+      persist(s, [lo, hi]);
+    };
+    loIn.addEventListener("input", () => {
+      lo = Math.min(Number(loIn.value), hi - gap);
+      loIn.value = String(lo);
+      commit();
+    });
+    hiIn.addEventListener("input", () => {
+      hi = Math.max(Number(hiIn.value), lo + gap);
+      hiIn.value = String(hi);
+      commit();
+    });
+    paint();
+    wrap.append(dual, display);
+    row.appendChild(wrap);
   } else if (s.icons) {
     // Selects whose options carry a glyph/swatch (Dash, Color, Fill) get a
     // custom dropdown so each option shows its icon — native <option> can't.

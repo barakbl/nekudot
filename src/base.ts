@@ -68,6 +68,16 @@ export type BrushSetting =
       kind: "boolean";
       value: boolean;
       onChange: (v: boolean) => void;
+    })
+  | (BrushSettingCommon & {
+      // A two-handle range slider (one widget, low + high). Persisted/restored
+      // as the [low, high] tuple via `value`, so it rides the same machinery.
+      kind: "range";
+      min: number;
+      max: number;
+      step?: number;
+      value: [number, number];
+      onChange: (low: number, high: number) => void;
     });
 
 // Push a stored/loaded value into a setting's binding, dispatching on kind so
@@ -79,6 +89,14 @@ export function applySettingValue(s: BrushSetting, v: unknown): void {
   else if (s.kind === "boolean" && typeof v === "boolean") s.onChange(v);
   else if ((s.kind === "select" || s.kind === "color") && typeof v === "string")
     s.onChange(v);
+  else if (
+    s.kind === "range" &&
+    Array.isArray(v) &&
+    v.length === 2 &&
+    typeof v[0] === "number" &&
+    typeof v[1] === "number"
+  )
+    s.onChange(v[0], v[1]);
 }
 
 // Art-style dials are persisted per art style (so each style keeps its own
