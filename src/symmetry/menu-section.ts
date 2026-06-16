@@ -1,4 +1,5 @@
 import { SymmetryController, type SymmetryMode } from "./controller";
+import { attachHelp } from "../help";
 
 // Mode glyphs: None = a single freehand wave (one free stroke — positive, not a
 // crossed-out "off" badge, since None is the resting state shown in the navbar);
@@ -75,6 +76,7 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
     max: number,
     value: number,
     onInput: (v: number) => void,
+    help?: string,
   ): HTMLElement => {
     const row = document.createElement("div");
     row.className = "sym-row";
@@ -96,6 +98,7 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
       onInput(Number(input.value));
     });
     row.append(l, input, val);
+    if (help) attachHelp(l, help);
     return row;
   };
 
@@ -144,9 +147,21 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
       // Reach + Falloff only shape the faded patch around the stroke; "Fill
       // canvas" tiles the whole canvas at full strength, so they do nothing
       // then — gray them out while it's on.
-      const reachRow = slider("Reach", 20, 800, c.tile.reach, (v) => c.setTile({ reach: v }));
-      const falloffRow = slider("Falloff", 0, 100, c.tile.falloffPct, (v) =>
-        c.setTile({ falloffPct: v }),
+      const reachRow = slider(
+        "Reach",
+        20,
+        800,
+        c.tile.reach,
+        (v) => c.setTile({ reach: v }),
+        "How far the tiling spreads out from where you started, in pixels.",
+      );
+      const falloffRow = slider(
+        "Falloff",
+        0,
+        100,
+        c.tile.falloffPct,
+        (v) => c.setTile({ falloffPct: v }),
+        "How sharply copies fade toward the reach edge. 0 = even; higher = a soft vignette.",
       );
       const setFillDisabled = (on: boolean) => {
         for (const row of [reachRow, falloffRow]) {
@@ -172,6 +187,10 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
         setFillDisabled(fcb.checked);
       });
       fillRow.append(fl, fcb);
+      attachHelp(
+        fl,
+        "Tile the motif across the whole canvas at full strength instead of a faded patch - Reach and Falloff then don't apply. Best with a small motif.",
+      );
 
       params.append(
         slider("X spacing", 10, 200, c.tile.xSpacing, (v) => c.setTile({ xSpacing: v })),
@@ -183,7 +202,14 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
       setFillDisabled(c.tile.fillCanvas);
     } else if (c.mode === "radial") {
       params.appendChild(
-        slider("Segments", 2, 24, c.radial.segments, (v) => c.setRadial({ segments: v })),
+        slider(
+          "Segments",
+          2,
+          24,
+          c.radial.segments,
+          (v) => c.setRadial({ segments: v }),
+          "How many wedges the kaleidoscope splits into around the canvas centre.",
+        ),
       );
       const row = document.createElement("div");
       row.className = "sym-row";
@@ -200,6 +226,10 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
         c.setRadial({ mirror: cb.checked });
       });
       row.append(l, cb);
+      attachHelp(
+        l,
+        "Also reflect each wedge, so the pattern is symmetric within every slice (a true kaleidoscope).",
+      );
       params.appendChild(row);
     } else if (c.mode === "mirror") {
       // A single reflection line: pick which axis (its own segmented control).

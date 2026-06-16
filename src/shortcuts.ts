@@ -12,6 +12,11 @@ export type Shortcut = {
   group?: string;
   onPress: () => void;
   description?: string;
+  // Marks a toggle: the Shortcuts panel shows its live on/off state instead of
+  // treating the row as a one-shot action. subscribeState lets the panel stay
+  // in sync when the state is flipped elsewhere (e.g. the key itself).
+  state?: () => boolean;
+  subscribeState?: (cb: () => void) => () => void;
 };
 
 const IS_MAC =
@@ -188,6 +193,8 @@ type GroupedShortcut = {
   keyboardCombos: string[][]; // one entry per binding, one cap per part
   touchLabels: string[];
   onPress: () => void;
+  state?: () => boolean;
+  subscribeState?: (cb: () => void) => () => void;
 };
 
 function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
@@ -207,6 +214,8 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
         keyboardCombos: [],
         touchLabels: [],
         onPress: s.onPress,
+        state: s.state,
+        subscribeState: s.subscribeState,
       };
       byKey.set(key, entry);
       order.push(key);
@@ -315,6 +324,24 @@ export function createShortcutsPanel(shortcuts: Shortcut[]): {
         gesture.className = "kbd-gesture";
         gesture.textContent = t;
         bindCell.appendChild(gesture);
+      }
+      // Toggle shortcuts show their live state (and are tappable here — the
+      // route to help mode on touch, where there's no "?" key). The row owns
+      // the click; the switch is a passive indicator kept in sync.
+      if (item.state) {
+        const sw = document.createElement("span");
+        sw.className = "shortcuts-toggle";
+        const knob = document.createElement("span");
+        knob.className = "shortcuts-toggle-knob";
+        sw.appendChild(knob);
+        const sync = () => {
+          const on = item.state!();
+          sw.classList.toggle("on", on);
+          row.setAttribute("aria-pressed", String(on));
+        };
+        sync();
+        item.subscribeState?.(sync);
+        bindCell.appendChild(sw);
       }
       row.appendChild(bindCell);
 

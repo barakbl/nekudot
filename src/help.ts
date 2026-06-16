@@ -1,17 +1,18 @@
-// Lightweight help-tooltip framework.
+// Lightweight help-hint framework.
 //
-// Usage:
 //   attachHelp(someElement, "Explanation text…")
 //
-// A tiny "?" icon is inserted right after the element. The icons are hidden
-// until help mode is on (toggled via `toggleHelpMode()` — bound to `?`
-// elsewhere). Hovering an icon (mouse) or tapping it (touch) shows a small
-// popover; the popover hides on leave, on a tap outside, or on Escape.
+// A small "?" chip is inserted right after the element, hidden until help mode
+// is on (toggled by the `?` key or the toggle in the Shortcuts panel). A mouse
+// reveals the hint on hover; touch/pen reveals it on tap (tap again, tap away,
+// or Escape to dismiss). The shown chip gets `.active` so it reads on touch
+// where there's no hover.
 
 const HELP_MODE_CLASS = "help-mode";
 
 let activeIcon: HTMLElement | null = null;
 let activeTooltip: HTMLElement | null = null;
+const modeListeners = new Set<(on: boolean) => void>();
 
 export function attachHelp(target: HTMLElement, text: string): HTMLElement {
   const icon = document.createElement("span");
@@ -24,27 +25,47 @@ export function attachHelp(target: HTMLElement, text: string): HTMLElement {
 
   target.insertAdjacentElement("afterend", icon);
 
-  icon.addEventListener("mouseenter", () => show(icon, text));
-  icon.addEventListener("mouseleave", () => {
-    if (activeIcon === icon) hide();
+  // Mouse: hover shows / leave hides. Touch & pen: tap toggles — preventDefault
+  // stops the synthesized hover+click that would otherwise re-hide it instantly.
+  icon.addEventListener("pointerenter", (e) => {
+    if (e.pointerType === "mouse") show(icon, text);
   });
-  icon.addEventListener("click", (e) => {
-    // For touch / explicit clicks: toggle.
+  icon.addEventListener("pointerleave", (e) => {
+    if (e.pointerType === "mouse" && activeIcon === icon) hide();
+  });
+  icon.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse") return;
+    e.preventDefault();
     e.stopPropagation();
     if (activeIcon === icon) hide();
     else show(icon, text);
   });
+  // Don't let a click on the chip bubble to the panel/window behind it.
+  icon.addEventListener("click", (e) => e.stopPropagation());
 
   return icon;
 }
 
 export function toggleHelpMode(): void {
-  document.body.classList.toggle(HELP_MODE_CLASS);
-  if (!isHelpModeOn()) hide();
+  setHelpMode(!isHelpModeOn());
+}
+
+export function setHelpMode(on: boolean): void {
+  if (on === isHelpModeOn()) return;
+  document.body.classList.toggle(HELP_MODE_CLASS, on);
+  if (!on) hide();
+  for (const cb of modeListeners) cb(on);
 }
 
 export function isHelpModeOn(): boolean {
   return document.body.classList.contains(HELP_MODE_CLASS);
+}
+
+// Subscribe to help-mode on/off changes (e.g. the Shortcuts panel toggle stays
+// in sync when toggled by the `?` key). Returns an unsubscribe fn.
+export function onHelpModeChange(cb: (on: boolean) => void): () => void {
+  modeListeners.add(cb);
+  return () => modeListeners.delete(cb);
 }
 
 function show(icon: HTMLElement, text: string): void {
@@ -55,6 +76,7 @@ function show(icon: HTMLElement, text: string): void {
   tip.textContent = text;
   document.body.appendChild(tip);
   position(tip, icon);
+  icon.classList.add("active");
   activeIcon = icon;
   activeTooltip = tip;
 }
@@ -64,27 +86,27 @@ function hide(): void {
     activeTooltip.remove();
     activeTooltip = null;
   }
-  activeIcon = null;
+  if (activeIcon) {
+    activeIcon.classList.remove("active");
+    activeIcon = null;
+  }
 }
 
 function position(tip: HTMLElement, anchor: HTMLElement): void {
   const rect = anchor.getBoundingClientRect();
-  // Default: to the right of the icon, vertically aligned with its top.
   const gap = 6;
-  let left = rect.right + gap;
-  let top = rect.top;
-  // Clamp inside viewport (rough).
   const tipRect = tip.getBoundingClientRect();
+  // Default to the right of the chip, vertically centred on it.
+  let left = rect.right + gap;
+  let top = rect.top + rect.height / 2 - tipRect.height / 2;
   const maxLeft = window.innerWidth - tipRect.width - 8;
   if (left > maxLeft) left = Math.max(8, rect.left - tipRect.width - gap);
-  const maxTop = window.innerHeight - tipRect.height - 8;
-  if (top > maxTop) top = maxTop;
-  if (top < 8) top = 8;
+  top = Math.min(Math.max(8, top), window.innerHeight - tipRect.height - 8);
   tip.style.left = `${left}px`;
   tip.style.top = `${top}px`;
 }
 
-// Global dismissers.
+// Global dismissers: tap/click outside the active chip, or Escape.
 document.addEventListener("click", (e) => {
   if (!activeIcon) return;
   if (activeIcon.contains(e.target as Node)) return;

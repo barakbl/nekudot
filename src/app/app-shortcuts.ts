@@ -1,6 +1,6 @@
 import { BRUSH_DEFS } from "../brushes/registry";
 import type { Shortcut } from "../shortcuts";
-import { toggleHelpMode } from "../help";
+import { toggleHelpMode, isHelpModeOn, onHelpModeChange } from "../help";
 import { showChip } from "../chip";
 
 // Everything the global shortcut table triggers. The panel list is read lazily
@@ -106,8 +106,10 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
     {
       key: "?",
       group: "Help",
-      description: "Toggle help hints",
+      description: "Help hints (? bubbles around the UI)",
       onPress: () => toggleHelpMode(),
+      state: () => isHelpModeOn(),
+      subscribeState: (cb) => onHelpModeChange(cb),
     },
     ...BRUSH_DEFS.filter((d) => d.shortcut).map((d) => ({
       code: `Digit${d.shortcut}`,
