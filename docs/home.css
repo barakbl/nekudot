@@ -323,6 +323,19 @@ em { color: var(--gold-soft); font-style: italic; }
 .closer { text-align: center; padding: clamp(56px, 10vw, 110px) 22px; position: relative; }
 .closer h2 { margin-bottom: 18px; }
 .closer .lead { color: var(--muted); max-width: 480px; margin: 0 auto 30px; font-size: 18px; }
+/* "Start here" recommendation - a gold-badged callout above the final CTA. */
+.closer .start-tip {
+  max-width: 520px; margin: 0 auto 32px; padding: 16px 20px;
+  background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gold);
+  border-radius: 14px; text-align: left; color: var(--text);
+  font-size: 16px; line-height: 1.55;
+}
+.closer .start-tip b { color: var(--gold-soft); font-weight: 600; }
+.closer .start-tip-badge {
+  display: inline-block; margin-right: 8px; padding: 3px 10px;
+  font: 600 11px var(--body); letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--ink); background: var(--gold); border-radius: 999px; vertical-align: middle;
+}
 
 /* About / license specifics. */
 .lede-line {
