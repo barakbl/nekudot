@@ -16,6 +16,7 @@ export function bindDrawingInput(opts: {
   // Pen support gate (the More-menu toggle). When off, every sample is read as
   // a neutral mouse sample, so a stylus draws with no pressure/tilt modulation.
   penEnabled: () => boolean;
+  onStrokeStart?: () => void; // fired when a stroke begins (e.g. arm GIF capture)
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
 }): { commitActiveStroke: () => void } {
   const { stage, symmetry, layerManager } = opts;
@@ -45,6 +46,9 @@ export function bindDrawingInput(opts: {
     if (buffered) layerManager.beginStroke();
     brush.strokeStart(e.offsetX, e.offsetY);
     brush.stroke(e.offsetX, e.offsetY, true, pen);
+    // Signal AFTER the first mark is drawn so an armed GIF recorder's first
+    // captured frame already includes it.
+    opts.onStrokeStart?.();
   });
 
   stage.addEventListener("pointermove", (e) => {

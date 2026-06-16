@@ -23,6 +23,7 @@
     "@types/d3-quadtree": "^3.0.6",
     "d3-quadtree": "^3.0.1",
     "fflate": "^0.8.3",
+    "gifenc": "^1.0.3",
     "zod": "^4.4.3"
   }
 }

@@ -1835,3 +1835,255 @@ body.help-mode .help-icon {
     pointer-events: none;
   }
 }
+
+/* ---- GIF recording: REC pill + preview/edit modal -------------------------- */
+.clip-rec-pill {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 999px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-toolbar);
+  font-size: 12px;
+  color: var(--text-body);
+}
+.clip-rec-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: clip-rec-blink 1s steps(2, start) infinite;
+}
+/* Armed (waiting for the first stroke): steady, dimmed dot. */
+.clip-rec-pill.armed .clip-rec-dot {
+  animation: none;
+  opacity: 0.45;
+}
+@keyframes clip-rec-blink {
+  to { opacity: 0.25; }
+}
+.clip-rec-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.clip-rec-stop {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 9px;
+  border: none;
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  cursor: pointer;
+}
+.clip-rec-stop:hover {
+  filter: brightness(1.08);
+}
+
+.clip-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--modal-overlay);
+}
+.clip-modal {
+  width: min(92vw, 480px);
+  max-height: 92vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border-radius: 12px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+  color: var(--text-body);
+}
+.clip-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.clip-modal-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.clip-modal-close {
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.clip-modal-close:hover {
+  color: var(--text-primary);
+}
+.clip-canvas-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--pill-bg);
+}
+.clip-preview-canvas {
+  max-width: 100%;
+  max-height: 46vh;
+  border-radius: 4px;
+  image-rendering: auto;
+}
+.clip-readout {
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.clip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.clip-row-label {
+  flex: 0 0 70px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.clip-range {
+  flex: 1;
+  min-width: 0;
+}
+/* Two-handle trim slider: two range inputs stacked on a shared rail, catching
+   pointer events only on their thumbs, with a filled span for the selection. */
+.clip-dual {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+}
+.clip-dual-rail,
+.clip-dual-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  pointer-events: none;
+}
+.clip-dual-rail {
+  left: 0;
+  right: 0;
+  background: var(--border-stronger);
+}
+.clip-dual-fill {
+  background: var(--accent);
+}
+.clip-dual-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.clip-dual-input::-webkit-slider-runnable-track {
+  height: 4px;
+  background: none;
+}
+.clip-dual-input::-moz-range-track {
+  height: 4px;
+  background: none;
+}
+.clip-dual-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  margin-top: -5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--panel-bg);
+  cursor: pointer;
+}
+.clip-dual-input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--panel-bg);
+  cursor: pointer;
+}
+.clip-row-val {
+  flex: 0 0 70px;
+  text-align: right;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-faint);
+}
+.clip-modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.clip-foot-spacer {
+  flex: 1;
+}
+.clip-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-stronger);
+  border-radius: 7px;
+  background: var(--pill-bg);
+  color: var(--text-body);
+  cursor: pointer;
+}
+.clip-btn:hover:not(:disabled) {
+  background: var(--pill-hover);
+}
+.clip-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.clip-save {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.clip-save:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.clip-progress {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--pill-bg);
+}
+.clip-progress-bar {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}

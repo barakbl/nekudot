@@ -17,6 +17,7 @@ export type ShortcutActions = {
   selectBrush: (name: string) => void;
   undo: () => void;
   redo: () => void;
+  recordClip: () => void; // start a GIF recording (arms on first stroke)
 };
 
 // The app's shortcut table (keyboard + multi-finger gestures). The Brushes
@@ -89,6 +90,12 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       group: "Panels",
       description: "Toggle more menu",
       onPress: () => actions.toggleCanvasMenu(),
+    },
+    {
+      key: "r",
+      group: "Capture",
+      description: "Record GIF",
+      onPress: () => actions.recordClip(),
     },
     {
       key: "/",

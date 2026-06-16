@@ -163,7 +163,7 @@ function shortcutParts(s: Shortcut): string[] {
 }
 
 // Stable group order — groups not listed here appear after, in insertion order.
-const GROUP_ORDER = ["Brushes", "Panels", "Edit", "Help", "Other"];
+const GROUP_ORDER = ["Brushes", "Panels", "Edit", "Capture", "Help", "Other"];
 
 type GroupedShortcut = {
   description: string;

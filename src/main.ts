@@ -9,6 +9,7 @@ import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
 import { SYMMETRY_MODES, SYMMETRY_MODE_ICONS } from "./symmetry/menu-section";
 import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
+import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel } from "./settings-panel";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
@@ -147,6 +148,15 @@ const backgroundColorForPreviews = (): string => {
   return bg.transparent ? "transparent" : bg.color;
 };
 const exportBackground = (): string => backgroundColorForPreviews();
+
+// Start a GIF recording (menu item + the "r" shortcut). Arms now; capture
+// begins on the first stroke (see clip/record-flow).
+const recordClip = () =>
+  startClipRecording({
+    manager: layerManager,
+    getBackgroundColor: exportBackground,
+    stage,
+  });
 
 // ---- overlays ----------------------------------------------------------------
 
@@ -569,6 +579,7 @@ const canvasMenuOptions = {
   },
   onShareImage: shareImageFn,
   onExportImage: exportImageFn,
+  onRecordClip: recordClip,
   onSaveArtwork: () => {
     saveArtwork(layerManager).catch((err) => {
       console.error("saveArtwork failed", err);
@@ -777,6 +788,7 @@ const shortcuts = buildAppShortcuts({
   selectBrush,
   undo: doUndo,
   redo: doRedo,
+  recordClip,
 });
 const shortcutsPanel = createShortcutsPanel(shortcuts);
 document.body.appendChild(shortcutsPanel.el);
@@ -819,6 +831,7 @@ const drawingInput = bindDrawingInput({
   symmetry,
   layerManager,
   penEnabled: () => penEnabled,
+  onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
     // A stroke may have added points to the active map; refresh the maps box

@@ -30,6 +30,7 @@ export type CanvasMenuOptions = {
   onTogglePen: (on: boolean) => void;
   onShareImage: () => void;
   onExportImage: () => void;
+  onRecordClip: () => void;
   onSaveArtwork: () => void;
   onLoadArtwork: () => void;
 };
@@ -570,6 +571,28 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
     popover.classList.remove("open");
   });
   popover.appendChild(exp);
+
+  // Record GIF - capture a few seconds of drawing, then preview/trim/speed.
+  const gif = document.createElement("div");
+  gif.className = "brush-option";
+  const gifIc = document.createElement("span");
+  gifIc.className = "opt-icon";
+  gifIc.innerHTML =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="3" y="5" width="18" height="14" rx="2"/>' +
+    '<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>' +
+    "</svg>";
+  gif.appendChild(gifIc);
+  const gifLbl = document.createElement("span");
+  gifLbl.className = "opt-label";
+  gifLbl.textContent = "Record GIF";
+  gif.appendChild(gifLbl);
+  gif.addEventListener("click", (e) => {
+    e.stopPropagation();
+    opts.onRecordClip();
+    popover.classList.remove("open");
+  });
+  popover.appendChild(gif);
 
   // Save artwork (.nekudot) — editable archive for resuming work later.
   const dl = document.createElement("div");
