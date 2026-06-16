@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Layers panel - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Panels › Layers</p>
+      <h1>Layers panel <span class="tag">key l</span></h1>
+      <p class="lead">The stack of canvases - reorder, blend and pick where strokes and the web land.</p>
+
+      <img class="book-shot" src="/book/img/panel-layers.png" alt="The Layers panel" />
+
+      <h2>What it is</h2>
+      <p>
+        Lists your layers top-down in the order they stack on screen. Click a row
+        to make it the <strong>active</strong> layer (where strokes land); the
+        link button marks the <strong>connection layer</strong> (where the web is
+        drawn). The bottom row sets the canvas background. For the bigger picture
+        - layers vs the shared memory - see <a href="/book/layers.html">Layers</a>.
+      </p>
+
+      <h2>Per-row controls</h2>
+      <dl class="settings">
+        <dt>Grip handle</dt>
+        <dd>Drag the dotted handle to reorder; up brings the layer forward, down sends it back.</dd>
+        <dt>Name</dt>
+        <dd>Double-click to rename.</dd>
+        <dt>Opacity</dt>
+        <dd>Blend the layer over the ones beneath (0-100%).</dd>
+        <dt>Connection-layer link</dt>
+        <dd>Make this the layer connecting brushes draw their web onto (always exactly one).</dd>
+        <dt>Duplicate / Delete</dt>
+        <dd>Copy a layer (a cheap snapshot) or remove it (at least one stays).</dd>
+        <dt>Background row</dt>
+        <dd>Set the canvas background colour, or tick <strong>Transparent</strong> for none (exports a transparent PNG).</dd>
+      </dl>
+
+      <div class="note">
+        Layers hold <em>pixels</em>. The points the web reaches toward - your
+        drawing's <a href="/book/ui/maps-panel.html">memory</a> - are separate
+        and shared across layers.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

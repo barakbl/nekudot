@@ -60,6 +60,13 @@
       routing.ts       ROUTING_PRESETS - where a stroke reads/stores neighbours
       classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
   symmetry/            Tile / Radial / Mirror tool (transforms, proxy, controller, box)
+  clip/                record a few seconds of drawing to an animated GIF
+    recorder.ts        captures downscaled canvas frames on a timer
+    encode-gif.ts      gifenc encoder + the nekudot.app provenance comment
+    exporters.ts       Exporter registry (format-agnostic; GIF today)
+    timeline.ts        speed + trim math (pure)
+    preview-box.ts     preview/edit modal (loop, speed, trim)
+    record-flow.ts     arms on Record, starts on first stroke, the REC pill
   layered/
     manager.ts         LayerManager - the app's PaintHost over the layer stack + maps
     layer.ts           Layer = one canvas + renderer
@@ -198,6 +205,26 @@ stage.addEventListener("pointermove", (e) => {
         images via <code>createImageBitmap</code>. <code>export.ts</code>
         flattens the visible layers into a single PNG. <code>build.sh</code>
         bundles the whole app into one self-contained HTML file.
+      </p>
+
+      <h2>Clip capture (GIF)</h2>
+      <p>
+        <code>src/clip/</code> records a few seconds of drawing into an animated
+        GIF. It's <strong>frame-based, not a video</strong>:
+        <code>recorder.ts</code> composites the layers into one downscaled canvas
+        on a 12fps timer (independent of the draw loop) and holds the frames in
+        memory, so the preview can change speed and trim instantly without
+        re-encoding. <code>record-flow.ts</code> arms on the Record action and
+        starts capturing on your <em>first stroke</em> (so idle time isn't
+        recorded); the modal in <code>preview-box.ts</code> loops the frames with
+        a speed slider and a two-handle trim. Save runs <code>encode-gif.ts</code>
+        -
+        <a href="https://github.com/mattdesl/gifenc" target="_blank" rel="noopener">gifenc</a>
+        on the main thread (the single-file build inlines one JS chunk, so a
+        worker encoder would break it), which also writes a provenance comment
+        into the GIF metadata. Output formats go through an <code>Exporter</code>
+        registry (<code>exporters.ts</code>), so adding e.g. WebM is one entry;
+        <code>timeline.ts</code> holds the speed/trim math.
       </p>
 
       <div class="note">

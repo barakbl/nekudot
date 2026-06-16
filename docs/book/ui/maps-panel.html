@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Memory Maps panel - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Panels › Memory Maps</p>
+      <h1>Memory Maps panel <span class="tag">key m</span></h1>
+      <p class="lead">The named point clouds your connecting brushes reach toward.</p>
+
+      <img class="book-shot" src="/book/img/panel-maps.png" alt="The Memory Maps panel" />
+
+      <h2>What it is</h2>
+      <p>
+        A <strong>memory map</strong> is a set of remembered points - separate
+        from the painted pixels and shared across layers. Connecting brushes weave
+        their web toward these points, so a map lets a drawing "remember" what to
+        link to. Open the panel from the navbar maps pill, the
+        <strong>Windows</strong> menu, or <span class="kbd">m</span>. For how maps
+        feed the web, see <a href="/book/map.html">Memory maps</a>.
+      </p>
+
+      <h2>Controls</h2>
+      <dl class="settings">
+        <dt>Active map</dt>
+        <dd>The map new points are deposited into. Click a row to switch; its live point count shows here and in the navbar pill.</dd>
+        <dt>Flash</dt>
+        <dd>The target button briefly lights up a map's dots on the canvas so you can see where they are.</dd>
+        <dt>Add / Rename / Delete</dt>
+        <dd>Make a new map, double-click to rename, or remove one.</dd>
+      </dl>
+
+      <div class="tip">
+        <span class="tip-label">Tip</span>
+        Keep a clean map of just the points you want to connect, then draw on a
+        fresh layer that reaches into it - the web threads toward your remembered
+        shape without re-drawing it.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

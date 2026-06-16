@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Symmetry panel - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Panels › Symmetry</p>
+      <h1>Symmetry panel <span class="tag">key y</span></h1>
+      <p class="lead">Pick a symmetry mode and shape how your strokes repeat.</p>
+
+      <img class="book-shot" src="/book/img/panel-symmetry.png" alt="The Symmetry panel in Tile mode" />
+
+      <h2>What it is</h2>
+      <p>
+        A mode picker - <strong>None</strong>, <strong>Tile</strong>,
+        <strong>Radial</strong>, <strong>Mirror</strong> - plus the parameters for
+        the chosen mode and the on-canvas guide lines. Whatever brush is active
+        gets repeated. Open it from the navbar Symmetry pill, the
+        <strong>Windows</strong> menu, or <span class="kbd">y</span>. For what each
+        mode does, see <a href="/book/symmetry.html">Symmetry</a>.
+      </p>
+
+      <h2>Tile parameters</h2>
+      <dl class="settings">
+        <dt>X / Y spacing</dt>
+        <dd>The lattice pitch - distance between tile junctions.</dd>
+        <dt>Fill canvas</dt>
+        <dd>Tile the whole canvas at full strength (Reach and Falloff grey out). Best with a small motif.</dd>
+        <dt>Reach</dt>
+        <dd>How far the tiling spreads out from where you started.</dd>
+        <dt>Falloff</dt>
+        <dd>How sharply copies fade toward the reach edge (0 = even).</dd>
+      </dl>
+
+      <h2>Radial &amp; Mirror</h2>
+      <dl class="settings">
+        <dt>Segments (Radial)</dt>
+        <dd>How many wedges the kaleidoscope splits into.</dd>
+        <dt>Mirror (Radial)</dt>
+        <dd>Reflect each wedge as well as rotating it.</dd>
+        <dt>Axis (Mirror)</dt>
+        <dd>Reflect across a vertical or horizontal line through the centre.</dd>
+      </dl>
+
+      <h2>Guides</h2>
+      <dl class="settings">
+        <dt>Opacity / Width / Color</dt>
+        <dd>Style the on-canvas guide lines (the lattice, spokes or mirror line) that show where copies fall. Guides sit above the drawing but below the panels.</dd>
+      </dl>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Toolbar - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Toolbar</p>
+      <h1>Toolbar</h1>
+      <p class="lead">The floating bar at the top - every tool and quick action, left to right.</p>
+
+      <img class="book-shot wide" src="/book/img/toolbar.png" alt="The Nekudot toolbar" />
+
+      <h2>What it is</h2>
+      <p>
+        A single draggable bar that floats over the canvas - grab the dotted
+        handle on its left to move it anywhere. Most controls are
+        <strong>pills</strong> (a quick value plus a <strong>gear</strong> that
+        opens the matching panel and a <strong>⌄</strong> dropdown). On a phone
+        the bar wraps onto a few rows and trims itself: the brush and connecting
+        pills show only their icon, the maps pill drops its point count, and
+        undo/redo disappear (use the two- and three-finger tap gestures instead).
+      </p>
+
+      <h2>What each control does</h2>
+      <dl class="settings">
+        <dt>Drag handle (⠿)</dt>
+        <dd>Drag to reposition the whole toolbar.</dd>
+        <dt>More (…)</dt>
+        <dd>Theme (auto/light/dark), pen-pressure toggle, share/export PNG, save/load <code>.nekudot</code>, and <a href="/book/shortcuts.html">Record GIF</a>.</dd>
+        <dt>Windows</dt>
+        <dd>Show any panel (Brush settings, Connecting, Layers, Maps, Symmetry, Shortcuts) with its keyboard shortcut listed.</dd>
+        <dt>Memory Maps pill</dt>
+        <dd>The active map's live point count - click it to open the <a href="/book/ui/maps-panel.html">Maps panel</a>; the target button flashes that map's dots on the canvas.</dd>
+        <dt>Colour swatch</dt>
+        <dd>Front and back colours; right-click to swap them.</dd>
+        <dt>Brush pill</dt>
+        <dd>The selected brush (icon + name). The dropdown picks a brush; the gear opens <a href="/book/ui/settings.html">Brush settings</a>.</dd>
+        <dt>Connecting pill</dt>
+        <dd>The connection art style (Classic, Web, Shading…). Only shown for brushes that weave a web; the gear opens the <a href="/book/ui/settings.html">Connecting</a> tab.</dd>
+        <dt>Symmetry pill</dt>
+        <dd>The current symmetry mode (None / Tile / Radial / Mirror); the gear opens the <a href="/book/ui/symmetry-panel.html">Symmetry panel</a>.</dd>
+        <dt>Undo / Redo</dt>
+        <dd>Step history back and forward (also <span class="kbd">⌘/Ctrl</span> <span class="kbd">Z</span>, or 2/3-finger taps).</dd>
+        <dt>Delete canvas</dt>
+        <dd>Wipe all layers back to one (asks first).</dd>
+        <dt>New art</dt>
+        <dd>Start a fresh canvas at a size you pick.</dd>
+      </dl>
+
+      <div class="tip">
+        <span class="tip-label">Tip</span>
+        Every pill's gear opens the same panel you'd reach from the
+        <strong>Windows</strong> menu or its keyboard shortcut - see
+        <a href="/book/shortcuts.html">Shortcuts &amp; gestures</a>.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

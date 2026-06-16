@@ -104,6 +104,13 @@ pre {
 }
 pre code { background: none; padding: 0; font-size: inherit; }
 .filetree { white-space: pre; }
+/* Syntax highlighting tokens (book-nav.js highlights pre code blocks). */
+.tok-c { color: #6a737d; font-style: italic; } /* comment */
+.tok-s { color: #98c379; } /* string */
+.tok-n { color: #d19a66; } /* number */
+.tok-k { color: #c678dd; } /* keyword */
+.tok-t { color: #e5c07b; } /* type / Capitalized */
+.tok-f { color: #61afef; } /* function call */
 
 dl.settings { margin: 14px 0; }
 dl.settings dt { font-weight: 600; margin-top: 12px; }
@@ -145,6 +152,15 @@ dl.settings dd { margin: 2px 0 0; color: var(--muted); }
   border: 1px solid var(--border); border-radius: 10px;
 }
 .book-figs figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+/* UI panel / toolbar screenshots (captured at 2x; the border-radius clips the
+   panel's square corners so they sit cleanly on the page). */
+.book-shot {
+  display: block; width: auto; height: auto;
+  max-width: min(100%, 480px); margin: 18px auto;
+  background: var(--code-bg); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+.book-shot.wide { max-width: min(100%, 680px); }
 /* Book layout: sticky contents sidebar + content (injected by book-nav.js). */
 .book-shell { display: flex; gap: 34px; max-width: 1140px; margin: 0 auto; padding: 0 22px; align-items: flex-start; }
 .book-shell main { margin: 0; max-width: none; flex: 1; min-width: 0; padding: 36px 0 80px; }

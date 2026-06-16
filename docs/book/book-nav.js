@@ -25,6 +25,10 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>',
     link:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg>',
+    toolbar:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="2.5"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
+    sliders:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h8M16 7h4M4 17h4M12 17h8"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
     // brushes - the app's own glyphs
     round: "●",
     squares: "▭",
@@ -57,6 +61,22 @@
       children: [
         { label: "Memory maps", href: "/book/map.html", icon: I.map },
         { label: "Layers", href: "/book/layers.html", icon: I.layers },
+      ],
+    },
+    {
+      label: "Interface",
+      children: [
+        { label: "Toolbar", href: "/book/ui/toolbar.html", icon: I.toolbar },
+        {
+          label: "Panels",
+          children: [
+            { label: "Brush & Connecting settings", href: "/book/ui/settings.html", icon: I.sliders },
+            { label: "Layers panel", href: "/book/ui/layers-panel.html", icon: I.layers },
+            { label: "Memory Maps panel", href: "/book/ui/maps-panel.html", icon: I.map },
+            { label: "Symmetry panel", href: "/book/ui/symmetry-panel.html", icon: I.symmetry },
+            { label: "Shortcuts panel", href: "/book/ui/shortcuts-panel.html", icon: I.keys },
+          ],
+        },
       ],
     },
     {
@@ -171,7 +191,55 @@
   renderNodes(TREE, 0);
   aside.appendChild(nav);
 
+  // --- lightweight TS/JS syntax highlighting -------------------------------
+  // Self-contained (no CDN): tokenize the code in <pre><code> blocks and wrap
+  // tokens in spans (coloured by docs.css). Skips .filetree blocks (the module
+  // map is prose, not code). Reads textContent and re-escapes, so it round-trips
+  // any &lt; in the source safely.
+  const KEYWORDS = new Set(
+    ("const let var function return if else for while do switch case break " +
+      "continue new class extends implements interface type enum import export " +
+      "from as default public private protected readonly static async await " +
+      "yield void null undefined true false typeof instanceof in of throw try " +
+      "catch finally get set abstract override declare namespace this super")
+      .split(" "),
+  );
+  const esc = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const TOKEN =
+    /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\b\d[\w.]*)|([A-Za-z_$][\w$]*)/g;
+  const highlightTS = (code) => {
+    let out = "";
+    let last = 0;
+    let m;
+    TOKEN.lastIndex = 0;
+    while ((m = TOKEN.exec(code))) {
+      out += esc(code.slice(last, m.index));
+      const [whole, comment, str, num, ident] = m;
+      if (comment != null) out += `<span class="tok-c">${esc(comment)}</span>`;
+      else if (str != null) out += `<span class="tok-s">${esc(str)}</span>`;
+      else if (num != null) out += `<span class="tok-n">${esc(num)}</span>`;
+      else {
+        let cls = "";
+        if (KEYWORDS.has(ident)) cls = "tok-k";
+        else if (/^[A-Z]/.test(ident)) cls = "tok-t";
+        else if (code[m.index + whole.length] === "(") cls = "tok-f";
+        out += cls ? `<span class="${cls}">${esc(ident)}</span>` : esc(ident);
+      }
+      last = m.index + whole.length;
+    }
+    return out + esc(code.slice(last));
+  };
+  const highlightCode = () => {
+    for (const code of document.querySelectorAll("pre:not(.filetree) code")) {
+      if (code.dataset.hl) continue;
+      code.dataset.hl = "1";
+      code.innerHTML = highlightTS(code.textContent);
+    }
+  };
+
   const mount = () => {
+    highlightCode();
     const main = document.querySelector("main");
     if (!main) return;
     const shell = document.createElement("div");
