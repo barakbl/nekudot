@@ -76,6 +76,10 @@ const initialCanvasSize: CanvasSize = (() => {
 const stage = document.createElement("div");
 stage.className = "stage";
 stage.style.position = "relative";
+// Own stacking context so the stage's high-z overlays (symmetry guides, the
+// map flash, the invisible-brush glow) stay above the drawing layers but BELOW
+// the body-level toolbar and panels — without it they'd paint over the UI.
+stage.style.zIndex = "0";
 stage.style.border = `${BORDER}px solid #333`;
 stage.style.touchAction = "none";
 stage.style.cursor = "crosshair"; // drawing-app style precise cursor
