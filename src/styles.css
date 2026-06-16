@@ -976,10 +976,15 @@ body {
 .settings-tab:hover {
   color: var(--text-primary);
 }
+/* Accent fill (like the symmetry segmented control) so the selected tab is
+   unmistakable in both themes — the old panel-bg fill was darker than the
+   pill-bg track in dark mode, so it read as recessed/ambiguous. */
 .settings-tab.active {
-  background: var(--panel-bg);
-  color: var(--text-primary);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.settings-tab.active:hover {
+  background: var(--accent-hover);
 }
 .settings-empty {
   margin: 0;
