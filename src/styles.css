@@ -1873,6 +1873,20 @@ body.help-mode .help-icon {
     background: var(--border-stronger);
     pointer-events: none;
   }
+
+  /* Slim the toolbar so it needs fewer rows on a phone: brush + connecting pills
+     show icon only (drop the name), the maps pill drops its point count, and
+     undo/redo go away (use the 2/3-finger tap gestures instead). */
+  .toolbar .brush-label {
+    display: none;
+  }
+  .toolbar .maps-pill-label {
+    display: none;
+  }
+  .toolbar .history-btn,
+  .toolbar .history-divider {
+    display: none;
+  }
 }
 
 /* ---- GIF recording: REC pill + preview/edit modal -------------------------- */

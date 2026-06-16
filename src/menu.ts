@@ -156,9 +156,16 @@ export function createMenu<T extends string>(
     setSymmetryValue = combo.setValue;
     bar.appendChild(combo.el);
   }
-  bar.appendChild(makeDivider());
+  // Undo/redo (+ their leading divider) are tagged so mobile can hide them —
+  // on touch, undo/redo are the 2/3-finger tap gestures, so the buttons just
+  // take space. Hiding the divider too avoids a doubled separator.
+  const historyDivider = makeDivider();
+  historyDivider.classList.add("history-divider");
+  bar.appendChild(historyDivider);
   const undoBtn = makeSvgButton(undoIcon, "Undo", history?.onUndo);
   const redoBtn = makeSvgButton(redoIcon, "Redo", history?.onRedo);
+  undoBtn.classList.add("history-btn");
+  redoBtn.classList.add("history-btn");
   bar.appendChild(undoBtn);
   bar.appendChild(redoBtn);
   const refreshHistoryState = () => {
