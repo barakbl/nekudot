@@ -11,7 +11,7 @@ import { SYMMETRY_MODES, SYMMETRY_MODE_ICONS } from "./symmetry/menu-section";
 import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
-import { createSettingsPanel } from "./settings-panel";
+import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
 import { DEFAULT_ART_STYLE } from "./brushes/round";
 import { showConfirm, showError } from "./confirm";
@@ -340,6 +340,7 @@ const showConnecting = () => {
 // exists.
 const renderActiveBrush = () => {
   settingsPanel.render(brush);
+  mapsBox.render(); // the routing "Connection" group tracks the active brush
   const supports = brush.supportsConnecting();
   menu.setConnectingVisible(supports);
   if (supports) menu.setConnectingValue(currentArtStyle);
@@ -433,7 +434,11 @@ registerWindow(symmetryBox.el);
 // per-map controls; the pill shows the active map's live point count + a
 // flash button (the name lives in its tooltips).
 const mapsControl = createMapsControl(layerManager, highlightNeighborsMap, pushUndo);
-const mapsBox = createMapsBox(mapsControl);
+// The routing "Connection" group lives in the Maps box now; build it for the
+// current brush (re-read on each render, so it tracks the active brush + maps).
+const mapsBox = createMapsBox(mapsControl, (rerender) =>
+  buildRoutingControls(brush, rerender),
+);
 document.body.appendChild(mapsBox.el);
 registerWindow(mapsBox.el);
 

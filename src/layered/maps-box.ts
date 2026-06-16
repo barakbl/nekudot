@@ -40,7 +40,12 @@ const DELETE_ICON =
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
-export function createMapsBox(control: MapsControl): MapsBox {
+export function createMapsBox(
+  control: MapsControl,
+  // Builds the routing "Connection" group for the active brush (moved here from
+  // the Connecting tab). Re-run on every render; `rerender` refreshes the box.
+  renderRouting?: (rerender: () => void) => HTMLElement | null,
+): MapsBox {
   const panel = document.createElement("div");
   panel.className = "layers-box maps-box";
   panel.style.display = "none";
@@ -79,7 +84,15 @@ export function createMapsBox(control: MapsControl): MapsBox {
   listEl.className = "maps-menu-list";
   info.append(countEl, listEl);
 
+  // The routing "Connection" group (which map the web reads from / writes to).
+  const routingSlot = document.createElement("div");
+  routingSlot.className = "maps-routing";
+  panel.appendChild(routingSlot);
+
   const render = () => {
+    routingSlot.replaceChildren();
+    const routing = renderRouting?.(render);
+    if (routing) routingSlot.appendChild(routing);
     const { maps } = control.getInfo();
     countEl.textContent = plural(maps.length, "map");
     listEl.replaceChildren();

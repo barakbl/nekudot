@@ -123,9 +123,10 @@ export type BrushControls = { size: BrushControl; opacity: BrushControl };
 
 // One settings window with two tabs:
 //   Brush      — size/opacity + the brush's own params (Dash, Pen, …).
-//   Connecting — the connecting routing + art-style dials (only for brushes
-//                that connect: Round/Eraser/Soft Pencil). Preset quick-pick is
-//                in the navbar, so no preset pills here.
+//   Connecting — the art-style dials (only for brushes that connect:
+//                Round/Eraser/Soft Pencil). Preset quick-pick is in the navbar.
+//                The routing "Connection" group lives in the Maps box now (see
+//                buildRoutingControls), since it's about which map the web uses.
 // A Reset button in the header reverts both to the brush's defaults + the
 // selected art style's defaults (wired in main.ts).
 export type SettingsTab = "brush" | "connecting";
@@ -291,7 +292,8 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
         i++;
       }
       if (section === ROUTING_SECTION) {
-        content.appendChild(buildRoutingGroup(run, () => render(brush), persist));
+        // The routing "Connection" group lives in the Maps panel now (it's about
+        // which map the web reads from / writes to) - see buildRoutingControls.
       } else if (section === STYLE_SECTION) {
         const openKeys = new Set(brush.activeConnection()?.defaultOpenKeys() ?? []);
         content.appendChild(
@@ -389,6 +391,24 @@ function makePresetRow<T>(
   return row;
 }
 
+// The routing "Connection" group, built for the Maps panel: which map a
+// connecting brush reads from / writes to, and whether it connects at all.
+// Returns null for non-connecting brushes (or when there's nothing to route).
+// rerender is called after a change so the group reflects the new value.
+export function buildRoutingControls(
+  brush: BrushBase,
+  rerender: () => void,
+): HTMLElement | null {
+  if (!brush.supportsConnecting()) return null;
+  const items = brush
+    .getSettings()
+    .filter(isConnectingSetting)
+    .filter((s) => s.section === ROUTING_SECTION);
+  if (items.length === 0) return null;
+  const persist: PersistFn = (s, v) => brush.persistSetting(s, v);
+  return buildRoutingGroup(items, rerender, persist);
+}
+
 // Routing group: where connections are baked into and which maps feed/store
 // them. Always visible, with its own presets.
 function buildRoutingGroup(
@@ -400,7 +420,7 @@ function buildRoutingGroup(
   box.className = "settings-group settings-group-routing";
   const title = document.createElement("h4");
   title.className = "settings-group-title";
-  title.textContent = "Connection";
+  title.textContent = "Web routing";
   box.appendChild(title);
   box.appendChild(
     makePresetRow(items, ROUTING_PRESETS, flattenRouting, rerender, persist),

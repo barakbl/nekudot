@@ -28,7 +28,9 @@
         <strong>Windows</strong> menu, or <span class="kbd">b</span>. The
         <strong>Brush</strong> tab holds size, opacity and the selected brush's
         own options; the <strong>Connecting</strong> tab (shown only for brushes
-        that weave a web) holds the routing and the art-style dials.
+        that weave a web) holds the art-style dials. (The web's <em>routing</em>
+        - which map it reads from / writes to - lives in the
+        <a href="/book/ui/maps-panel.html">Maps panel</a>.)
         <strong>Reset</strong> reverts both to defaults.
       </p>
 
@@ -47,15 +49,18 @@
       <h2>Connecting tab</h2>
       <img class="book-shot" src="/book/img/panel-settings-connecting.png" alt="The Connecting settings tab" />
       <dl class="settings">
-        <dt>Connection</dt>
-        <dd>The art style (Classic, Web, Arc, Shading, Fur, Lace) or <em>No connect</em>. The quick picker also lives in the navbar Connecting pill.</dd>
-        <dt>Routing - Connect to stroke or map?</dt>
-        <dd>Where the web reads its points from and writes them to (the current stroke, a <a href="/book/ui/maps-panel.html">memory map</a>, or both).</dd>
+        <dt>Art style</dt>
+        <dd>Pick a style (Classic, Web, Arc, Shading, Fur, Lace) - the quick picker also lives in the navbar Connecting pill.</dd>
         <dt>Art-style dials</dt>
         <dd>Weight, Spread, Opacity, Density, Reach, Fade and more - each style surfaces the dials that shape it. Full reference in <a href="/book/connections.html">Connections</a>.</dd>
         <dt>Save as preset</dt>
         <dd>Store the current dials as a reusable custom preset (managed from the navbar Connecting dropdown).</dd>
       </dl>
+      <div class="note">
+        Where the web reads its points from and writes them to -
+        <strong>Web routing</strong> - now lives in the
+        <a href="/book/ui/maps-panel.html">Maps panel</a>, not this tab.
+      </div>
 
       <div class="note">
         The tab bar only shows <strong>Connecting</strong> for brushes that
