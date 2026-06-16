@@ -11,7 +11,7 @@ export type ConfirmOptions = {
 // Single-button error modal. Used when a validation/load step fails.
 export function showError(message: string, title = "Couldn't load"): void {
   const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal";
+  backdrop.className = "confirm-modal app-modal";
   const card = document.createElement("div");
   card.className = "confirm-card";
 
@@ -75,7 +75,7 @@ export type PromptOptions = {
 // onConfirm fires with the trimmed value; an empty value keeps the modal open.
 export function showPrompt(opts: PromptOptions): void {
   const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal";
+  backdrop.className = "confirm-modal app-modal";
   const card = document.createElement("div");
   card.className = "confirm-card";
 
@@ -156,7 +156,7 @@ export type ChecklistOptions = {
 // nothing is ticked. Items default to ticked unless `checked: false`.
 export function showChecklist(opts: ChecklistOptions): void {
   const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal";
+  backdrop.className = "confirm-modal app-modal";
   const card = document.createElement("div");
   card.className = "confirm-card";
 
@@ -234,7 +234,7 @@ export function showChecklist(opts: ChecklistOptions): void {
 
 export function showConfirm(opts: ConfirmOptions): void {
   const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal";
+  backdrop.className = "confirm-modal app-modal";
 
   const card = document.createElement("div");
   card.className = "confirm-card";

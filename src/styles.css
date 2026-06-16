@@ -1895,6 +1895,8 @@ body.help-mode .help-icon {
   bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
+  cursor: move;
+  touch-action: none;
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -1937,6 +1939,9 @@ body.help-mode .help-icon {
 }
 .clip-rec-stop:hover {
   filter: brightness(1.08);
+}
+.clip-rec-pill.dragging {
+  cursor: grabbing;
 }
 
 .clip-backdrop {

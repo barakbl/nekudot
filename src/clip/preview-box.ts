@@ -28,7 +28,7 @@ export function openClipPreview(rec: Clip): void {
   let playTimer: number | null = null;
   let encoding = false;
 
-  const backdrop = el("div", "clip-backdrop");
+  const backdrop = el("div", "clip-backdrop app-modal");
   const modal = el("div", "clip-modal");
   backdrop.appendChild(modal);
 

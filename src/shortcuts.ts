@@ -50,8 +50,19 @@ function isTextEntry(el: EventTarget | null): boolean {
   return false;
 }
 
+// A blocking modal (clip editor, confirm dialog, size picker - any .app-modal)
+// must be resolved first, so it swallows shortcuts while open. Checks computed
+// display because some modals are display-toggled rather than removed.
+function blockingModalOpen(): boolean {
+  return [...document.querySelectorAll(".app-modal")].some(
+    (el) => getComputedStyle(el).display !== "none",
+  );
+}
+
 export function bindShortcuts(shortcuts: Shortcut[]): () => void {
   const onKey = (e: KeyboardEvent) => {
+    // A modal owns the keyboard until it's dismissed.
+    if (blockingModalOpen()) return;
     // Only real text entry swallows shortcuts — not the sliders/toggles/colour
     // pickers in panels (those keep focus but don't consume letter keys).
     if (isTextEntry(e.target)) return;

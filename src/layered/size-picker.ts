@@ -22,7 +22,7 @@ export function createSizePicker(opts: SizePickerOptions): {
   close: () => void;
 } {
   const overlay = document.createElement("div");
-  overlay.className = "size-picker-modal";
+  overlay.className = "size-picker-modal app-modal";
   overlay.style.display = "none";
 
   const card = document.createElement("div");

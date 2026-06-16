@@ -31,10 +31,46 @@ export function startClipRecording(opts: {
   const pill = document.createElement("div");
   pill.className = "clip-rec-pill armed";
   // The pill lives inside the stage, whose pointerdown starts a stroke and
-  // setPointerCapture()s the pointer — keep the pill's own pointer events from
-  // reaching the drawing handler (so its clicks don't draw or count as a stroke).
-  for (const t of ["pointerdown", "pointerup", "pointermove"])
-    pill.addEventListener(t, (e) => e.stopPropagation());
+  // setPointerCapture()s the pointer. Keep the pill's pointer events off the
+  // drawing handler, AND make the pill draggable so you can move it clear of
+  // your work - drag the body to reposition; the Stop button still clicks.
+  let dragOffX = 0;
+  let dragOffY = 0;
+  let dragging = false;
+  pill.addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    if (e.target instanceof HTMLElement && e.target.closest("button")) return;
+    pill.setPointerCapture(e.pointerId);
+    const pr = pill.getBoundingClientRect();
+    const sr = opts.stage.getBoundingClientRect();
+    dragOffX = e.clientX - pr.left;
+    dragOffY = e.clientY - pr.top;
+    // switch from the bottom/centre anchor to absolute left/top within the stage
+    pill.style.transform = "none";
+    pill.style.bottom = "auto";
+    pill.style.left = `${pr.left - sr.left}px`;
+    pill.style.top = `${pr.top - sr.top}px`;
+    dragging = true;
+    pill.classList.add("dragging");
+  });
+  pill.addEventListener("pointermove", (e) => {
+    e.stopPropagation();
+    if (!dragging) return;
+    const sr = opts.stage.getBoundingClientRect();
+    const x = Math.min(Math.max(0, e.clientX - sr.left - dragOffX), Math.max(0, sr.width - pill.offsetWidth));
+    const y = Math.min(Math.max(0, e.clientY - sr.top - dragOffY), Math.max(0, sr.height - pill.offsetHeight));
+    pill.style.left = `${x}px`;
+    pill.style.top = `${y}px`;
+  });
+  const endDrag = (e: PointerEvent) => {
+    e.stopPropagation();
+    if (!dragging) return;
+    dragging = false;
+    pill.releasePointerCapture(e.pointerId);
+    pill.classList.remove("dragging");
+  };
+  pill.addEventListener("pointerup", endDrag);
+  pill.addEventListener("pointercancel", endDrag);
   const dot = document.createElement("span");
   dot.className = "clip-rec-dot";
   const label = document.createElement("span");
