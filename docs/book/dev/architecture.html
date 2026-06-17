@@ -59,7 +59,15 @@
       connections.json ordered index of connection styles
       routing.ts       ROUTING_PRESETS - where a stroke reads/stores neighbours
       classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
-  symmetry/            Tile / Radial / Mirror tool (transforms, proxy, controller, box)
+  symmetry/            symmetry modes, each a plugin (like brushes), + the proxy
+    tool.ts            SymmetryTool base - transforms(), settings(), guides
+    registry.ts        builds the tool list from symmetry.json
+    symmetry.json      ordered index of symmetry modes
+    transforms.ts      shared affine primitives (Transform + builders)
+    proxy.ts           replays every mark + deposit at each transform
+    controller.ts      active mode + shared movable centre + guide style
+    menu-section.ts box.ts   the panel (generic, from each tool's settings())
+    tools/             radial.ts mirror.ts concentric.ts spiral.ts tile.ts
   clip/                record a few seconds of drawing to an animated GIF
     recorder.ts        captures downscaled canvas frames on a timer
     encode-gif.ts      gifenc encoder + the nekudot.app provenance comment
@@ -95,8 +103,9 @@
         <code>NeighborFinder</code> (points land in the <em>selected</em> memory
         map) and <code>ConnectRouter</code> (target layers/maps by stable id).
         At runtime the host is the <code>LayerManager</code>, wrapped in the
-        symmetry proxy so every mark <em>and</em> deposit mirrors under
-        Tile/Radial/Mirror. Tests and the headless render harnesses build one
+        symmetry proxy so every mark <em>and</em> deposit mirrors under the
+        active symmetry tool (Radial, Mirror, Concentric, Spiral, Tile). Tests
+        and the headless render harnesses build one
         with <code>createBareHost(renderer, finder)</code> - a neutral router
         over a bare canvas - so they run the exact same code paths as the app.
       </p>

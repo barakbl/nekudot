@@ -138,6 +138,7 @@
         { label: "Architecture", href: "/book/dev/architecture.html", icon: I.arch },
         { label: "Writing a brush", href: "/book/dev/brushes.html", icon: I.pencil },
         { label: "Writing a connection", href: "/book/dev/connections.html", icon: I.link },
+        { label: "Writing a symmetry tool", href: "/book/dev/symmetry.html", icon: I.symmetry },
       ],
     },
     {

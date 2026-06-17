@@ -23,14 +23,14 @@ describe("SymmetryController.mirrorsPoints", () => {
   it("does NOT mirror points in tile fill mode", () => {
     const c = new SymmetryController(makeStore());
     c.setMode("tile");
-    c.setTile({ fillCanvas: true });
+    c.setActiveSetting("fillCanvas", true);
     expect(c.mirrorsPoints()).toBe(false);
   });
 
   it("mirrors points in tile reach mode (fill off)", () => {
     const c = new SymmetryController(makeStore());
     c.setMode("tile");
-    c.setTile({ fillCanvas: false });
+    c.setActiveSetting("fillCanvas", false);
     expect(c.mirrorsPoints()).toBe(true);
   });
 
@@ -45,9 +45,9 @@ describe("SymmetryController.mirrorsPoints", () => {
   it("turning fill off again re-enables mirroring", () => {
     const c = new SymmetryController(makeStore());
     c.setMode("tile");
-    c.setTile({ fillCanvas: true });
+    c.setActiveSetting("fillCanvas", true);
     expect(c.mirrorsPoints()).toBe(false);
-    c.setTile({ fillCanvas: false });
+    c.setActiveSetting("fillCanvas", false);
     expect(c.mirrorsPoints()).toBe(true);
   });
 });

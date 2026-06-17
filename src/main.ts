@@ -7,7 +7,7 @@ import {
 import { SymmetryController, type SymmetryMode } from "./symmetry/controller";
 import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
-import { SYMMETRY_MODES, SYMMETRY_MODE_ICONS } from "./symmetry/menu-section";
+import { SYMMETRY_MODES } from "./symmetry/menu-section";
 import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
@@ -819,7 +819,7 @@ const menu = createMenu(
     modes: SYMMETRY_MODES.map((m) => ({
       value: m.id,
       label: m.label,
-      icon: SYMMETRY_MODE_ICONS[m.id],
+      icon: m.icon,
     })),
     initial: symmetry.mode,
     onChange: (m) => symmetry.setMode(m as SymmetryMode),

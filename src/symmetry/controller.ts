@@ -1,31 +1,13 @@
 import type { IRenderer } from "../renderer";
 import type { CanvasSize } from "../canvas-size";
-import {
-  type Transform,
-  type TileParams,
-  type RadialParams,
-  type MirrorParams,
-  type ConcentricParams,
-  type SpiralParams,
-  IDENTITY,
-  tileTransforms,
-  radialTransforms,
-  mirrorTransforms,
-  concentricTransforms,
-  spiralTransforms,
-} from "./transforms";
+import { type Transform, IDENTITY } from "./transforms";
+import { SymmetryTool, type GuideStyle, type SymSetting, type ToolContext } from "./tool";
+import { SYMMETRY_TOOL_DEFS, type SymmetryToolDef } from "./registry";
 
-export type SymmetryMode =
-  | "none"
-  | "tile"
-  | "radial"
-  | "mirror"
-  | "concentric"
-  | "spiral";
-
-// Appearance of the on-canvas guide lines, shared by all three modes. alpha is
-// 0..1 (LineStyle.alpha); width is the line thickness in CSS px (1-3).
-export type GuideStyle = { color: string; width: number; alpha: number };
+// "none" plus any registered tool name (radial / mirror / …). A plain string -
+// the valid set is the registry + "none", resolved at runtime.
+export type SymmetryMode = string;
+export type { GuideStyle } from "./tool";
 
 // Minimal store shape (the app's persistent key/value store).
 type Store = {
@@ -35,80 +17,40 @@ type Store = {
 
 const K = {
   mode: "app.symmetry.mode",
-  tileX: "app.symmetry.tile.x",
-  tileY: "app.symmetry.tile.y",
-  tileReach: "app.symmetry.tile.reach",
-  tileFalloff: "app.symmetry.tile.falloff",
-  tileFill: "app.symmetry.tile.fill",
-  radialSegments: "app.symmetry.radial.segments",
-  radialMirror: "app.symmetry.radial.mirror",
-  mirrorAxis: "app.symmetry.mirror.axis", // legacy: migrated to mirrorAngle
-  mirrorAngle: "app.symmetry.mirror.angle",
-  concentricRings: "app.symmetry.concentric.rings",
-  concentricScale: "app.symmetry.concentric.scale",
-  concentricTwist: "app.symmetry.concentric.twist",
-  spiralCopies: "app.symmetry.spiral.copies",
-  spiralArms: "app.symmetry.spiral.arms",
-  spiralAngle: "app.symmetry.spiral.angle",
-  spiralScale: "app.symmetry.spiral.scale",
   centerX: "app.symmetry.center.x",
   centerY: "app.symmetry.center.y",
   guideColor: "app.symmetry.guide.color",
   guideWidth: "app.symmetry.guide.width",
   guideAlpha: "app.symmetry.guide.alpha",
 };
+// A tool's settings persist under app.symmetry.<tool>.<key>.
+const toolKey = (tool: string, key: string) => `app.symmetry.${tool}.${key}`;
 
 const GUIDE_DEFAULT: GuideStyle = { color: "#888888", width: 1, alpha: 0.35 };
 
-// Owns the symmetry mode + params, computes the per-stroke transform list, and
-// draws the on-canvas guide lines. The render/finder proxy reads transforms()
-// to mirror every mark and point.
+// Owns the active mode + the shared centre + guide style, and delegates the
+// per-mode work (transforms, panel controls, guide geometry) to the selected
+// plugin tool. Tools are instantiated once and kept, so their params survive
+// mode switches; each tool's params persist under its own key namespace.
 export class SymmetryController {
   mode: SymmetryMode;
-  tile: TileParams;
-  radial: RadialParams;
-  mirror: MirrorParams;
-  concentric: ConcentricParams;
-  spiral: SpiralParams;
-  // Centre for Radial / Mirror / Concentric / Spiral, as fractions of the canvas.
+  // Centre for centred tools (usesCentre), as fractions of the canvas (0..1).
   centerX: number;
   centerY: number;
   guide: GuideStyle;
+
+  private tools = new Map<string, SymmetryTool>();
   private current: readonly Transform[] = [IDENTITY];
   private listeners = new Set<() => void>();
 
   constructor(private store: Store) {
+    // Instantiate every registered tool and restore its persisted settings.
+    for (const def of SYMMETRY_TOOL_DEFS) {
+      const tool = def.create();
+      this.restoreTool(def.name, tool);
+      this.tools.set(def.name, tool);
+    }
     this.mode = store.get<SymmetryMode>(K.mode) ?? "none";
-    this.tile = {
-      xSpacing: store.get<number>(K.tileX) ?? 40,
-      ySpacing: store.get<number>(K.tileY) ?? 40,
-      reach: store.get<number>(K.tileReach) ?? 140,
-      falloffPct: store.get<number>(K.tileFalloff) ?? 70,
-      fillCanvas: store.get<boolean>(K.tileFill) ?? false,
-    };
-    this.radial = {
-      segments: store.get<number>(K.radialSegments) ?? 8,
-      mirror: store.get<boolean>(K.radialMirror) ?? true,
-    };
-    // Mirror angle: new key wins; otherwise migrate the legacy axis (vertical
-    // line = 90 degrees, horizontal = 0); default vertical.
-    const legacyAxis = store.get<string>(K.mirrorAxis);
-    this.mirror = {
-      angle:
-        store.get<number>(K.mirrorAngle) ??
-        (legacyAxis === "horizontal" ? 0 : 90),
-    };
-    this.concentric = {
-      rings: store.get<number>(K.concentricRings) ?? 5,
-      scalePct: store.get<number>(K.concentricScale) ?? 70,
-      twist: store.get<number>(K.concentricTwist) ?? 0,
-    };
-    this.spiral = {
-      copies: store.get<number>(K.spiralCopies) ?? 16,
-      arms: store.get<number>(K.spiralArms) ?? 1,
-      angleStep: store.get<number>(K.spiralAngle) ?? 24,
-      scalePct: store.get<number>(K.spiralScale) ?? 92,
-    };
     this.centerX = store.get<number>(K.centerX) ?? 0.5;
     this.centerY = store.get<number>(K.centerY) ?? 0.5;
     this.guide = {
@@ -118,19 +60,28 @@ export class SymmetryController {
     };
   }
 
+  // ---- mode + active tool ----------------------------------------------------
+
+  toolDefs(): SymmetryToolDef[] {
+    return SYMMETRY_TOOL_DEFS;
+  }
+  get activeTool(): SymmetryTool | undefined {
+    return this.mode === "none" ? undefined : this.tools.get(this.mode);
+  }
   active(): boolean {
-    return this.mode !== "none";
+    return !!this.activeTool;
+  }
+  usesCentre(): boolean {
+    return this.activeTool?.usesCentre ?? false;
+  }
+  activeSettings(): SymSetting[] {
+    return this.activeTool?.settings() ?? [];
+  }
+  mirrorsPoints(): boolean {
+    return this.activeTool?.mirrorsPoints() ?? true;
   }
 
-  // Whether deposited points are mirrored into the searchable cloud. Fill mode
-  // draws a copy in every tile but does NOT deposit them — a full-canvas stroke
-  // would blow past the neighbor-finder cap (MAX_PIXELS) and evict older points,
-  // corrupting the connecting web. The proxy still draws every copy; it just
-  // skips the cloud-deposit of the copies. Other modes have few copies, so they
-  // deposit normally and the web spans the symmetry.
-  mirrorsPoints(): boolean {
-    return !(this.mode === "tile" && this.tile.fillCanvas);
-  }
+  // ---- subscriptions ---------------------------------------------------------
 
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
@@ -140,47 +91,13 @@ export class SymmetryController {
     for (const fn of this.listeners) fn();
   }
 
+  // ---- mutators --------------------------------------------------------------
+
   setMode(m: SymmetryMode): void {
     this.mode = m;
     this.store.set(K.mode, m);
     this.notify();
   }
-  setTile(patch: Partial<TileParams>): void {
-    this.tile = { ...this.tile, ...patch };
-    this.store.set(K.tileX, this.tile.xSpacing);
-    this.store.set(K.tileY, this.tile.ySpacing);
-    this.store.set(K.tileReach, this.tile.reach);
-    this.store.set(K.tileFalloff, this.tile.falloffPct);
-    this.store.set(K.tileFill, this.tile.fillCanvas);
-    this.notify();
-  }
-  setRadial(patch: Partial<RadialParams>): void {
-    this.radial = { ...this.radial, ...patch };
-    this.store.set(K.radialSegments, this.radial.segments);
-    this.store.set(K.radialMirror, this.radial.mirror);
-    this.notify();
-  }
-  setMirror(patch: Partial<MirrorParams>): void {
-    this.mirror = { ...this.mirror, ...patch };
-    this.store.set(K.mirrorAngle, this.mirror.angle);
-    this.notify();
-  }
-  setConcentric(patch: Partial<ConcentricParams>): void {
-    this.concentric = { ...this.concentric, ...patch };
-    this.store.set(K.concentricRings, this.concentric.rings);
-    this.store.set(K.concentricScale, this.concentric.scalePct);
-    this.store.set(K.concentricTwist, this.concentric.twist);
-    this.notify();
-  }
-  setSpiral(patch: Partial<SpiralParams>): void {
-    this.spiral = { ...this.spiral, ...patch };
-    this.store.set(K.spiralCopies, this.spiral.copies);
-    this.store.set(K.spiralArms, this.spiral.arms);
-    this.store.set(K.spiralAngle, this.spiral.angleStep);
-    this.store.set(K.spiralScale, this.spiral.scalePct);
-    this.notify();
-  }
-  // Centre (fractions 0..1 of the canvas) for Radial / Mirror / Concentric.
   setCenter(patch: { x?: number; y?: number }): void {
     if (patch.x !== undefined) this.centerX = patch.x;
     if (patch.y !== undefined) this.centerY = patch.y;
@@ -188,7 +105,6 @@ export class SymmetryController {
     this.store.set(K.centerY, this.centerY);
     this.notify();
   }
-  // Guide-line appearance, shared by every mode.
   setGuide(patch: Partial<GuideStyle>): void {
     this.guide = { ...this.guide, ...patch };
     this.store.set(K.guideColor, this.guide.color);
@@ -197,38 +113,62 @@ export class SymmetryController {
     this.notify();
   }
 
-  // Called on pointerdown: freeze the transform list for the whole stroke (Tile
-  // is anchored to the start; Radial/Mirror are centred on the canvas).
+  // Apply a panel control change, then re-persist the active tool's settings.
+  setToolSetting(s: SymSetting, v: number | boolean | string): void {
+    (s.onChange as (value: typeof v) => void)(v);
+    this.persistActiveTool();
+    this.notify();
+  }
+  // Convenience for tests / programmatic tweaks: set by key on the active tool.
+  setActiveSetting(key: string, v: number | boolean | string): void {
+    const s = this.activeSettings().find((x) => x.key === key);
+    if (s) this.setToolSetting(s, v);
+  }
+
+  private persistActiveTool(): void {
+    if (!this.activeTool) return;
+    for (const s of this.activeTool.settings())
+      if (s.persist !== false) this.store.set(toolKey(this.mode, s.key), s.value);
+  }
+  private restoreTool(name: string, tool: SymmetryTool): void {
+    for (const s of tool.settings()) {
+      if (s.persist === false) continue;
+      const stored = this.store.get(toolKey(name, s.key));
+      if (stored !== undefined) (s.onChange as (value: unknown) => void)(stored);
+    }
+  }
+
+  // ---- per-stroke transforms -------------------------------------------------
+
+  // Called on pointerdown: freeze the transform list for the whole stroke.
   beginStroke(x: number, y: number, size: CanvasSize): void {
-    this.current = this.computeTransforms(x, y, size);
+    const tool = this.activeTool;
+    this.current = tool ? tool.transforms(this.context(x, y, size)) : [IDENTITY];
   }
   transforms(): readonly Transform[] {
     return this.current;
   }
 
-  // Centre in canvas px (Radial / Mirror / Concentric), from the 0..1 fractions.
-  private center(size: CanvasSize): { cx: number; cy: number } {
-    return { cx: size.width * this.centerX, cy: size.height * this.centerY };
+  private context(startX: number, startY: number, size: CanvasSize): ToolContext {
+    return {
+      startX,
+      startY,
+      size,
+      cx: size.width * this.centerX,
+      cy: size.height * this.centerY,
+      guide: this.guide,
+    };
   }
 
-  private computeTransforms(x: number, y: number, size: CanvasSize): readonly Transform[] {
-    const { cx, cy } = this.center(size);
-    if (this.mode === "tile") return tileTransforms(this.tile, x, y, size);
-    if (this.mode === "radial") return radialTransforms(this.radial, cx, cy);
-    if (this.mode === "mirror") return mirrorTransforms(this.mirror, cx, cy);
-    if (this.mode === "concentric") return concentricTransforms(this.concentric, cx, cy);
-    if (this.mode === "spiral") return spiralTransforms(this.spiral, cx, cy);
-    return [IDENTITY];
-  }
+  // ---- guides ----------------------------------------------------------------
 
-  // Draw the guide lines (tile lattice, radial spokes, mirror line or rings).
   drawGuides(r: IRenderer, size: CanvasSize): void {
     r.clear();
-    if (this.mode === "tile") this.drawTileGuides(r, size);
-    else if (this.mode === "radial") this.drawRadialGuides(r, size);
-    else if (this.mode === "mirror") this.drawMirrorGuide(r, size);
-    else if (this.mode === "concentric") this.drawConcentricGuides(r, size);
-    else if (this.mode === "spiral") this.drawSpiralGuides(r, size);
+    const tool = this.activeTool;
+    if (!tool) return;
+    const ctx = this.context(0, 0, size);
+    tool.drawGuides(r, ctx);
+    if (tool.usesCentre) this.drawCenterMark(r, ctx.cx, ctx.cy);
   }
 
   // A small crosshair marking the (movable) symmetry centre.
@@ -236,81 +176,5 @@ export class SymmetryController {
     const s = 8;
     r.drawLine({ id: 0, x: cx - s, y: cy }, { id: 0, x: cx + s, y: cy }, this.guide);
     r.drawLine({ id: 0, x: cx, y: cy - s }, { id: 0, x: cx, y: cy + s }, this.guide);
-  }
-
-  private drawMirrorGuide(r: IRenderer, size: CanvasSize): void {
-    const { cx, cy } = this.center(size);
-    const theta = (this.mirror.angle * Math.PI) / 180;
-    const len = Math.hypot(size.width, size.height); // past the corners
-    const dx = Math.cos(theta) * len;
-    const dy = Math.sin(theta) * len;
-    r.drawLine({ id: 0, x: cx - dx, y: cy - dy }, { id: 0, x: cx + dx, y: cy + dy }, this.guide);
-    this.drawCenterMark(r, cx, cy);
-  }
-
-  private drawConcentricGuides(r: IRenderer, size: CanvasSize): void {
-    const { cx, cy } = this.center(size);
-    // A few faint reference rings (shrinking by scalePct) to hint at the scaling.
-    const rings = Math.min(5, Math.max(1, Math.floor(this.concentric.rings)));
-    const step = this.concentric.scalePct / 100;
-    let rad = Math.min(size.width, size.height) * 0.4;
-    for (let k = 0; k < rings && rad > 2; k++) {
-      r.strokeCircle(cx, cy, rad, this.guide);
-      rad *= step;
-    }
-    this.drawCenterMark(r, cx, cy);
-  }
-
-  // Faint polyline tracing each spiral arm (a nominal radius scaled/rotated per
-  // copy), as a hint of where the copies march. Decorative, like the rings.
-  private drawSpiralGuides(r: IRenderer, size: CanvasSize): void {
-    const { cx, cy } = this.center(size);
-    const arms = Math.max(1, Math.floor(this.spiral.arms));
-    const copies = Math.min(60, Math.max(1, Math.floor(this.spiral.copies)));
-    const da = (this.spiral.angleStep * Math.PI) / 180;
-    const step = this.spiral.scalePct / 100;
-    const base = Math.min(size.width, size.height) * 0.42;
-    for (let m = 0; m < arms; m++) {
-      const arm0 = (m * 2 * Math.PI) / arms;
-      let prev: { x: number; y: number } | null = null;
-      let scale = 1;
-      for (let k = 0; k < copies; k++) {
-        const a = arm0 + k * da;
-        const rad = base * scale;
-        const pt = { x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad };
-        if (prev) r.drawLine({ id: 0, ...prev }, { id: 0, ...pt }, this.guide);
-        prev = pt;
-        scale *= step;
-      }
-    }
-    this.drawCenterMark(r, cx, cy);
-  }
-
-  private drawTileGuides(r: IRenderer, size: CanvasSize): void {
-    const sx = this.tile.xSpacing;
-    const sy = this.tile.ySpacing;
-    if (sx <= 0 || sy <= 0) return;
-    const { width: w, height: h } = size;
-    for (let x = 0; x <= w; x += sx)
-      r.drawLine({ id: 0, x, y: 0 }, { id: 0, x, y: h }, this.guide);
-    for (let y = 0; y <= h; y += sy)
-      r.drawLine({ id: 0, x: 0, y }, { id: 0, x: w, y }, this.guide);
-  }
-
-  private drawRadialGuides(r: IRenderer, size: CanvasSize): void {
-    const { cx, cy } = this.center(size);
-    const reach = Math.hypot(size.width, size.height); // past the corners
-    const n = Math.max(1, Math.floor(this.radial.segments));
-    const spokes = this.radial.mirror ? n * 2 : n; // mirror doubles the lines
-    const step = (2 * Math.PI) / spokes;
-    for (let k = 0; k < spokes; k++) {
-      const a = k * step;
-      r.drawLine(
-        { id: 0, x: cx, y: cy },
-        { id: 0, x: cx + Math.cos(a) * reach, y: cy + Math.sin(a) * reach },
-        this.guide,
-      );
-    }
-    this.drawCenterMark(r, cx, cy);
   }
 }

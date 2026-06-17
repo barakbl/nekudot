@@ -1,0 +1,32 @@
+[
+  {
+    "name": "radial",
+    "file": "radial.ts",
+    "label": "Radial",
+    "info": "N rotations about the centre - a kaleidoscope."
+  },
+  {
+    "name": "mirror",
+    "file": "mirror.ts",
+    "label": "Mirror",
+    "info": "Reflect across a line through the centre, at any angle."
+  },
+  {
+    "name": "concentric",
+    "file": "concentric.ts",
+    "label": "Concentric",
+    "info": "Scaled copies nested into rings about the centre."
+  },
+  {
+    "name": "spiral",
+    "file": "spiral.ts",
+    "label": "Spiral",
+    "info": "Copies wound around the centre into a log spiral."
+  },
+  {
+    "name": "tile",
+    "file": "tile.ts",
+    "label": "Tile",
+    "info": "Repeat the motif across a lattice."
+  }
+]

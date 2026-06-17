@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Writing a symmetry tool - Nekudot developer docs</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Developers › Writing a symmetry tool</p>
+      <h1>Writing a symmetry tool</h1>
+      <p class="lead">A symmetry mode is a plugin: one class extending <code>SymmetryTool</code> (with an <code>icon</code> and a <code>create()</code>), plus a one-line row in <code>symmetry.json</code> - the same shape as <a href="/book/dev/brushes.html">brushes</a>.</p>
+
+      <h2>What a symmetry tool is</h2>
+      <p>
+        Symmetry is a global tool that repeats <em>any</em> brush. A tool's whole
+        job is to turn one stroke into a list of <strong>affine copies</strong>
+        (<code>Transform[]</code>). A proxy around the drawing surface then replays
+        every mark <em>and</em> every deposited point at each transform, so the
+        <a href="/book/map.html">connecting web</a> threads across the pattern, not
+        just one copy. Tile, Radial, Mirror, Concentric and Spiral all live in
+        <code>src/symmetry/tools/</code> - one file each.
+      </p>
+
+      <h2>A minimal tool</h2>
+      <p>
+        Extend <code>SymmetryTool</code>, implement <code>transforms()</code>, and
+        (optionally) declare panel controls and guide lines. Here is an "Echo" that
+        stamps fading offset copies of the stroke:
+      </p>
+      <pre><code>// src/symmetry/tools/echo.ts
+import { SymmetryTool, type SymSetting, type ToolContext } from "../tool";
+import type { Transform } from "../transforms";
+
+export const icon = "…svg markup…";
+
+class EchoTool extends SymmetryTool {
+  // Copies are a fixed offset from the stroke, so no centre is needed.
+  // (Set `usesCentre = true` to get the shared Centre sliders + ctx.cx/cy.)
+  count = 4;
+  offset = 24;
+
+  // Each Transform is an affine map x' = a*x + c*y + e, y' = b*x + d*y + f,
+  // plus aMul (this copy's opacity). Include an identity copy to draw the
+  // original stroke - here k = 0 is identity.
+  transforms(_ctx: ToolContext): Transform[] {
+    const out: Transform[] = [];
+    for (let k = 0; k &lt; this.count; k++)
+      out.push({ a: 1, b: 0, c: 0, d: 1, e: k * this.offset, f: 0, aMul: 1 - k / this.count });
+    return out;
+  }
+
+  settings(): SymSetting[] {
+    return [
+      { kind: "slider", key: "count", label: "Copies", min: 2, max: 10, value: this.count, onChange: (v) => (this.count = v) },
+      { kind: "slider", key: "offset", label: "Offset", min: 4, max: 120, value: this.offset, onChange: (v) => (this.offset = v) },
+    ];
+  }
+}
+
+export const create = () => new EchoTool();</code></pre>
+
+      <h2>Register it</h2>
+      <p>
+        Export the glyph + a <code>create()</code> from the file, then add one row
+        to <code>src/symmetry/symmetry.json</code>. The panel picker and the navbar
+        Symmetry combo are generated from there, in file order - nothing else to
+        touch.
+      </p>
+      <pre><code>// src/symmetry/symmetry.json - add one row (order = mode-picker order)
+{ "name": "echo", "file": "echo.ts", "label": "Echo", "info": "Fading offset copies." }</code></pre>
+
+      <h2>The <code>SymmetryTool</code> surface</h2>
+      <dl class="settings">
+        <dt><code>transforms(ctx): Transform[]</code></dt>
+        <dd>The only required method. Frozen once at pointer-down for the whole stroke. <code>ctx</code> carries the stroke anchor (<code>startX/startY</code>), the canvas <code>size</code>, the resolved centre (<code>cx/cy</code>) and the <code>guide</code> style.</dd>
+        <dt><code>settings(): SymSetting[]</code></dt>
+        <dd>Declarative controls - <code>slider</code>, <code>toggle</code> or <code>segment</code>. The framework renders each row and persists it under <code>app.symmetry.&lt;name&gt;.&lt;key&gt;</code>. Set <code>disabled</code> to grey one out, or <code>persist:false</code> for a derived control (Mirror's V/H buttons drive the Angle slider).</dd>
+        <dt><code>drawGuides(r, ctx)</code></dt>
+        <dd>Optional on-canvas guide geometry. The framework clears the overlay first and, for centred tools, draws the centre crosshair after.</dd>
+        <dt><code>usesCentre</code></dt>
+        <dd>Set <code>true</code> to get the shared movable <strong>Centre</strong> sliders + <strong>Recentre</strong> button, with the pivot resolved into <code>ctx.cx/cy</code>. Tile leaves it <code>false</code> and pivots on the stroke start.</dd>
+        <dt><code>mirrorsPoints(): boolean</code></dt>
+        <dd>Whether deposited points are mirrored into the searchable cloud (default true). Return false when a mode floods so many copies it would evict the cloud - Tile's "Fill canvas" does.</dd>
+      </dl>
+
+      <h2>What you get for free</h2>
+      <ul>
+        <li>Discovery: <code>symmetry.json</code> + a Vite glob over <code>tools/*.ts</code> build the registry (see <code>src/symmetry/registry.ts</code>).</li>
+        <li>The panel: <code>settings()</code> is rendered generically, plus the shared Centre and guide-style controls.</li>
+        <li>Persistence: each setting saves + restores under its own key namespace.</li>
+        <li>The proxy: marks and points are replayed at every <code>Transform</code> (<code>src/symmetry/proxy.ts</code>), so the web spans the symmetry.</li>
+        <li>Affine builders in <code>transforms.ts</code> - <code>translate</code>, <code>rotateReflect</code>, <code>reflectAcrossLine</code>, <code>scaleRotateAbout</code> (plus <code>applyPoint</code> / <code>applyAngle</code> / <code>IDENTITY</code>). That file is a small shared matrix library only; each mode's loops, caps and params live in its own tool, so adding a mode touches just the new file + the JSON row.</li>
+      </ul>
+
+      <div class="note">
+        Conventions: work in canvas pixels (the renderer handles dpr); keep
+        <code>transforms()</code> bounded - it runs on every pointer move and each
+        copy redraws the stroke and deposits points (cap big counts, as Spiral
+        does). For the user-facing guide to each mode, see
+        <a href="/book/symmetry.html">Symmetry</a>.
+      </div>
+    </main>
+
+    <footer>Nekudot developer docs · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>
