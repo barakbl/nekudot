@@ -1,5 +1,6 @@
 import { makeCloseButton } from "../settings-panel";
 import { makeDraggable } from "../drag";
+import { makeToggle } from "../toggle";
 import { CONNECTION_LAYER_ICON } from "../connecting-types";
 import type { LayerManager } from "./manager";
 
@@ -336,7 +337,7 @@ function makeBackgroundRow(
   colorInput.addEventListener("input", () => {
     // Picking a colour implies an opaque background.
     manager.setBackground({ color: colorInput.value, transparent: false }, { emit: false });
-    transparentToggle.checked = false;
+    bgToggle.set(false);
     syncSwatch();
     onBackgroundApply();
   });
@@ -352,24 +353,19 @@ function makeBackgroundRow(
   row.appendChild(label);
 
   // Transparent toggle: no background (exports to a transparent PNG).
-  const toggle = document.createElement("label");
+  const toggle = document.createElement("span");
   toggle.className = "bg-transparent-toggle";
-  toggle.title = "No background — export a transparent PNG";
-  const transparentToggle = document.createElement("input");
-  transparentToggle.type = "checkbox";
-  transparentToggle.checked = bg.transparent;
-  const toggleText = document.createElement("span");
-  toggleText.textContent = "Transparent";
-  toggle.append(transparentToggle, toggleText);
-  toggle.addEventListener("click", (e) => e.stopPropagation());
-  transparentToggle.addEventListener("change", () => {
-    manager.setBackground({ transparent: transparentToggle.checked }, { emit: false });
+  toggle.title = "No background - export a transparent PNG";
+  const bgToggle = makeToggle(bg.transparent, (checked) => {
+    manager.setBackground({ transparent: checked }, { emit: false });
     syncSwatch();
     onBackgroundApply();
-    onCommit(
-      transparentToggle.checked ? "Background → transparent" : "Background → solid",
-    );
+    onCommit(checked ? "Background → transparent" : "Background → solid");
   });
+  const toggleText = document.createElement("span");
+  toggleText.textContent = "Transparent";
+  toggle.append(bgToggle.el, toggleText);
+  toggle.addEventListener("click", (e) => e.stopPropagation());
   row.appendChild(toggle);
 
   return row;

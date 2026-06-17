@@ -6,6 +6,7 @@ import {
   type BrushSetting,
 } from "./base";
 import { makeDraggable } from "./drag";
+import { makeToggle } from "./toggle";
 import { attachHelp } from "./help";
 import { ROUTING_PRESETS, flattenRouting } from "./brushes/connections/routing";
 import {
@@ -583,15 +584,11 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
     });
     row.appendChild(input);
   } else if (s.kind === "boolean") {
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.className = "settings-checkbox";
-    input.checked = s.value;
-    input.addEventListener("change", () => {
-      s.onChange(input.checked);
-      persist(s, input.checked);
+    const toggle = makeToggle(s.value, (v) => {
+      s.onChange(v);
+      persist(s, v);
     });
-    row.appendChild(input);
+    row.appendChild(toggle.el);
   } else if (s.kind === "range") {
     // One two-handle slider for a [low, high] pair (e.g. Squares/Circles size).
     const wrap = document.createElement("div");

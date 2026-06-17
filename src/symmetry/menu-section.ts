@@ -2,6 +2,7 @@ import { SymmetryController } from "./controller";
 import type { SymSetting } from "./tool";
 import { SYMMETRY_TOOL_DEFS } from "./registry";
 import { attachHelp } from "../help";
+import { makeToggle } from "../toggle";
 
 // None = a single freehand wave (one free stroke - positive, not a crossed-out
 // "off" badge, since None is the resting state shown in the navbar). The mode
@@ -100,16 +101,8 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
     const l = document.createElement("span");
     l.className = "sym-rowlabel";
     l.textContent = text;
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "sym-check";
-    cb.checked = value;
-    cb.addEventListener("click", (e) => e.stopPropagation());
-    cb.addEventListener("change", (e) => {
-      e.stopPropagation();
-      onChange(cb.checked);
-    });
-    row.append(l, cb);
+    const { el } = makeToggle(value, onChange);
+    row.append(l, el);
     if (help) attachHelp(l, help);
     return row;
   };

@@ -422,9 +422,6 @@ body {
   font-size: 11px;
   color: var(--text-faint);
 }
-.sym-check {
-  margin-left: auto;
-}
 .sym-subhead {
   margin: 6px 6px 1px;
   font-size: 10px;
@@ -825,21 +822,28 @@ body {
 .shortcuts-row:hover > .shortcuts-bind {
   background: var(--hover-bg-strong);
 }
-/* Live on/off state for a toggle shortcut (Help hints). The row owns the click;
-   this is a passive indicator. */
-.shortcuts-toggle {
+/* iOS-style on/off switch. `.shortcuts-toggle` is the passive indicator in the
+   Shortcuts panel (the row owns the click); `.toggle-switch` (see toggle.ts) is
+   the interactive button used for every on/off setting/dial. Same look. */
+.shortcuts-toggle,
+.toggle-switch {
   position: relative;
   flex: none;
   width: 28px;
   height: 16px;
+  padding: 0;
+  border: none;
   border-radius: 999px;
   background: var(--border-stronger);
+  cursor: pointer;
   transition: background 0.15s ease;
 }
-.shortcuts-toggle.on {
+.shortcuts-toggle.on,
+.toggle-switch.on {
   background: var(--accent);
 }
-.shortcuts-toggle-knob {
+.shortcuts-toggle-knob,
+.toggle-switch-knob {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -849,8 +853,13 @@ body {
   background: #fff;
   transition: transform 0.15s ease;
 }
-.shortcuts-toggle.on .shortcuts-toggle-knob {
+.shortcuts-toggle.on .shortcuts-toggle-knob,
+.toggle-switch.on .toggle-switch-knob {
   transform: translateX(12px);
+}
+/* Right-align the switch in a symmetry param row (was .sym-check). */
+.sym-row .toggle-switch {
+  margin-left: auto;
 }
 .shortcuts-row:focus {
   outline: none;
