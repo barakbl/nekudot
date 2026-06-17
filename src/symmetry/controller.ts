@@ -5,13 +5,23 @@ import {
   type TileParams,
   type RadialParams,
   type MirrorParams,
+  type ConcentricParams,
+  type SpiralParams,
   IDENTITY,
   tileTransforms,
   radialTransforms,
   mirrorTransforms,
+  concentricTransforms,
+  spiralTransforms,
 } from "./transforms";
 
-export type SymmetryMode = "none" | "tile" | "radial" | "mirror";
+export type SymmetryMode =
+  | "none"
+  | "tile"
+  | "radial"
+  | "mirror"
+  | "concentric"
+  | "spiral";
 
 // Appearance of the on-canvas guide lines, shared by all three modes. alpha is
 // 0..1 (LineStyle.alpha); width is the line thickness in CSS px (1-3).
@@ -32,7 +42,17 @@ const K = {
   tileFill: "app.symmetry.tile.fill",
   radialSegments: "app.symmetry.radial.segments",
   radialMirror: "app.symmetry.radial.mirror",
-  mirrorAxis: "app.symmetry.mirror.axis",
+  mirrorAxis: "app.symmetry.mirror.axis", // legacy: migrated to mirrorAngle
+  mirrorAngle: "app.symmetry.mirror.angle",
+  concentricRings: "app.symmetry.concentric.rings",
+  concentricScale: "app.symmetry.concentric.scale",
+  concentricTwist: "app.symmetry.concentric.twist",
+  spiralCopies: "app.symmetry.spiral.copies",
+  spiralArms: "app.symmetry.spiral.arms",
+  spiralAngle: "app.symmetry.spiral.angle",
+  spiralScale: "app.symmetry.spiral.scale",
+  centerX: "app.symmetry.center.x",
+  centerY: "app.symmetry.center.y",
   guideColor: "app.symmetry.guide.color",
   guideWidth: "app.symmetry.guide.width",
   guideAlpha: "app.symmetry.guide.alpha",
@@ -48,6 +68,11 @@ export class SymmetryController {
   tile: TileParams;
   radial: RadialParams;
   mirror: MirrorParams;
+  concentric: ConcentricParams;
+  spiral: SpiralParams;
+  // Centre for Radial / Mirror / Concentric / Spiral, as fractions of the canvas.
+  centerX: number;
+  centerY: number;
   guide: GuideStyle;
   private current: readonly Transform[] = [IDENTITY];
   private listeners = new Set<() => void>();
@@ -65,9 +90,27 @@ export class SymmetryController {
       segments: store.get<number>(K.radialSegments) ?? 8,
       mirror: store.get<boolean>(K.radialMirror) ?? true,
     };
+    // Mirror angle: new key wins; otherwise migrate the legacy axis (vertical
+    // line = 90 degrees, horizontal = 0); default vertical.
+    const legacyAxis = store.get<string>(K.mirrorAxis);
     this.mirror = {
-      axis: store.get<MirrorParams["axis"]>(K.mirrorAxis) ?? "vertical",
+      angle:
+        store.get<number>(K.mirrorAngle) ??
+        (legacyAxis === "horizontal" ? 0 : 90),
     };
+    this.concentric = {
+      rings: store.get<number>(K.concentricRings) ?? 5,
+      scalePct: store.get<number>(K.concentricScale) ?? 70,
+      twist: store.get<number>(K.concentricTwist) ?? 0,
+    };
+    this.spiral = {
+      copies: store.get<number>(K.spiralCopies) ?? 16,
+      arms: store.get<number>(K.spiralArms) ?? 1,
+      angleStep: store.get<number>(K.spiralAngle) ?? 24,
+      scalePct: store.get<number>(K.spiralScale) ?? 92,
+    };
+    this.centerX = store.get<number>(K.centerX) ?? 0.5;
+    this.centerY = store.get<number>(K.centerY) ?? 0.5;
     this.guide = {
       color: store.get<string>(K.guideColor) ?? GUIDE_DEFAULT.color,
       width: store.get<number>(K.guideWidth) ?? GUIDE_DEFAULT.width,
@@ -119,7 +162,30 @@ export class SymmetryController {
   }
   setMirror(patch: Partial<MirrorParams>): void {
     this.mirror = { ...this.mirror, ...patch };
-    this.store.set(K.mirrorAxis, this.mirror.axis);
+    this.store.set(K.mirrorAngle, this.mirror.angle);
+    this.notify();
+  }
+  setConcentric(patch: Partial<ConcentricParams>): void {
+    this.concentric = { ...this.concentric, ...patch };
+    this.store.set(K.concentricRings, this.concentric.rings);
+    this.store.set(K.concentricScale, this.concentric.scalePct);
+    this.store.set(K.concentricTwist, this.concentric.twist);
+    this.notify();
+  }
+  setSpiral(patch: Partial<SpiralParams>): void {
+    this.spiral = { ...this.spiral, ...patch };
+    this.store.set(K.spiralCopies, this.spiral.copies);
+    this.store.set(K.spiralArms, this.spiral.arms);
+    this.store.set(K.spiralAngle, this.spiral.angleStep);
+    this.store.set(K.spiralScale, this.spiral.scalePct);
+    this.notify();
+  }
+  // Centre (fractions 0..1 of the canvas) for Radial / Mirror / Concentric.
+  setCenter(patch: { x?: number; y?: number }): void {
+    if (patch.x !== undefined) this.centerX = patch.x;
+    if (patch.y !== undefined) this.centerY = patch.y;
+    this.store.set(K.centerX, this.centerX);
+    this.store.set(K.centerY, this.centerY);
     this.notify();
   }
   // Guide-line appearance, shared by every mode.
@@ -140,29 +206,84 @@ export class SymmetryController {
     return this.current;
   }
 
+  // Centre in canvas px (Radial / Mirror / Concentric), from the 0..1 fractions.
+  private center(size: CanvasSize): { cx: number; cy: number } {
+    return { cx: size.width * this.centerX, cy: size.height * this.centerY };
+  }
+
   private computeTransforms(x: number, y: number, size: CanvasSize): readonly Transform[] {
-    const cx = size.width / 2;
-    const cy = size.height / 2;
+    const { cx, cy } = this.center(size);
     if (this.mode === "tile") return tileTransforms(this.tile, x, y, size);
     if (this.mode === "radial") return radialTransforms(this.radial, cx, cy);
     if (this.mode === "mirror") return mirrorTransforms(this.mirror, cx, cy);
+    if (this.mode === "concentric") return concentricTransforms(this.concentric, cx, cy);
+    if (this.mode === "spiral") return spiralTransforms(this.spiral, cx, cy);
     return [IDENTITY];
   }
 
-  // Draw the guide lines (tile lattice, radial spokes or the mirror line).
+  // Draw the guide lines (tile lattice, radial spokes, mirror line or rings).
   drawGuides(r: IRenderer, size: CanvasSize): void {
     r.clear();
     if (this.mode === "tile") this.drawTileGuides(r, size);
     else if (this.mode === "radial") this.drawRadialGuides(r, size);
     else if (this.mode === "mirror") this.drawMirrorGuide(r, size);
+    else if (this.mode === "concentric") this.drawConcentricGuides(r, size);
+    else if (this.mode === "spiral") this.drawSpiralGuides(r, size);
+  }
+
+  // A small crosshair marking the (movable) symmetry centre.
+  private drawCenterMark(r: IRenderer, cx: number, cy: number): void {
+    const s = 8;
+    r.drawLine({ id: 0, x: cx - s, y: cy }, { id: 0, x: cx + s, y: cy }, this.guide);
+    r.drawLine({ id: 0, x: cx, y: cy - s }, { id: 0, x: cx, y: cy + s }, this.guide);
   }
 
   private drawMirrorGuide(r: IRenderer, size: CanvasSize): void {
-    const cx = size.width / 2;
-    const cy = size.height / 2;
-    if (this.mirror.axis === "vertical")
-      r.drawLine({ id: 0, x: cx, y: 0 }, { id: 0, x: cx, y: size.height }, this.guide);
-    else r.drawLine({ id: 0, x: 0, y: cy }, { id: 0, x: size.width, y: cy }, this.guide);
+    const { cx, cy } = this.center(size);
+    const theta = (this.mirror.angle * Math.PI) / 180;
+    const len = Math.hypot(size.width, size.height); // past the corners
+    const dx = Math.cos(theta) * len;
+    const dy = Math.sin(theta) * len;
+    r.drawLine({ id: 0, x: cx - dx, y: cy - dy }, { id: 0, x: cx + dx, y: cy + dy }, this.guide);
+    this.drawCenterMark(r, cx, cy);
+  }
+
+  private drawConcentricGuides(r: IRenderer, size: CanvasSize): void {
+    const { cx, cy } = this.center(size);
+    // A few faint reference rings (shrinking by scalePct) to hint at the scaling.
+    const rings = Math.min(5, Math.max(1, Math.floor(this.concentric.rings)));
+    const step = this.concentric.scalePct / 100;
+    let rad = Math.min(size.width, size.height) * 0.4;
+    for (let k = 0; k < rings && rad > 2; k++) {
+      r.strokeCircle(cx, cy, rad, this.guide);
+      rad *= step;
+    }
+    this.drawCenterMark(r, cx, cy);
+  }
+
+  // Faint polyline tracing each spiral arm (a nominal radius scaled/rotated per
+  // copy), as a hint of where the copies march. Decorative, like the rings.
+  private drawSpiralGuides(r: IRenderer, size: CanvasSize): void {
+    const { cx, cy } = this.center(size);
+    const arms = Math.max(1, Math.floor(this.spiral.arms));
+    const copies = Math.min(60, Math.max(1, Math.floor(this.spiral.copies)));
+    const da = (this.spiral.angleStep * Math.PI) / 180;
+    const step = this.spiral.scalePct / 100;
+    const base = Math.min(size.width, size.height) * 0.42;
+    for (let m = 0; m < arms; m++) {
+      const arm0 = (m * 2 * Math.PI) / arms;
+      let prev: { x: number; y: number } | null = null;
+      let scale = 1;
+      for (let k = 0; k < copies; k++) {
+        const a = arm0 + k * da;
+        const rad = base * scale;
+        const pt = { x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad };
+        if (prev) r.drawLine({ id: 0, ...prev }, { id: 0, ...pt }, this.guide);
+        prev = pt;
+        scale *= step;
+      }
+    }
+    this.drawCenterMark(r, cx, cy);
   }
 
   private drawTileGuides(r: IRenderer, size: CanvasSize): void {
@@ -177,8 +298,7 @@ export class SymmetryController {
   }
 
   private drawRadialGuides(r: IRenderer, size: CanvasSize): void {
-    const cx = size.width / 2;
-    const cy = size.height / 2;
+    const { cx, cy } = this.center(size);
     const reach = Math.hypot(size.width, size.height); // past the corners
     const n = Math.max(1, Math.floor(this.radial.segments));
     const spokes = this.radial.mirror ? n * 2 : n; // mirror doubles the lines
@@ -191,5 +311,6 @@ export class SymmetryController {
         this.guide,
       );
     }
+    this.drawCenterMark(r, cx, cy);
   }
 }

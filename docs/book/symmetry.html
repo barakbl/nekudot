@@ -20,9 +20,11 @@
       <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg></span>Symmetry <span class="tag">key y</span></h1>
       <p class="lead">
         Repeat every stroke with symmetry. <strong>Tile</strong> repeats your marks
-        across a lattice; <strong>Radial</strong> mirrors them around the canvas
-        centre - a kaleidoscope; <strong>Mirror</strong> reflects across a single
-        line. It works with <em>any</em> brush.
+        across a lattice; <strong>Radial</strong> mirrors them around a centre - a
+        kaleidoscope; <strong>Mirror</strong> reflects across a line;
+        <strong>Concentric</strong> scales copies into nested rings; and
+        <strong>Spiral</strong> winds them around the centre. It works with
+        <em>any</em> brush.
       </p>
 
       <h2>What it is</h2>
@@ -36,10 +38,10 @@
         copy. Guide lines on the canvas show where the copies fall.
       </p>
       <div class="note">
-        One mode at a time: <em>None</em>, <em>Tile</em>, <em>Radial</em> or
-        <em>Mirror</em>. Whatever brush you have selected (Round, Squares, Marker…)
-        is the one that gets repeated, so the symmetry is yours to combine with
-        any look.
+        One mode at a time: <em>None</em>, <em>Tile</em>, <em>Radial</em>,
+        <em>Mirror</em>, <em>Concentric</em> or <em>Spiral</em>. Whatever brush
+        you have selected (Round, Squares, Marker…) is the one that gets repeated,
+        so the symmetry is yours to combine with any look.
       </div>
 
       <h2 id="tile">Tile</h2>
@@ -93,18 +95,81 @@
 
       <h2 id="mirror">Mirror</h2>
       <p>
-        Reflects your strokes across a single line through the canvas centre - a
-        one-line Radial. Pick the axis: <strong>Vertical</strong> mirrors
-        left↔right, <strong>Horizontal</strong> mirrors top↔bottom. Draw on one
-        side and it appears flipped on the other - perfect for faces, butterflies,
-        vases and anything bilaterally symmetric.
+        Reflects your strokes across a single line through the centre - a one-line
+        Radial. Use the quick buttons - <strong>Vertical</strong> mirrors
+        left↔right, <strong>Horizontal</strong> top↔bottom - or set any
+        <em>Angle</em> for a diagonal mirror. Draw on one side and it appears
+        flipped on the other - perfect for faces, butterflies, vases and anything
+        bilaterally symmetric.
       </p>
+      <dl class="settings">
+        <dt>Vertical / Horizontal</dt>
+        <dd>Quick presets for the two common mirror lines.</dd>
+        <dt>Angle</dt>
+        <dd>Tilt the mirror line to any angle (90 = vertical, 0 = horizontal) for a diagonal reflection.</dd>
+      </dl>
       <div class="tip">
         <span class="tip-label">Try this</span>
         Set a <strong>Vertical</strong> mirror and sketch half a face down one side
         of the centre line; the other half mirrors as you go. Switch the connecting
         web on for a soft, symmetric portrait.
       </div>
+
+      <h2 id="concentric">Concentric</h2>
+      <p>
+        Stamps your stroke as a set of copies scaled around the centre - nested
+        rings, like a mandala. Each ring is a smaller (or larger) copy of the one
+        before. The memory is mirrored too, so the connecting web threads between
+        the rings.
+      </p>
+      <dl class="settings">
+        <dt>Rings</dt>
+        <dd>How many copies radiate from the centre, including the original.</dd>
+        <dt>Scale %</dt>
+        <dd>Size of each ring vs the previous. Under 100 shrinks inward; over 100 grows outward.</dd>
+        <dt>Twist</dt>
+        <dd>Rotate each ring a little for a spiral mandala. 0 = pure concentric rings.</dd>
+      </dl>
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Draw a small motif off-centre with <strong>6</strong> rings at about
+        <strong>75%</strong> scale - it nests into a mandala. Add a little
+        <strong>Twist</strong> to set the rings spinning inward.
+      </div>
+
+      <h2 id="spiral">Spiral</h2>
+      <p>
+        Winds copies around the centre, each one rotated a step further and scaled
+        a little - a log spiral. Add <em>arms</em> to repeat the whole spiral
+        evenly around the centre, for pinwheels and galaxies.
+      </p>
+      <dl class="settings">
+        <dt>Copies</dt>
+        <dd>How many copies march around the spiral (per arm).</dd>
+        <dt>Arms</dt>
+        <dd>Repeat the whole spiral this many times around the centre.</dd>
+        <dt>Angle step</dt>
+        <dd>Degrees of rotation between copies. Copies × Angle step = the total sweep.</dd>
+        <dt>Scale %</dt>
+        <dd>Size of each copy vs the previous. Under 100 spirals inward; 100 = a flat rotational fan.</dd>
+      </dl>
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Try <strong>20</strong> copies, an angle step of about <strong>20°</strong>
+        and <strong>92%</strong> scale for a tight inward spiral; bump
+        <strong>Arms</strong> to 3 for a pinwheel, or set Scale to 100 for a flat
+        rotational fan.
+      </div>
+
+      <h2 id="centre">Moving the centre</h2>
+      <p>
+        Radial, Mirror, Concentric and Spiral all pivot around a centre point. By
+        default that is the middle of the canvas, but the <strong>Centre</strong>
+        sliders (X / Y, as a percent of the canvas) move it anywhere - off-centre
+        mandalas, a mirror line down one side, a spiral flung into a corner. The
+        <strong>Recentre</strong> button snaps it back to the middle, and a small
+        crosshair on the canvas marks where the centre is.
+      </p>
 
       <h2>Works with any brush</h2>
       <p>

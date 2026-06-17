@@ -42,8 +42,21 @@ export type TileParams = {
   fillCanvas: boolean; // tile the whole canvas (reach + falloff ignored)
 };
 export type RadialParams = { segments: number; mirror: boolean };
-export type MirrorAxis = "vertical" | "horizontal";
-export type MirrorParams = { axis: MirrorAxis };
+// Mirror line angle in degrees through the centre: 90 = vertical line (flips
+// left/right), 0 = horizontal (flips top/bottom), in between = a diagonal mirror.
+export type MirrorParams = { angle: number };
+// Concentric: `rings` copies, each scaled by `scalePct`% of the previous about
+// the centre and rotated by `twist` degrees (twist 0 = pure concentric rings).
+export type ConcentricParams = { rings: number; scalePct: number; twist: number };
+// Spiral: `copies` copies marching around the centre, each rotated by `angleStep`
+// degrees and scaled by `scalePct`% of the previous (a log spiral when <100, a
+// flat rotational fan at 100). `arms` repeats the whole spiral N times.
+export type SpiralParams = {
+  copies: number;
+  arms: number;
+  angleStep: number;
+  scalePct: number;
+};
 
 // Affine isometry: rotation by `theta` about (cx,cy), optionally pre-reflected
 // across the x-axis through the centre. Shared by Radial and Mirror.
@@ -152,17 +165,91 @@ export function radialTransforms(
   return out.length ? out : [IDENTITY];
 }
 
-// Mirror: the master plus one reflection across a single axis through the
-// centre. A vertical mirror line flips left/right (x→−x); a horizontal one
-// flips top/bottom (y→−y). It's a one-line Radial, sharing rotateReflect.
+// Reflection across a line through (cx,cy) at angle `theta` (radians). The
+// reflection matrix about a line at angle t is [[cos2t, sin2t],[sin2t, -cos2t]].
+function reflectAcrossLine(theta: number, cx: number, cy: number): Transform {
+  const a = Math.cos(2 * theta);
+  const b = Math.sin(2 * theta);
+  const c = Math.sin(2 * theta);
+  const d = -Math.cos(2 * theta);
+  const e = cx - (a * cx + c * cy);
+  const f = cy - (b * cx + d * cy);
+  return { a, b, c, d, e, f, aMul: 1 };
+}
+
+// Mirror: the master plus one reflection across a line through the centre at
+// `angle` degrees. 90 = vertical (flips left/right), 0 = horizontal, between =
+// a diagonal mirror.
 export function mirrorTransforms(
   p: MirrorParams,
   cx: number,
   cy: number,
 ): Transform[] {
-  const refl =
-    p.axis === "vertical"
-      ? rotateReflect(Math.PI, true, cx, cy) // reflect across the y-axis (x→−x)
-      : rotateReflect(0, true, cx, cy); // reflect across the x-axis (y→−y)
-  return [IDENTITY, refl];
+  return [IDENTITY, reflectAcrossLine((p.angle * Math.PI) / 180, cx, cy)];
+}
+
+// scale * R(theta), as an affine fixing (cx,cy). Shared by Concentric + Spiral.
+function scaleRotateAbout(
+  scale: number,
+  theta: number,
+  cx: number,
+  cy: number,
+): Transform {
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  const a = scale * cos;
+  const b = scale * sin;
+  const c = -scale * sin;
+  const d = scale * cos;
+  return { a, b, c, d, e: cx - (a * cx + c * cy), f: cy - (b * cx + d * cy), aMul: 1 };
+}
+
+// Concentric: `rings` copies about (cx,cy), each scaled by scalePct% of the
+// previous and rotated by `twist` degrees. The first copy is the identity
+// (k=0: scale 1, rotation 0), so the master stroke is included.
+export function concentricTransforms(
+  p: ConcentricParams,
+  cx: number,
+  cy: number,
+): Transform[] {
+  const rings = Math.max(1, Math.floor(p.rings));
+  const step = p.scalePct / 100;
+  const twist = (p.twist * Math.PI) / 180;
+  const out: Transform[] = [];
+  let scale = 1;
+  for (let k = 0; k < rings; k++) {
+    out.push(scaleRotateAbout(scale, twist * k, cx, cy));
+    scale *= step;
+  }
+  return out.length ? out : [IDENTITY];
+}
+
+// Cap so a long copy count (× arms) can't melt the live redraw / point cloud.
+const MAX_SPIRAL_COPIES = 120;
+
+// Spiral: `arms` copies of a log spiral about (cx,cy). Within each arm, copy k is
+// rotated by k·angleStep and scaled by scalePct^k; arms are spread evenly around
+// the centre. Arm 0 / copy 0 is the identity, so the master stroke is included.
+export function spiralTransforms(
+  p: SpiralParams,
+  cx: number,
+  cy: number,
+): Transform[] {
+  const arms = Math.max(1, Math.floor(p.arms));
+  const perArm = Math.min(
+    Math.max(1, Math.floor(p.copies)),
+    Math.max(1, Math.floor(MAX_SPIRAL_COPIES / arms)),
+  );
+  const da = (p.angleStep * Math.PI) / 180;
+  const step = p.scalePct / 100;
+  const out: Transform[] = [];
+  for (let m = 0; m < arms; m++) {
+    const arm0 = (m * 2 * Math.PI) / arms;
+    let scale = 1;
+    for (let k = 0; k < perArm; k++) {
+      out.push(scaleRotateAbout(scale, arm0 + k * da, cx, cy));
+      scale *= step;
+    }
+  }
+  return out.length ? out : [IDENTITY];
 }

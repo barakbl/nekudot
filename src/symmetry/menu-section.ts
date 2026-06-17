@@ -14,6 +14,10 @@ export const SYMMETRY_MODE_ICONS: Record<SymmetryMode, string> = {
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="2" x2="8" y2="14" stroke-dasharray="2 2"/><path d="M6 5 L3 8 L6 11 Z"/><path d="M10 5 L13 8 L10 11 Z"/></svg>',
   tile:
     '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2.4" y="2.4" width="4.6" height="4.6" rx="0.8"/><rect x="9" y="2.4" width="4.6" height="4.6" rx="0.8"/><rect x="2.4" y="9" width="4.6" height="4.6" rx="0.8"/><rect x="9" y="9" width="4.6" height="4.6" rx="0.8"/></svg>',
+  concentric:
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3.4"/><circle cx="8" cy="8" r="1"/></svg>',
+  spiral:
+    '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" aria-hidden="true"><path d="M8 8 a1 1 0 1 1 1.4 0.9 a2.6 2.6 0 1 1 -3.8 -1.2 a4.4 4.4 0 1 1 6.4 2.8"/></svg>',
 };
 
 // Mirror-axis glyphs: the dashed reflection line with arrows mirroring across
@@ -31,6 +35,8 @@ export const SYMMETRY_MODES: { id: SymmetryMode; label: string }[] = [
   { id: "none", label: "None" },
   { id: "radial", label: "Radial" },
   { id: "mirror", label: "Mirror" },
+  { id: "concentric", label: "Concentric" },
+  { id: "spiral", label: "Spiral" },
   { id: "tile", label: "Tile" },
 ];
 
@@ -141,6 +147,52 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
     ];
   };
 
+  // Movable symmetry centre (Radial / Mirror / Concentric), as a percent of the
+  // canvas. Shown below the mode-specific params for any centred mode.
+  const centerRows = (): HTMLElement[] => {
+    const head = document.createElement("div");
+    head.className = "sym-subhead sym-subhead-row";
+    const label = document.createElement("span");
+    label.textContent = "Centre";
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "sym-center-reset";
+    reset.title = "Recentre on the canvas";
+    reset.textContent = "Recentre";
+    head.append(label, reset);
+
+    const xRow = slider(
+      "X",
+      0,
+      100,
+      Math.round(c.centerX * 100),
+      (v) => c.setCenter({ x: v / 100 }),
+      "Horizontal position of the symmetry centre, as a percent of the canvas width.",
+    );
+    const yRow = slider(
+      "Y",
+      0,
+      100,
+      Math.round(c.centerY * 100),
+      (v) => c.setCenter({ y: v / 100 }),
+      "Vertical position of the symmetry centre, as a percent of the canvas height.",
+    );
+
+    // Snap the centre back to the middle of the canvas and sync the two sliders.
+    reset.addEventListener("click", (e) => {
+      e.stopPropagation();
+      c.setCenter({ x: 0.5, y: 0.5 });
+      for (const row of [xRow, yRow]) {
+        const input = row.querySelector<HTMLInputElement>("input");
+        const val = row.querySelector(".sym-rowval");
+        if (input) input.value = "50";
+        if (val) val.textContent = "50";
+      }
+    });
+
+    return [head, xRow, yRow];
+  };
+
   const renderParams = () => {
     params.replaceChildren();
     if (c.mode === "tile") {
@@ -231,28 +283,105 @@ export function makeSymmetrySection(c: SymmetryController): HTMLElement {
         "Also reflect each wedge, so the pattern is symmetric within every slice (a true kaleidoscope).",
       );
       params.appendChild(row);
+      params.append(...centerRows());
     } else if (c.mode === "mirror") {
-      // A single reflection line: pick which axis (its own segmented control).
+      // Quick axis buttons set the angle (vertical line = 90, horizontal = 0);
+      // the Angle slider tilts it to any diagonal.
       const seg = document.createElement("div");
       seg.className = "sym-seg";
-      const axes: { id: "vertical" | "horizontal"; label: string }[] = [
-        { id: "vertical", label: "Vertical" },
-        { id: "horizontal", label: "Horizontal" },
+      const axes: { id: "vertical" | "horizontal"; label: string; angle: number }[] = [
+        { id: "vertical", label: "Vertical", angle: 90 },
+        { id: "horizontal", label: "Horizontal", angle: 0 },
       ];
       for (const ax of axes) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className =
-          "sym-seg-btn sym-axis-btn" + (c.mirror.axis === ax.id ? " active" : "");
+          "sym-seg-btn sym-axis-btn" + (c.mirror.angle === ax.angle ? " active" : "");
         btn.innerHTML = AXIS_ICON[ax.id] + `<span class="sym-seg-lbl">${ax.label}</span>`;
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
-          c.setMirror({ axis: ax.id });
+          c.setMirror({ angle: ax.angle });
           renderParams();
         });
         seg.appendChild(btn);
       }
       params.appendChild(seg);
+      params.appendChild(
+        slider(
+          "Angle",
+          0,
+          180,
+          Math.round(c.mirror.angle),
+          (v) => c.setMirror({ angle: v }),
+          "Tilt the mirror line. 90 = vertical, 0 = horizontal, in between = a diagonal mirror.",
+        ),
+      );
+      params.append(...centerRows());
+    } else if (c.mode === "concentric") {
+      params.append(
+        slider(
+          "Rings",
+          2,
+          12,
+          c.concentric.rings,
+          (v) => c.setConcentric({ rings: v }),
+          "How many scaled copies radiate from the centre (including the original).",
+        ),
+        slider(
+          "Scale %",
+          50,
+          150,
+          c.concentric.scalePct,
+          (v) => c.setConcentric({ scalePct: v }),
+          "Size of each ring vs the previous. Under 100 shrinks inward; over 100 grows outward.",
+        ),
+        slider(
+          "Twist",
+          -90,
+          90,
+          c.concentric.twist,
+          (v) => c.setConcentric({ twist: v }),
+          "Rotate each ring a little for a spiral mandala. 0 = pure concentric rings.",
+        ),
+        ...centerRows(),
+      );
+    } else if (c.mode === "spiral") {
+      params.append(
+        slider(
+          "Copies",
+          3,
+          40,
+          c.spiral.copies,
+          (v) => c.setSpiral({ copies: v }),
+          "How many copies march around the spiral (per arm).",
+        ),
+        slider(
+          "Arms",
+          1,
+          6,
+          c.spiral.arms,
+          (v) => c.setSpiral({ arms: v }),
+          "Repeat the whole spiral this many times, spread evenly around the centre.",
+        ),
+        slider(
+          "Angle step",
+          5,
+          120,
+          c.spiral.angleStep,
+          (v) => c.setSpiral({ angleStep: v }),
+          "Degrees of rotation between successive copies. Copies × Angle step = total sweep.",
+        ),
+        slider(
+          "Scale %",
+          70,
+          100,
+          c.spiral.scalePct,
+          (v) => c.setSpiral({ scalePct: v }),
+          "Size of each copy vs the previous. Under 100 spirals inward; 100 = a flat rotational fan.",
+        ),
+        ...centerRows(),
+      );
     }
 
     // The shared guide-appearance controls follow the per-mode params (any mode

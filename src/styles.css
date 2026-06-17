@@ -433,6 +433,27 @@ body {
   text-transform: uppercase;
   color: var(--text-faint);
 }
+.sym-subhead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sym-center-reset {
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  cursor: pointer;
+  padding: 1px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--border-stronger);
+  background: transparent;
+  color: var(--text-subtle);
+}
+.sym-center-reset:hover {
+  background: var(--hover-bg);
+}
 .sym-color {
   margin-left: auto;
   width: 30px;

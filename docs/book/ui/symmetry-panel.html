@@ -25,8 +25,9 @@
       <h2>What it is</h2>
       <p>
         A mode picker - <strong>None</strong>, <strong>Tile</strong>,
-        <strong>Radial</strong>, <strong>Mirror</strong> - plus the parameters for
-        the chosen mode and the on-canvas guide lines. Whatever brush is active
+        <strong>Radial</strong>, <strong>Mirror</strong>,
+        <strong>Concentric</strong>, <strong>Spiral</strong> - plus the parameters
+        for the chosen mode and the on-canvas guide lines. Whatever brush is active
         gets repeated. Open it from the navbar Symmetry pill, the
         <strong>Windows</strong> menu, or <span class="kbd">y</span>. For what each
         mode does, see <a href="/book/symmetry.html">Symmetry</a>.
@@ -50,14 +51,46 @@
         <dd>How many wedges the kaleidoscope splits into.</dd>
         <dt>Mirror (Radial)</dt>
         <dd>Reflect each wedge as well as rotating it.</dd>
-        <dt>Axis (Mirror)</dt>
-        <dd>Reflect across a vertical or horizontal line through the centre.</dd>
+        <dt>Vertical / Horizontal (Mirror)</dt>
+        <dd>Quick presets for the mirror line through the centre.</dd>
+        <dt>Angle (Mirror)</dt>
+        <dd>Tilt the mirror line to any angle (90 = vertical, 0 = horizontal) for a diagonal.</dd>
+      </dl>
+
+      <h2>Concentric parameters</h2>
+      <dl class="settings">
+        <dt>Rings</dt>
+        <dd>How many scaled copies radiate from the centre (including the original).</dd>
+        <dt>Scale %</dt>
+        <dd>Size of each ring vs the previous (under 100 shrinks inward, over 100 grows outward).</dd>
+        <dt>Twist</dt>
+        <dd>Rotate each ring for a spiral mandala (0 = pure concentric rings).</dd>
+      </dl>
+
+      <h2>Spiral parameters</h2>
+      <dl class="settings">
+        <dt>Copies</dt>
+        <dd>How many copies march around the spiral, per arm.</dd>
+        <dt>Arms</dt>
+        <dd>Repeat the whole spiral this many times around the centre.</dd>
+        <dt>Angle step</dt>
+        <dd>Degrees of rotation between successive copies.</dd>
+        <dt>Scale %</dt>
+        <dd>Size of each copy vs the previous (100 = a flat rotational fan).</dd>
+      </dl>
+
+      <h2>Centre</h2>
+      <dl class="settings">
+        <dt>X / Y</dt>
+        <dd>Move the pivot for Radial, Mirror, Concentric and Spiral anywhere on the canvas (a percent of its width / height). A crosshair marks it.</dd>
+        <dt>Recentre</dt>
+        <dd>Snap the centre back to the middle of the canvas.</dd>
       </dl>
 
       <h2>Guides</h2>
       <dl class="settings">
         <dt>Opacity / Width / Color</dt>
-        <dd>Style the on-canvas guide lines (the lattice, spokes or mirror line) that show where copies fall. Guides sit above the drawing but below the panels.</dd>
+        <dd>Style the on-canvas guide lines (the lattice, spokes, mirror line, rings or spiral arms) that show where copies fall. Guides sit above the drawing but below the panels.</dd>
       </dl>
     </main>
 
