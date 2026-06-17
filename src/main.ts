@@ -941,9 +941,11 @@ const drawingInput = bindDrawingInput({
 touchGestures = bindTouchGestures({
   viewportEl,
   viewport,
-  // A 2nd finger landing ends the 1-finger stroke (committed + undoable) so the
-  // gesture starts clean and the leftover finger doesn't keep drawing.
-  onGestureBegin: () => drawingInput.commitActiveStroke(),
+  // A 2nd finger landing cancels the 1-finger stroke: a deferred tap is dropped
+  // with no mark (so 2-finger undo / 3-finger redo taps hit the real artwork),
+  // and a stroke that already moved is committed (undoable). Either way the
+  // leftover finger never keeps drawing.
+  onGestureBegin: () => drawingInput.cancelActiveStroke(),
 });
 
 // ---- durability on hide/close -----------------------------------------------------

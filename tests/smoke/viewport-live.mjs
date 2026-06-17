@@ -44,9 +44,8 @@ async function main() {
     await waitFor(() => E("!!document.querySelector('.stage canvas')"));
     await sleep(500);
 
-    // ---- page-side helpers --------------------------------------------------
-    // Brush size up a touch so the painted mark is robustly detectable.
-    await E(`(${function () {
+    // ---- page-side helpers (re-injectable: the page reloads for F/G) ---------
+    const injectView = () => E(`(${function () {
       window.__view = {
         // The stage's *visible* transform (canvas px -> viewport px) + the
         // viewport's screen offset = screen coords. This is what the eye sees.
@@ -81,8 +80,18 @@ async function main() {
           }
           return best;
         },
+        // Total opaque pixels across all layer canvases (for undo/redo checks).
+        painted() {
+          let n = 0;
+          for (const c of document.querySelectorAll(".stage canvas")) {
+            const d = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data;
+            for (let i = 3; i < d.length; i += 4) if (d[i] > 20) n++;
+          }
+          return n;
+        },
       };
     }})()`);
+    await injectView();
 
     const clearCanvas = () => E(`window.__view.clear()`);
     const matrix = () => E(`window.__view.matrix()`);
@@ -155,6 +164,36 @@ async function main() {
     const mReset = await matrix();
     const resetOk = Math.abs(mReset.rotDeg) < 0.5 && Math.abs(mReset.scale - m0.scale) < 0.02;
     results.push(["Reset view button", resetOk, `scale=${mReset.scale.toFixed(2)} rot=${mReset.rotDeg.toFixed(1)}°`]);
+
+    // F+G) The reported bug: a 2-finger tap must really UNDO (not just flash the
+    //      chip), and a 3-finger tap must really REDO. Fresh state so the canvas
+    //      holds exactly one stroke; a multi-finger tap must touch the real art.
+    await E("localStorage.clear()"); await E("indexedDB.deleteDatabase('nekudot')");
+    await E("localStorage.setItem('app.size','12'); localStorage.setItem('app.opacity','1')");
+    await S("Page.navigate", { url: PAGE });
+    await waitFor(() => E("!!document.querySelector('.stage canvas')"));
+    await sleep(500); await injectView();
+    await E(`document.querySelector('[title="Reset view"]').click()`); await sleep(120);
+    // one committed stroke
+    await S("Input.dispatchMouseEvent", { type: "mousePressed", x: 500, y: 320, button: "left", clickCount: 1, buttons: 1 });
+    for (let x = 500; x <= 600; x += 10) await S("Input.dispatchMouseEvent", { type: "mouseMoved", x, y: 320, button: "left", buttons: 1 });
+    await S("Input.dispatchMouseEvent", { type: "mouseReleased", x: 600, y: 320, button: "left", clickCount: 1, buttons: 1 });
+    await sleep(200);
+    const nDraw = await E(`window.__view.painted()`);
+    // 2-finger tap -> undo
+    await touch("touchStart", [tp(420, 300, 1), tp(620, 300, 2)]);
+    await touch("touchEnd", []);
+    await sleep(220);
+    const undoChip = await E(`document.querySelector('.undo-chip')?.textContent || ''`);
+    const nUndo = await E(`window.__view.painted()`);
+    results.push(["2-finger tap really undoes", /undo/i.test(undoChip) && nDraw > 0 && nUndo < nDraw * 0.2, `chip="${undoChip}" painted ${nDraw}->${nUndo}`]);
+    // 3-finger tap -> redo
+    await touch("touchStart", [tp(420, 300, 1), tp(520, 300, 2), tp(620, 300, 3)]);
+    await touch("touchEnd", []);
+    await sleep(220);
+    const redoChip = await E(`document.querySelector('.undo-chip')?.textContent || ''`);
+    const nRedo = await E(`window.__view.painted()`);
+    results.push(["3-finger tap really redoes", /redo/i.test(redoChip) && nRedo > nDraw * 0.8, `chip="${redoChip}" painted ${nUndo}->${nRedo}`]);
 
     let ok = true;
     for (const [name, pass, detail] of results) { console.log(`${pass ? "✓" : "✗"} ${name} — ${detail}`); ok = ok && pass; }

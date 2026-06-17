@@ -127,11 +127,13 @@ describe("drawing input: penEnabled gate", () => {
   });
 });
 
-describe("drawing input: multi-touch camera gesture guards", () => {
-  // Count stroke starts so we can assert a 2nd finger never begins a new one.
+describe("drawing input: deferred touch start + camera gesture guards", () => {
+  // Count stroke starts/ends. On touch the start is deferred until the stroke is
+  // confirmed (a move, or a tap release), so a 2nd finger can drop it untouched.
   const setup = (gestureActive: () => boolean) => {
     const stage = makeStage();
     let starts = 0;
+    let ends = 0;
     const brush = {
       strokeStart: () => void starts++,
       stroke() {},
@@ -139,7 +141,7 @@ describe("drawing input: multi-touch camera gesture guards", () => {
       bufferedStroke: () => false,
       supportsConnecting: () => false,
     } as unknown as BrushBase;
-    bindDrawingInput({
+    const input = bindDrawingInput({
       stage: stage as unknown as HTMLElement,
       viewport: idViewport,
       brush: () => brush,
@@ -147,14 +149,16 @@ describe("drawing input: multi-touch camera gesture guards", () => {
       layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
       penEnabled: () => false,
       gestureActive,
-      onStrokeEnd() {},
+      onStrokeEnd: () => void ends++,
     });
-    return { stage, starts: () => starts };
+    return { stage, input, starts: () => starts, ends: () => ends };
   };
+  const move = (id: number) => ({ pointerId: id, getCoalescedEvents: () => [] });
 
-  it("ignores a 2nd finger while a stroke is already live", () => {
+  it("ignores a 2nd finger while a (confirmed) stroke is live", () => {
     const { stage, starts } = setup(() => false);
     stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointermove", move(1)); // confirms finger 1's stroke
     stage.fire("pointerdown", { button: 0, pointerId: 2, pointerType: "touch" });
     expect(starts()).toBe(1); // only the first finger drew
   });
@@ -162,12 +166,39 @@ describe("drawing input: multi-touch camera gesture guards", () => {
   it("ignores a touch pointerdown while a camera gesture owns the input", () => {
     const { stage, starts } = setup(() => true);
     stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointermove", move(1));
     expect(starts()).toBe(0);
   });
 
   it("still draws with a mouse during a gesture flag (touch-only guard)", () => {
     const { stage, starts } = setup(() => true);
     stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "mouse" });
+    expect(starts()).toBe(1); // mouse is unambiguous — draws immediately
+  });
+
+  it("lays one dab for a single-finger tap (down + up, no move)", () => {
+    const { stage, starts, ends } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointerup", { pointerId: 1 });
     expect(starts()).toBe(1);
+    expect(ends()).toBe(1);
+  });
+
+  it("drops a deferred tap on cancel — no mark, no stroke-end (the 2-finger undo fix)", () => {
+    const { stage, input, starts, ends } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    input.cancelActiveStroke(); // a 2nd finger lands before any move
+    stage.fire("pointerup", { pointerId: 1 }); // finger lifts after the cancel
+    expect(starts()).toBe(0); // nothing drawn
+    expect(ends()).toBe(0); // no undo entry — so a 2-finger-tap undo hits real art
+  });
+
+  it("commits a deferred stroke that already moved when a gesture starts", () => {
+    const { stage, input, starts, ends } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointermove", move(1)); // confirmed
+    input.cancelActiveStroke(); // 2nd finger now → commit, not drop
+    expect(starts()).toBe(1);
+    expect(ends()).toBe(1);
   });
 });
