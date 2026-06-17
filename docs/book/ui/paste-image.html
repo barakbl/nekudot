@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paste an image - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Paste an image</p>
+      <h1>Paste an image</h1>
+      <p class="lead">Drop a picture from your clipboard straight onto the canvas, then position it before it is painted in.</p>
+
+      <h2>What it is</h2>
+      <p>
+        Copy any image - a screenshot, a photo, a reference from the web - and
+        press <span class="kbd">⌘</span>/<span class="kbd">Ctrl</span>
+        <span class="kbd">V</span> in Nekudot. The image appears as a movable
+        preview on the canvas; once it is where you want it, <strong>Place</strong>
+        bakes it onto the active layer. Until then nothing is committed, and the
+        bake is a single <a href="/book/shortcuts.html">undo</a> step.
+      </p>
+
+      <h2>The placement preview</h2>
+      <p>
+        On paste, the image is centred on the canvas and, if it is bigger than
+        the canvas, scaled down to fit. A dashed box with four corner handles
+        shows where it will land:
+      </p>
+      <dl class="settings">
+        <dt>Move</dt>
+        <dd>Drag anywhere inside the box.</dd>
+        <dt>Resize</dt>
+        <dd>Drag a corner handle. The aspect ratio is kept, anchored to the opposite corner.</dd>
+        <dt>Place</dt>
+        <dd>Click <strong>Place</strong> (or press <span class="kbd">Enter</span>) to bake the image onto the active layer.</dd>
+        <dt>Cancel</dt>
+        <dd>Click <strong>Cancel</strong> (or press <span class="kbd">Esc</span>) to drop it with no change.</dd>
+      </dl>
+
+      <p>
+        The preview rides the canvas, so panning, zooming and rotating the view
+        all keep it glued in place while the handles stay a constant size on
+        screen.
+      </p>
+
+      <div class="note">
+        <strong>It lands on the active layer.</strong> The image is painted into
+        whichever <a href="/book/layers.html">layer</a> is selected, at full
+        opacity. Pick or add a layer first if you want it on its own.
+      </div>
+
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Paste a reference photo onto its own <a href="/book/layers.html">layer</a>
+        so you can draw on a layer above it, then hide or delete the reference
+        when you are done.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

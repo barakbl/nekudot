@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Navigating the canvas - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Navigating the canvas</p>
+      <h1>Navigating the canvas</h1>
+      <p class="lead">Pan, zoom and rotate your view of the canvas. None of it changes the art - only how you look at it.</p>
+
+      <h2>What it is</h2>
+      <p>
+        Nekudot puts a camera over the canvas. You can slide it around, zoom in
+        for detail, and (on touch) spin it to a comfortable angle - handy for
+        drawing on a phone or tablet. The artwork itself is untouched, and
+        <strong>Reset view</strong> always brings you back. The canvas also
+        <strong>auto-fits</strong> on load and whenever the window shrinks, so a
+        canvas bigger than the window never leaves your work stranded off-screen.
+      </p>
+
+      <h2>On a computer</h2>
+      <dl class="settings">
+        <dt>Zoom</dt>
+        <dd><span class="kbd">⌘</span>/<span class="kbd">Ctrl</span> + scroll wheel - zooms toward the pointer.</dd>
+        <dt>Pan</dt>
+        <dd>Scroll (or a two-finger trackpad swipe) to slide the view, or drag with the middle mouse button.</dd>
+        <dt>Reset view</dt>
+        <dd>The frame button in the <a href="/book/ui/toolbar.html">toolbar</a> - back to 100%, no rotation, centred or fit.</dd>
+      </dl>
+
+      <h2>On a touch screen</h2>
+      <dl class="settings">
+        <dt>One finger</dt>
+        <dd>Draws, as usual.</dd>
+        <dt>Two-finger drag</dt>
+        <dd>Pan, pinch to zoom, and twist to rotate - all at once, around the point between your fingers.</dd>
+        <dt>Two-finger tap</dt>
+        <dd><a href="/book/shortcuts.html">Undo</a> (a tap, not a drag); three-finger tap is Redo.</dd>
+      </dl>
+
+      <div class="note">
+        <strong>Tap vs drag.</strong> A quick two-finger tap undoes; the moment
+        your fingers move it becomes a pan / zoom / rotate instead, so the two
+        never collide.
+      </div>
+
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Zoom in close to clean up a detail, then hit <strong>Reset view</strong>
+        to snap back to the whole piece. Lost in a big canvas? Reset view
+        re-centres it.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

@@ -78,6 +78,7 @@ export function createBareHost(
     drawSource: (other, opacity, scale) =>
       renderer.drawSource(other, opacity, scale),
     drawBitmap: (bitmap) => renderer.drawBitmap(bitmap),
+    drawImageRect: (img, x, y, w, h) => renderer.drawImageRect(img, x, y, w, h),
     toBlob: (type) => renderer.toBlob(type),
 
     // ---- NeighborFinder (the one finder doubles as "the selected map") -------

@@ -91,6 +91,7 @@ export interface IRenderer {
   fillBackground(color: string): void;
   drawSource(other: IRenderer, opacity?: number, scale?: number): void;
   drawBitmap(bitmap: CanvasImageSource): void;
+  drawImageRect(img: CanvasImageSource, x: number, y: number, w: number, h: number): void;
   toBlob(type?: string): Promise<Blob | null>;
 }
 
@@ -218,6 +219,18 @@ export class CanvasRenderer implements IRenderer {
     // Scale source to the canvas backing store so bitmaps saved at a different
     // dpr/size still fill the layer correctly.
     this.ctx.drawImage(bitmap, 0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    this.ctx.restore();
+  }
+
+  // Draw an image into a rect given in LOGICAL canvas px (the ctx keeps its
+  // dpr scale, so coords match stroke coords). Always opaque + source-over,
+  // regardless of the current brush alpha / erase state. Used to bake a pasted
+  // image at its placed position/size.
+  drawImageRect(img: CanvasImageSource, x: number, y: number, w: number, h: number): void {
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = "source-over";
+    this.ctx.globalAlpha = 1;
+    this.ctx.drawImage(img, x, y, w, h);
     this.ctx.restore();
   }
 

@@ -138,6 +138,19 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       onPress: () => actions.redo(),
     },
     {
+      // Display-only: the actual paste is handled by the native clipboard
+      // `paste` event (see app/image-paste), which carries the image data a
+      // keydown can't read. With no key/code the matcher never intercepts
+      // Cmd/Ctrl+V (which would suppress that paste event); the row just hints
+      // how to use it.
+      cmdOrCtrl: true,
+      label: "V",
+      group: "Edit",
+      description: "Paste image",
+      onPress: () =>
+        showChip("Copy an image, then paste (⌘/Ctrl+V) to place it on the canvas"),
+    },
+    {
       fingers: 2,
       group: "Edit",
       description: "Undo",

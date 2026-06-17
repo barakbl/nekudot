@@ -373,6 +373,9 @@ export class LayerManager implements PaintHost {
   drawBitmap(bitmap: CanvasImageSource): void {
     this.active.renderer.drawBitmap(bitmap);
   }
+  drawImageRect(img: CanvasImageSource, x: number, y: number, w: number, h: number): void {
+    this.active.renderer.drawImageRect(img, x, y, w, h);
+  }
   toBlob(type?: string): Promise<Blob | null> {
     return this.active.renderer.toBlob(type);
   }

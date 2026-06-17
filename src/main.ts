@@ -39,6 +39,7 @@ import { Overlay } from "./app/overlay";
 import { createMapHighlighter } from "./app/map-highlight";
 import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
+import { bindImagePaste } from "./app/image-paste";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
@@ -157,10 +158,15 @@ const applyStageBackground = () => {
 applyStageBackground();
 
 // ---- viewport (pan / zoom / rotate camera over the stage) -------------------
+// Fires after every camera change; wired below once its dependents exist (the
+// image-paste preview re-renders here so its handles stay a constant on-screen
+// size while the image itself tracks the camera via the CSS transform).
+let onViewportChange = () => {};
 const viewport = new Viewport({
   viewportEl,
   stageEl: stage,
   getCanvasSize: () => layerManager.currentSize,
+  onChange: () => onViewportChange(),
 });
 viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
 // Issue #3: shrinking the window can leave the canvas bigger than the viewport
@@ -947,6 +953,20 @@ touchGestures = bindTouchGestures({
   // leftover finger never keeps drawing.
   onGestureBegin: () => drawingInput.cancelActiveStroke(),
 });
+
+// Paste an image (Cmd/Ctrl+V): drop it into a move/resize preview on the canvas,
+// then Place to bake it onto the active layer (undoable) or Cancel to drop it.
+const imagePaste = bindImagePaste({
+  stage,
+  viewport,
+  layerManager,
+  dpr,
+  onBaked: () => {
+    pushUndo(`Paste image on ${activeLayerName()}`);
+    layersBox.refreshPreviews();
+  },
+});
+onViewportChange = () => imagePaste.handleCameraChange();
 
 // ---- durability on hide/close -----------------------------------------------------
 

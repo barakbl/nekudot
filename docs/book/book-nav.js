@@ -29,6 +29,10 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="2.5"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
     sliders:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h8M16 7h4M4 17h4M12 17h8"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    image:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 20"/></svg>',
+    view:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.6-3.6M8.5 11h5M11 8.5v5"/></svg>',
     // brushes - the app's own glyphs
     round: "●",
     squares: "▭",
@@ -67,6 +71,8 @@
       label: "Interface",
       children: [
         { label: "Toolbar", href: "/book/ui/toolbar.html", icon: I.toolbar },
+        { label: "Navigating the canvas", href: "/book/ui/canvas-view.html", icon: I.view },
+        { label: "Paste an image", href: "/book/ui/paste-image.html", icon: I.image },
         {
           label: "Panels",
           children: [

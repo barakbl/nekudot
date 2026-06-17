@@ -26,6 +26,9 @@ const NON_GEOMETRY = new Set([
   "fillBackground",
   "drawSource",
   "drawBitmap",
+  // Bakes a pasted image once at its placed rect (called on the raw
+  // LayerManager, not the brush/symmetry proxy) - a placement, not a mark.
+  "drawImageRect",
   "toBlob",
   // Internal helpers (TS-private, but still on the prototype).
   "applyLineStyle",
