@@ -3,6 +3,13 @@ import { bindDrawingInput } from "../src/app/drawing-input";
 import type { BrushBase } from "../src/base";
 import type { LayerManager } from "../src/layered/manager";
 import type { SymmetryController } from "../src/symmetry/controller";
+import type { Viewport } from "../src/app/viewport";
+
+// Identity camera: screen coords are canvas coords (no pan/zoom/rotate). The
+// real Viewport's matrix math is covered by the headless smoke test.
+const idViewport = {
+  toCanvas: (x: number, y: number) => ({ x, y }),
+} as unknown as Viewport;
 
 // Minimal stage stub: records listeners, lets the test fire pointer events.
 function makeStage() {
@@ -38,6 +45,7 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
     } as unknown as BrushBase;
     input = bindDrawingInput({
       stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
       brush: () => brush,
       symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
       layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
@@ -90,6 +98,7 @@ describe("drawing input: penEnabled gate", () => {
     } as unknown as BrushBase;
     bindDrawingInput({
       stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
       brush: () => brush,
       symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
       layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
@@ -115,5 +124,50 @@ describe("drawing input: penEnabled gate", () => {
     });
     expect(samples[0].isPen).toBe(false);
     expect(samples[0].pressure).toBe(1); // MOUSE_SAMPLE — no modulation
+  });
+});
+
+describe("drawing input: multi-touch camera gesture guards", () => {
+  // Count stroke starts so we can assert a 2nd finger never begins a new one.
+  const setup = (gestureActive: () => boolean) => {
+    const stage = makeStage();
+    let starts = 0;
+    const brush = {
+      strokeStart: () => void starts++,
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => false,
+      gestureActive,
+      onStrokeEnd() {},
+    });
+    return { stage, starts: () => starts };
+  };
+
+  it("ignores a 2nd finger while a stroke is already live", () => {
+    const { stage, starts } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointerdown", { button: 0, pointerId: 2, pointerType: "touch" });
+    expect(starts()).toBe(1); // only the first finger drew
+  });
+
+  it("ignores a touch pointerdown while a camera gesture owns the input", () => {
+    const { stage, starts } = setup(() => true);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    expect(starts()).toBe(0);
+  });
+
+  it("still draws with a mouse during a gesture flag (touch-only guard)", () => {
+    const { stage, starts } = setup(() => true);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "mouse" });
+    expect(starts()).toBe(1);
   });
 });

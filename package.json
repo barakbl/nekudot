@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "smoke": "node tests/smoke/smoke.mjs",
+    "smoke:viewport": "node tests/smoke/viewport-live.mjs",
     "render-presets": "node tests/smoke/render-presets.mjs",
     "smoke-render": "node tests/smoke/all-render.mjs",
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"

@@ -1,6 +1,7 @@
 import type { BrushBase } from "../base";
 import type { LayerManager } from "../layered/manager";
 import type { SymmetryController } from "../symmetry/controller";
+import type { Viewport } from "./viewport";
 import { readPenSample, MOUSE_SAMPLE } from "../pen";
 
 // Pointer wiring for the stage: start/feed/end brush strokes. Freezes the
@@ -10,33 +11,47 @@ import { readPenSample, MOUSE_SAMPLE } from "../pen";
 // off every pointer event — coalesced sub-samples each carry their own.
 export function bindDrawingInput(opts: {
   stage: HTMLElement;
+  viewport: Viewport; // maps screen (client) coords -> canvas coords (pan/zoom/rotate)
   brush: () => BrushBase; // read per event — the active brush can change
   symmetry: SymmetryController;
   layerManager: LayerManager;
   // Pen support gate (the More-menu toggle). When off, every sample is read as
   // a neutral mouse sample, so a stylus draws with no pressure/tilt modulation.
   penEnabled: () => boolean;
+  // True while a multi-touch camera gesture (pan/zoom/rotate) owns the input -
+  // touch pointers must not draw then. See app/touch-gestures.
+  gestureActive?: () => boolean;
   onStrokeStart?: () => void; // fired when a stroke begins (e.g. arm GIF capture)
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
 }): { commitActiveStroke: () => void } {
-  const { stage, symmetry, layerManager } = opts;
+  const { stage, viewport, symmetry, layerManager } = opts;
   let drawingId: number | null = null;
   const sampleOf = (e: PointerEvent) =>
     opts.penEnabled() ? readPenSample(e) : MOUSE_SAMPLE;
+  // Screen (client) coords -> canvas-local coords, through the camera inverse.
+  // Replaces e.offsetX/offsetY, which is wrong once the stage is CSS-transformed.
+  const at = (e: { clientX: number; clientY: number }) =>
+    viewport.toCanvas(e.clientX, e.clientY);
   // Whether THIS stroke opened the wet buffer — latched at pointerdown so the
   // end matches the start even if settings change mid-stroke.
   let buffered = false;
 
   stage.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
+    // Ignore extra pointers while a stroke is live (e.g. a 2nd finger landing -
+    // that's a camera gesture, not a new stroke) and any touch while the camera
+    // gesture owns the input. Guards both event orders (pointerdown vs touchstart).
+    if (drawingId !== null) return;
+    if (e.pointerType === "touch" && opts.gestureActive?.()) return;
     e.preventDefault();
     stage.setPointerCapture(e.pointerId);
     drawingId = e.pointerId;
     const brush = opts.brush();
     const pen = sampleOf(e);
+    const p = at(e);
     // Freeze the symmetry transforms for this stroke (Tile anchored to the start,
     // Radial/Mirror centred on the canvas) before any mark is drawn.
-    symmetry.beginStroke(e.offsetX, e.offsetY, layerManager.currentSize);
+    symmetry.beginStroke(p.x, p.y, layerManager.currentSize);
     // Buffer the continuous line (Round) so a faint stroke composites as one
     // uniform alpha instead of dotting at the sample joints. Must start before the
     // first segment is drawn. Skipped under symmetry so each copy keeps its own
@@ -44,8 +59,8 @@ export function bindDrawingInput(opts: {
     // pen modulates opacity (see BrushBase.bufferedStroke).
     buffered = brush.bufferedStroke(pen) && !symmetry.active();
     if (buffered) layerManager.beginStroke();
-    brush.strokeStart(e.offsetX, e.offsetY);
-    brush.stroke(e.offsetX, e.offsetY, true, pen);
+    brush.strokeStart(p.x, p.y);
+    brush.stroke(p.x, p.y, true, pen);
     // Signal AFTER the first mark is drawn so an armed GIF recorder's first
     // captured frame already includes it.
     opts.onStrokeStart?.();
@@ -65,9 +80,10 @@ export function bindDrawingInput(opts: {
     const frameCadence = brush.supportsConnecting();
     for (let i = 0; i < list.length; i++) {
       const ev = list[i];
+      const q = at(ev);
       brush.stroke(
-        ev.offsetX,
-        ev.offsetY,
+        q.x,
+        q.y,
         !frameCadence || i === list.length - 1,
         sampleOf(ev),
       );

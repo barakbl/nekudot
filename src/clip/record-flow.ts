@@ -23,17 +23,17 @@ export function notifyClipStrokeStart(): void {
 export function startClipRecording(opts: {
   manager: LayerManager;
   getBackgroundColor: () => string;
-  stage: HTMLElement;
+  container: HTMLElement;
 }): void {
   if (active) return;
   active = true;
 
   const pill = document.createElement("div");
   pill.className = "clip-rec-pill armed";
-  // The pill lives inside the stage, whose pointerdown starts a stroke and
-  // setPointerCapture()s the pointer. Keep the pill's pointer events off the
-  // drawing handler, AND make the pill draggable so you can move it clear of
-  // your work - drag the body to reposition; the Stop button still clicks.
+  // The pill lives in the viewport container (NOT the transformed stage) so it
+  // keeps a fixed screen size/position regardless of zoom/rotate. It's draggable
+  // so you can move it clear of your work - drag the body to reposition; the
+  // Stop button still clicks.
   let dragOffX = 0;
   let dragOffY = 0;
   let dragging = false;
@@ -42,7 +42,7 @@ export function startClipRecording(opts: {
     if (e.target instanceof HTMLElement && e.target.closest("button")) return;
     pill.setPointerCapture(e.pointerId);
     const pr = pill.getBoundingClientRect();
-    const sr = opts.stage.getBoundingClientRect();
+    const sr = opts.container.getBoundingClientRect();
     dragOffX = e.clientX - pr.left;
     dragOffY = e.clientY - pr.top;
     // switch from the bottom/centre anchor to absolute left/top within the stage
@@ -56,7 +56,7 @@ export function startClipRecording(opts: {
   pill.addEventListener("pointermove", (e) => {
     e.stopPropagation();
     if (!dragging) return;
-    const sr = opts.stage.getBoundingClientRect();
+    const sr = opts.container.getBoundingClientRect();
     const x = Math.min(Math.max(0, e.clientX - sr.left - dragOffX), Math.max(0, sr.width - pill.offsetWidth));
     const y = Math.min(Math.max(0, e.clientY - sr.top - dragOffY), Math.max(0, sr.height - pill.offsetHeight));
     pill.style.left = `${x}px`;
@@ -81,7 +81,7 @@ export function startClipRecording(opts: {
   stop.className = "clip-rec-stop";
   stop.textContent = "Cancel";
   pill.append(dot, label, stop);
-  opts.stage.appendChild(pill);
+  opts.container.appendChild(pill);
 
   let recorder: ClipRecorder | null = null;
   let timeTimer: number | null = null;

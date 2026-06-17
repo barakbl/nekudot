@@ -37,6 +37,8 @@ import {
 } from "./canvas-size";
 import { Overlay } from "./app/overlay";
 import { createMapHighlighter } from "./app/map-highlight";
+import { Viewport } from "./app/viewport";
+import { bindTouchGestures } from "./app/touch-gestures";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
@@ -55,9 +57,6 @@ const CANVAS_SIZE_KEY = "app.canvas.size";
 document.body.style.margin = "0";
 document.body.style.overflow = "hidden";
 document.body.style.minHeight = "100vh";
-document.body.style.display = "flex";
-document.body.style.alignItems = "center";
-document.body.style.justifyContent = "center";
 
 const dpr = window.devicePixelRatio || 1;
 const screenMax = (): CanvasSize => ({
@@ -73,17 +72,30 @@ const initialCanvasSize: CanvasSize = (() => {
     : fullScreenSize(max.width, max.height);
 })();
 
+// The viewport is a fixed full-window container; the camera (Viewport) pans /
+// zooms / rotates the stage inside it via a CSS transform. The stage sits at
+// 0,0 with transform-origin 0,0 so the camera matrix maps canvas px -> screen.
+const viewportEl = document.createElement("div");
+viewportEl.className = "viewport";
+viewportEl.style.position = "fixed";
+viewportEl.style.inset = "0";
+viewportEl.style.overflow = "hidden";
+viewportEl.style.touchAction = "none";
+document.body.appendChild(viewportEl);
+
 const stage = document.createElement("div");
 stage.className = "stage";
-stage.style.position = "relative";
+stage.style.position = "absolute";
+stage.style.left = "0";
+stage.style.top = "0";
+stage.style.transformOrigin = "0 0";
 // Own stacking context so the stage's high-z overlays (symmetry guides, the
 // map flash, the invisible-brush glow) stay above the drawing layers but BELOW
 // the body-level toolbar and panels — without it they'd paint over the UI.
 stage.style.zIndex = "0";
-stage.style.border = `${BORDER}px solid #333`;
 stage.style.touchAction = "none";
 stage.style.cursor = "crosshair"; // drawing-app style precise cursor
-document.body.appendChild(stage);
+viewportEl.appendChild(stage);
 
 // Apply saved theme before any UI renders
 const savedTheme = store.get<Theme>("app.theme") ?? "auto";
@@ -144,6 +156,57 @@ const applyStageBackground = () => {
 };
 applyStageBackground();
 
+// ---- viewport (pan / zoom / rotate camera over the stage) -------------------
+const viewport = new Viewport({
+  viewportEl,
+  stageEl: stage,
+  getCanvasSize: () => layerManager.currentSize,
+});
+viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
+// Issue #3: shrinking the window can leave the canvas bigger than the viewport
+// and unreachable - fit it back in (no-op while it still fits).
+window.addEventListener("resize", () => viewport.fitIfOverflowing());
+// Desktop wheel: Cmd/Ctrl + wheel zooms about the cursor; a plain wheel /
+// two-finger trackpad scroll pans (the page itself never scrolls).
+viewportEl.addEventListener(
+  "wheel",
+  (e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      viewport.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+    } else {
+      viewport.panBy(-e.deltaX, -e.deltaY);
+    }
+  },
+  { passive: false },
+);
+// Desktop pan: middle-mouse drag. Reaches here by bubbling up from the stage,
+// whose draw handler ignores any button other than 0, so it never draws.
+let panning = false;
+let panX = 0;
+let panY = 0;
+viewportEl.addEventListener("pointerdown", (e) => {
+  if (e.button !== 1) return;
+  e.preventDefault();
+  panning = true;
+  panX = e.clientX;
+  panY = e.clientY;
+  viewportEl.setPointerCapture(e.pointerId);
+});
+viewportEl.addEventListener("pointermove", (e) => {
+  if (!panning) return;
+  viewport.panBy(e.clientX - panX, e.clientY - panY);
+  panX = e.clientX;
+  panY = e.clientY;
+});
+const endPan = (e: PointerEvent) => {
+  if (!panning) return;
+  panning = false;
+  viewportEl.releasePointerCapture(e.pointerId);
+};
+viewportEl.addEventListener("pointerup", endPan);
+viewportEl.addEventListener("pointercancel", endPan);
+
 // "transparent" sentinel when the background is off, so previews/flatten skip
 // the fill. Also the background to flatten against for export/share (the
 // export path treats "transparent" as no fill, keeping the PNG's alpha).
@@ -159,7 +222,7 @@ const recordClip = () =>
   startClipRecording({
     manager: layerManager,
     getBackgroundColor: exportBackground,
-    stage,
+    container: viewportEl,
   });
 
 // ---- overlays ----------------------------------------------------------------
@@ -679,6 +742,20 @@ const menu = createMenu(
       </svg>`,
       onClick: () => sizePicker.open(),
     },
+    {
+      // Reset the camera to the normal view: no zoom, no rotation, canvas
+      // centred (or fit if it's bigger than the window). The one control for
+      // the pan/zoom/rotate camera - everything else is gestures/wheel.
+      label: "Reset view",
+      icon: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 4 H5 a1 1 0 0 0 -1 1 V9"/>
+        <path d="M15 4 h4 a1 1 0 0 1 1 1 V9"/>
+        <path d="M20 15 v4 a1 1 0 0 1 -1 1 h-4"/>
+        <path d="M9 20 H5 a1 1 0 0 1 -1 -1 v-4"/>
+        <rect x="9.5" y="9.5" width="5" height="5" rx="1"/>
+      </svg>`,
+      onClick: () => viewport.reset(),
+    },
   ],
   {
     main: {
@@ -834,12 +911,19 @@ attachToHeading(
 
 // ---- drawing input ----------------------------------------------------------------------
 
+// Two-finger pan/zoom/rotate. Declared first so the drawing input can ask
+// whether a gesture owns the touch; assigned just after (it needs to commit the
+// active stroke when a 2nd finger lands).
+let touchGestures: { active: () => boolean } | null = null;
+
 const drawingInput = bindDrawingInput({
   stage,
+  viewport,
   brush: () => brush,
   symmetry,
   layerManager,
   penEnabled: () => penEnabled,
+  gestureActive: () => touchGestures?.active() ?? false,
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
@@ -852,6 +936,14 @@ const drawingInput = bindDrawingInput({
     // persisted paint, so this is the only blob-encode pass per stroke.
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
   },
+});
+
+touchGestures = bindTouchGestures({
+  viewportEl,
+  viewport,
+  // A 2nd finger landing ends the 1-finger stroke (committed + undoable) so the
+  // gesture starts clean and the leftover finger doesn't keep drawing.
+  onGestureBegin: () => drawingInput.commitActiveStroke(),
 });
 
 // ---- durability on hide/close -----------------------------------------------------
