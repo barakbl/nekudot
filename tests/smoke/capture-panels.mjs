@@ -78,6 +78,11 @@ try {
   await key("l", "KeyL", 76);
   await shot(".layers-box:not(.symmetry-box)", "panel-layers.png");
   await key("l", "KeyL", 76);
+
+  // Application settings panel (global: theme / input / advanced).
+  await key(",", "Comma", 188);
+  await shot(".app-settings-box", "panel-app-settings.png");
+  await key(",", "Comma", 188);
 } finally {
   try { ws?.close(); } catch {}
   browser.kill("SIGKILL"); dev.kill("SIGKILL");

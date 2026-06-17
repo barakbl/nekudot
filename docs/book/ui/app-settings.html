@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Application settings - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Panels › Application settings</p>
+      <h1>Application settings <span class="tag">key ,</span></h1>
+      <p class="lead">App-wide settings in one place - theme, input and advanced toggles.</p>
+
+      <img class="book-shot" src="/book/img/panel-app-settings.png" alt="The Application settings panel: theme picker, Pen pressure switch, Pixel log switch" />
+
+      <h2>What it is</h2>
+      <p>
+        The global counterpart to the per-brush
+        <a href="/book/ui/settings.html">Brush settings</a> panel. Open it from the
+        toolbar <strong>Windows</strong> menu or press <span class="kbd">,</span>.
+        Theme and Pen pressure used to live in the toolbar's "…" menu and now live
+        here.
+      </p>
+
+      <h2>Settings</h2>
+      <dl class="settings">
+        <dt>Theme</dt>
+        <dd><strong>Auto</strong> follows your system, or pin <strong>Light</strong> / <strong>Dark</strong>.</dd>
+        <dt>Pen pressure</dt>
+        <dd>Use a stylus's pressure and tilt to shape the stroke (and show the Pen section in Brush settings). Off makes a pen draw like a mouse - see <a href="/book/pen.html">Pen &amp; pressure</a>.</dd>
+        <dt>Pixel log</dt>
+        <dd>Records every deposited point to an append-only log. <strong>Off by default</strong> and best left off - it is groundwork for future features, nothing uses it yet, and it only grows stored data.</dd>
+      </dl>
+
+      <div class="note">
+        These are application preferences, saved on your device. For settings that
+        belong to the active brush (size, opacity, connecting dials), use the
+        <a href="/book/ui/settings.html">Brush settings</a> panel instead.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

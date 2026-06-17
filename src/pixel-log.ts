@@ -48,6 +48,10 @@ export class PixelLog {
   // detached from the history queue and may resolve late — its stale rows
   // must not overwrite a swap that landed meanwhile.
   private superseded = false;
+  // Writing is gated by the "Pixel log" app setting (off by default - the log
+  // is for future features and otherwise just grows storage). When off, append()
+  // is a no-op so nothing accumulates or flushes.
+  private enabled = false;
   private store: PixelLogBackend | null;
 
   constructor(store?: PixelLogBackend) {
@@ -76,8 +80,14 @@ export class PixelLog {
     }
   }
 
+  // Enable/disable writing (the "Pixel log" app setting).
+  setEnabled(on: boolean): void {
+    this.enabled = on;
+  }
+
   // Construction is type-checked; validation happens on load and on write.
   append(entry: PixelLogEntry): void {
+    if (!this.enabled) return; // logging disabled (default) - drop the row
     this.entries.push(entry);
     if (this.entries.length > MAX_ENTRIES) {
       this.entries.splice(0, this.entries.length - MAX_ENTRIES);

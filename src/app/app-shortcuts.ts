@@ -12,6 +12,7 @@ export type ShortcutActions = {
   showSymmetry: () => void;
   showSettings: () => void;
   showConnecting: () => void;
+  showAppSettings: () => void;
   toggleCanvasMenu: () => void;
   showShortcuts: () => void;
   selectBrush: (name: string) => void;
@@ -90,6 +91,12 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       group: "Panels",
       description: "Toggle more menu",
       onPress: () => actions.toggleCanvasMenu(),
+    },
+    {
+      key: ",",
+      group: "Panels",
+      description: "Application settings",
+      onPress: () => actions.showAppSettings(),
     },
     {
       key: "r",

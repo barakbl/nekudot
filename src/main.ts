@@ -40,6 +40,7 @@ import { createMapHighlighter } from "./app/map-highlight";
 import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
+import { createAppSettingsBox } from "./app/app-settings-box";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
@@ -313,6 +314,11 @@ let currentArtStyle = store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
 // from the More menu; default on. When off, a stylus draws like a mouse (the
 // drawing input feeds neutral samples) and the Pen section is hidden.
 let penEnabled = store.get<boolean>("app.penEnabled") ?? true;
+
+// Pixel log writing (the "Pixel log" app setting). Off by default - it is for
+// future features and otherwise just grows storage (see pixel-log.ts).
+let pixelLogEnabled = store.get<boolean>("app.pixelLog") ?? false;
+pixelLog.setEnabled(pixelLogEnabled);
 
 // Registry groups → navbar combo option groups, flagging Custom rows (which get
 // a delete ×). Rebuilt whenever the custom set changes.
@@ -644,17 +650,6 @@ const applyTheme = (theme: Theme) => {
 };
 
 const canvasMenuOptions = {
-  initialTheme: savedTheme,
-  onThemeChange: (t: Theme) => {
-    applyTheme(t);
-    store.set("app.theme", t);
-  },
-  penEnabled,
-  onTogglePen: (on: boolean) => {
-    penEnabled = on;
-    store.set("app.penEnabled", on);
-    settingsPanel.render(brush); // show/hide the Pen section live
-  },
   onShareImage: shareImageFn,
   onExportImage: exportImageFn,
   onRecordClip: recordClip,
@@ -665,6 +660,34 @@ const canvasMenuOptions = {
   },
   onLoadArtwork: promptLoadArtwork,
 };
+
+// The global Application settings panel (theme / input / advanced) - the
+// app-wide counterpart to the per-brush settings panel. Theme + pen pressure
+// moved here from the More menu.
+const appSettingsBox = createAppSettingsBox({
+  theme: {
+    initial: savedTheme,
+    onChange: (t) => {
+      applyTheme(t);
+      store.set("app.theme", t);
+    },
+  },
+  penEnabled,
+  onTogglePen: (on) => {
+    penEnabled = on;
+    store.set("app.penEnabled", on);
+    settingsPanel.render(brush); // show/hide the Pen section live
+  },
+  pixelLog: pixelLogEnabled,
+  onTogglePixelLog: (on) => {
+    pixelLogEnabled = on;
+    store.set("app.pixelLog", on);
+    pixelLog.setEnabled(on);
+  },
+});
+document.body.appendChild(appSettingsBox.el);
+registerWindow(appSettingsBox.el);
+const showAppSettings = () => showWindow(appSettingsBox.el);
 
 // ---- brush selection + navbar -----------------------------------------------------
 
@@ -794,6 +817,7 @@ const menu = createMenu(
     { label: "Layers", shortcut: "l", open: showLayers },
     { label: "Maps", shortcut: "m", open: showMaps },
     { label: "Symmetry", shortcut: "y", open: showSymmetry },
+    { label: "Settings", shortcut: ",", open: showAppSettings },
     { label: "Shortcuts", shortcut: "/", open: () => showShortcuts() },
   ],
   {
@@ -868,6 +892,7 @@ const shortcuts = buildAppShortcuts({
     layersBox.el,
     symmetryBox.el,
     mapsBox.el,
+    appSettingsBox.el,
     shortcutsPanel.el,
   ],
   showMaps,
@@ -875,6 +900,7 @@ const shortcuts = buildAppShortcuts({
   showSymmetry,
   showSettings,
   showConnecting,
+  showAppSettings,
   toggleCanvasMenu: () => menu.toggleCanvasMenu(),
   showShortcuts: () => showShortcuts(),
   selectBrush,

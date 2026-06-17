@@ -73,10 +73,27 @@ describe("PixelLog.loadRawJSONL — validates untrusted .nekudot input", () => {
   });
 });
 
+describe("PixelLog enable gate (off by default)", () => {
+  it("drops appends until enabled, then records them", async () => {
+    const backend = new FakeBackend();
+    const log = new PixelLog(backend);
+    log.append(entry(1)); // disabled by default -> dropped
+    await log.flush();
+    expect(backend.appends.length).toBe(0);
+    expect(log.count).toBe(0);
+    log.setEnabled(true);
+    log.append(entry(2));
+    await log.flush();
+    expect(backend.appends.length).toBe(1);
+    expect(log.count).toBe(1);
+  });
+});
+
 describe("PixelLog flushing — appends only the new rows", () => {
   it("each flush writes exactly the rows appended since the last one", async () => {
     const backend = new FakeBackend();
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     log.append(entry(1));
     log.append(entry(2));
     await log.flush();
@@ -92,6 +109,7 @@ describe("PixelLog flushing — appends only the new rows", () => {
   it("flush with nothing pending writes nothing", async () => {
     const backend = new FakeBackend();
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     await log.flush();
     log.append(entry(1));
     await log.flush();
@@ -102,6 +120,7 @@ describe("PixelLog flushing — appends only the new rows", () => {
   it("a failed write is retried by the next flush, rows in order", async () => {
     const backend = new FakeBackend();
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     log.append(entry(1));
     log.append(entry(2));
     backend.failNextAppend = true;
@@ -116,6 +135,7 @@ describe("PixelLog flushing — appends only the new rows", () => {
     const backend = new FakeBackend();
     backend.preset = [entry(1), { garbage: true }, entry(2), 42];
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     await log.init();
     expect(log.count).toBe(2);
   });
@@ -123,6 +143,7 @@ describe("PixelLog flushing — appends only the new rows", () => {
   it("loadRawJSONL replaces the persisted log and supersedes pending rows", async () => {
     const backend = new FakeBackend();
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     log.append(entry(1)); // pending, never flushed
     await log.loadRawJSONL([row({ x: 7 })].join("\n"));
     expect(backend.replaced.length).toBe(1);
@@ -134,6 +155,7 @@ describe("PixelLog flushing — appends only the new rows", () => {
   it("clear wipes memory, pending and the store", async () => {
     const backend = new FakeBackend();
     const log = new PixelLog(backend);
+    log.setEnabled(true); // writing is off by default now
     log.append(entry(1));
     await log.clear();
     expect(log.count).toBe(0);
