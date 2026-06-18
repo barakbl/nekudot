@@ -6,7 +6,7 @@ import {
   type BrushSetting,
   type DashStyle,
 } from "../base";
-import { COLOR_SOURCE_LABELS, colorSourceIcons } from "../color-source";
+import { COLOR_SOURCE_LABELS, colorSourceIcons } from "./color-source";
 import type { Pixel } from "../neighbor-finder";
 
 type FillMode = "none" | "main" | "secondary";
