@@ -83,3 +83,37 @@ describe("connection colour source", () => {
     expect(distinct(c)).toBe(4);
   });
 });
+
+// Links (k-nearest): cap each point to its N nearest in-range neighbours.
+function linkedTo(links: number): { x: number; y: number }[] {
+  const drawn: { x: number; y: number }[] = [];
+  const host = {
+    findNeighbors: () => NEIGHBOURS,
+    findNeighborsInMap: () => NEIGHBOURS,
+    pixelCount: () => 100,
+    mapSize: () => 100,
+    activeConnectionLayerId: () => "L1",
+    drawConnectionToLayer: (_id: string, _p1: Pixel, p2: Pixel) => drawn.push({ x: p2.x, y: p2.y }),
+  } as never;
+  const c = new ConnectionBase({ host: () => host, store, random: () => 0.5 } as never, {
+    name: "t",
+    file: "classic.ts",
+    defaults: {},
+  });
+  c.applyFlat({ density: 100, radius: 120, alpha: 1, strands: 1, fade: 0, minDist: 0, color: "main", links });
+  c.connect({ id: 0, x: 50, y: 50 });
+  return drawn;
+}
+
+describe("connection Links (k-nearest)", () => {
+  it("0 connects to every in-range neighbour", () => {
+    expect(linkedTo(0).length).toBe(4); // distances 30/40/30/20
+  });
+  it("caps to the N nearest, dropping the far ones", () => {
+    expect(linkedTo(1)).toEqual([{ x: 50, y: 30 }]); // the nearest (dist 20)
+    const two = linkedTo(2);
+    expect(two.length).toBe(2);
+    expect(two).toContainEqual({ x: 50, y: 30 }); // nearest kept
+    expect(two).not.toContainEqual({ x: 50, y: 90 }); // farthest (40) dropped
+  });
+});

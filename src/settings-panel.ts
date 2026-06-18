@@ -32,6 +32,8 @@ const ART_STYLE_HELP: Record<string, string> = {
     "Chance each eligible neighbour gets a line. Higher = denser web (and heavier to draw).",
   radius:
     "How far around each point to look for neighbours to connect. Larger reaches across bigger gaps.",
+  links:
+    "Connect each point to only its nearest few neighbours instead of every one in Reach. 0 = all (the usual web); a small number trims the long crossing lines into a clean, even mesh - and makes the Gradient / Rainbow colours read clearly.",
   sampleSpacing:
     "Stipple: spacing the web samples the stroke at. 0 = smoothest web (weave through every point). Raise it to break the web into evenly spaced tufts/dots — an artistic effect, not needed to control darkness (build-up is already rate-independent).",
   fade:

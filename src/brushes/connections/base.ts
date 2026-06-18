@@ -76,6 +76,7 @@ export type ConnectionSpec = {
 export class ConnectionBase {
   // --- connecting state (one-to-one with the old BrushBase fields) -----------
   protected connectDensity = 10; // %
+  protected connectMaxLinks = 0; // 0 = connect to all in range; N = the N nearest
   protected searchRadius = 40;
   protected minConnectDist = 0;
   protected connectSampleSpacing = 0; // px between web samples; 0 = off (see sampleSpacing)
@@ -216,7 +217,20 @@ export class ConnectionBase {
     // effective radius so the falloff shape is preserved at light pressure.
     const radius = this.searchRadius * this.penRadiusFactor;
     const density = this.connectDensity * this.penDensityFactor;
-    const neighbors = this.searchNeighbors(current, radius);
+    let neighbors = this.searchNeighbors(current, radius);
+    // "Links": cap each point to its N nearest in-range neighbours (0 = all).
+    // Trims the long crossing lines for a clean local mesh. Default 0 leaves the
+    // order (and thus the seeded-RNG draw output) byte-for-byte unchanged.
+    if (this.connectMaxLinks > 0 && neighbors.length > this.connectMaxLinks) {
+      neighbors = [...neighbors]
+        .sort(
+          (a, b) =>
+            (a.x - current.x) ** 2 +
+            (a.y - current.y) ** 2 -
+            ((b.x - current.x) ** 2 + (b.y - current.y) ** 2),
+        )
+        .slice(0, this.connectMaxLinks);
+    }
     const minSq = this.minConnectDist * this.minConnectDist;
     const radiusSq = radius * radius;
     const fade = this.connectAlphaFade;
@@ -375,6 +389,7 @@ export class ConnectionBase {
       connect: this.connectType,
       dash: this.connectionDash,
       density: this.connectDensity,
+      links: this.connectMaxLinks,
       radius: this.searchRadius,
       minDist: this.minConnectDist,
       inset: this.connectInset,
@@ -442,6 +457,7 @@ export class ConnectionBase {
         if (typeof v === "number") this.connectionStyle = { ...this.connectionStyle, alpha: v };
         break;
       case "density": if (typeof v === "number") this.connectDensity = v; break;
+      case "links": if (typeof v === "number") this.connectMaxLinks = v; break;
       case "radius":
         if (typeof v === "number") {
           this.searchRadius = v;
@@ -503,7 +519,7 @@ export class ConnectionBase {
   // surfaces only when it's "in use" (its value differs from its neutral).
   // Subclasses may override to open more of their own.
   defaultOpenKeys(): readonly string[] {
-    return ["strands", "spread", "alpha", "density", "radius", "dash", "color"];
+    return ["strands", "spread", "alpha", "density", "radius", "links", "dash", "color"];
   }
 
   private num(
@@ -543,6 +559,7 @@ export class ConnectionBase {
     switch (key) {
       case "alpha": return this.connectionStyle.alpha ?? 0.2;
       case "density": return this.connectDensity;
+      case "links": return this.connectMaxLinks;
       case "radius": return this.searchRadius;
       case "minDist": return this.minConnectDist;
       case "sampleSpacing": return this.connectSampleSpacing;
@@ -614,6 +631,7 @@ export class ConnectionBase {
       this.num("alpha", "Opacity", 0, 1, 0.05, this.styleValue("alpha")),
       this.num("density", "Density", 0, 100, 1, this.connectDensity),
       this.num("radius", "Reach", 5, 200, 1, this.searchRadius),
+      this.num("links", "Links", 0, 20, 1, this.connectMaxLinks),
       this.num("sampleSpacing", "Stipple", 0, 20, 1, this.connectSampleSpacing),
       this.num("fade", "Fade", 0, 1, 0.05, this.connectAlphaFade),
       this.num("curl", "Curl", 0, 1, 0.05, this.connectCurl),
