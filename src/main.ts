@@ -34,6 +34,7 @@ import { registerWindow, showWindow } from "./window-stack";
 import {
   clampSize,
   fullScreenSize,
+  squareOfScreen,
   safeLoadSize,
   type CanvasSize,
 } from "./canvas-size";
@@ -48,6 +49,11 @@ import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
 import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
+import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
+import {
+  applyConnectionColor,
+  mandalaConnectionColor,
+} from "./onboarding/connection-color";
 
 const store = new LocalStorageStore();
 
@@ -174,7 +180,7 @@ const viewport = new Viewport({
 viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
 // Issue #3: shrinking the window can leave the canvas bigger than the viewport
 // and unreachable - fit it back in (no-op while it still fits).
-window.addEventListener("resize", () => viewport.fitIfOverflowing());
+window.addEventListener("resize", () => viewport.onResize());
 // Desktop wheel: Cmd/Ctrl + wheel zooms about the cursor; a plain wheel /
 // two-finger trackpad scroll pans (the page itself never scrolls).
 viewportEl.addEventListener(
@@ -565,11 +571,9 @@ loadFileInput.accept = ".nekudot,application/zip";
 loadFileInput.style.display = "none";
 document.body.appendChild(loadFileInput);
 
-loadFileInput.addEventListener("change", async () => {
-  const file = loadFileInput.files?.[0];
-  loadFileInput.value = ""; // allow re-picking the same file later
-  if (!file) return;
-
+// Parse + apply a .nekudot file onto the canvas (shared by the file picker and
+// the onboarding "open a saved piece" cards).
+const loadArtwork = async (file: File): Promise<void> => {
   const result = await loadArtworkFile(file);
   if (!result.ok) {
     showError(result.error);
@@ -592,6 +596,12 @@ loadFileInput.addEventListener("change", async () => {
   void history.clear();
   pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
   showChip("Artwork loaded");
+};
+
+loadFileInput.addEventListener("change", async () => {
+  const file = loadFileInput.files?.[0];
+  loadFileInput.value = ""; // allow re-picking the same file later
+  if (file) await loadArtwork(file);
 });
 
 const promptLoadArtwork = () => {
@@ -907,6 +917,99 @@ void presets.restore().then((loaded) => {
   if (loaded && hasConnection(currentArtStyle)) setArtStyle(currentArtStyle);
 });
 
+// ---- onboarding / start page --------------------------------------------------
+
+const ONBOARDED_KEY = "app.onboarded";
+const MANDALA_BG = "#0d0e12"; // deep, near-black canvas for the mandala start
+
+const onboarding = createOnboarding({
+  actions: {
+    // 1:1 dark canvas + radial symmetry, the connecting brush in a vivid colour,
+    // and the symmetry (mandala) panel open - the recommended first run.
+    startMandala: (color) => {
+      const max = screenMax();
+      const size = squareOfScreen(max.width, max.height);
+      layerManager.reset(size);
+      resizeOverlays(size);
+      resetArtState();
+      layerManager.setBackground({ color: MANDALA_BG, transparent: false });
+      applyStageBackground();
+      selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
+      menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
+      symmetry.setMode("radial");
+      const round = brushes["Round"];
+      if (round) applyConnectionColor(round, mandalaConnectionColor(color));
+      store.set(CANVAS_SIZE_KEY, size);
+      void history.clear();
+      pushUndo("Mandala");
+      showSymmetry(); // open the symmetry (mandala) panel
+    },
+    startBlank: (variant) => {
+      const max = screenMax();
+      const size =
+        variant === "square"
+          ? squareOfScreen(max.width, max.height)
+          : fullScreenSize(max.width, max.height);
+      layerManager.reset(size);
+      resizeOverlays(size);
+      resetArtState();
+      layerManager.setBackground({ color: "#ffffff", transparent: false });
+      applyStageBackground();
+      menu.setMainColor("#000000");
+      symmetry.setMode("none");
+      store.set(CANVAS_SIZE_KEY, size);
+      void history.clear();
+      pushUndo("New art");
+    },
+    loadArtworkFile: (file) => loadArtwork(file),
+  },
+  prefs: {
+    theme: {
+      initial: savedTheme,
+      onChange: (t) => {
+        applyTheme(t);
+        store.set("app.theme", t);
+      },
+    },
+    pen: {
+      initial: penEnabled,
+      onChange: (on) => {
+        penEnabled = on;
+        store.set("app.penEnabled", on);
+        settingsPanel.render(brush); // show/hide the Pen section live
+      },
+    },
+  },
+  onDismiss: () => store.set(ONBOARDED_KEY, true),
+});
+// Lives INSIDE the viewport so it replaces the canvas area (the toolbar/panels
+// stay above it), not the whole page.
+viewportEl.appendChild(onboarding.el);
+
+// First run (or right after a data reset): nothing is stored, so show the Start
+// page. An existing user with prior data is treated as already onboarded so we
+// never hide their canvas behind it.
+{
+  const onboarded = store.get<boolean>(ONBOARDED_KEY) === true;
+  const hasPriorUse =
+    store.get<unknown>("app.brush.selected") !== undefined ||
+    store.get<unknown>(CANVAS_SIZE_KEY) !== undefined;
+  if (shouldShowOnboarding({ onboarded, hasPriorUse })) onboarding.show();
+  else if (!onboarded && hasPriorUse) store.set(ONBOARDED_KEY, true);
+}
+// Opening the Start page mid-session is a deliberate "start over", so confirm
+// first (the first-run auto-show below calls onboarding.show() directly).
+const showStartPage = () => {
+  showConfirm({
+    title: "Start a new drawing?",
+    message:
+      "This opens the Start page to begin a fresh canvas. Picking an option there replaces your current drawing.",
+    confirmLabel: "Start page",
+    destructive: true,
+    onConfirm: () => onboarding.show(),
+  });
+};
+
 // ---- panels visibility + shortcuts --------------------------------------------------
 
 const shortcuts = buildAppShortcuts({
@@ -929,6 +1032,7 @@ const shortcuts = buildAppShortcuts({
   showAppSettings,
   toggleCanvasMenu: () => menu.toggleCanvasMenu(),
   showShortcuts: () => showShortcuts(),
+  showStartPage,
   selectBrush,
   undo: doUndo,
   redo: doRedo,

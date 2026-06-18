@@ -15,6 +15,7 @@ export type ShortcutActions = {
   showAppSettings: () => void;
   toggleCanvasMenu: () => void;
   showShortcuts: () => void;
+  showStartPage: () => void; // reopen the onboarding / Start page
   selectBrush: (name: string) => void;
   undo: () => void;
   redo: () => void;
@@ -109,6 +110,12 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       group: "Help",
       description: "Show/hide shortcuts",
       onPress: () => actions.showShortcuts(),
+    },
+    {
+      key: "g",
+      group: "Help",
+      description: "Start page (new canvas, mandala, open a saved piece)",
+      onPress: () => actions.showStartPage(),
     },
     {
       key: "?",

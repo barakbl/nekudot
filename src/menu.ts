@@ -101,6 +101,7 @@ export function createMenu<T extends string>(
   setConnectingVisible: (v: boolean) => void;
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
   setSymmetryValue: (v: string) => void;
+  setMainColor: (v: string) => void;
   refreshHistoryState: () => void;
   refreshMapsPill: () => void;
   toggleCanvasMenu: () => void;
@@ -122,7 +123,8 @@ export function createMenu<T extends string>(
     refreshMapsPill = pill.refresh;
     bar.appendChild(pill.el);
   }
-  bar.appendChild(makeColorSwatch(colors));
+  const swatch = makeColorSwatch(colors);
+  bar.appendChild(swatch.el);
   bar.appendChild(makeDivider());
   const flatOptions = flattenMenuEntries(options);
   const { pill, setValue } = makeBrushPill(
@@ -189,6 +191,7 @@ export function createMenu<T extends string>(
     setConnectingVisible,
     setConnectingOptions,
     setSymmetryValue,
+    setMainColor: swatch.setMain,
     refreshHistoryState,
     refreshMapsPill,
     toggleCanvasMenu,
@@ -587,7 +590,9 @@ function makeDragDots(bar: HTMLElement): HTMLElement {
   return el;
 }
 
-function makeColorSwatch(colors?: ColorControl): HTMLElement {
+function makeColorSwatch(
+  colors?: ColorControl,
+): { el: HTMLElement; setMain: (v: string) => void } {
   const wrap = document.createElement("span");
   wrap.className = "swatch-wrap";
   wrap.title = "Right-click to swap colors";
@@ -606,7 +611,9 @@ function makeColorSwatch(colors?: ColorControl): HTMLElement {
 
   wrap.appendChild(back.el);
   wrap.appendChild(front.el);
-  return wrap;
+  // setMain updates the swatch AND fires the main-color onChange (so callers like
+  // the Mandala start option can switch to a light stroke on a dark canvas).
+  return { el: wrap, setMain: front.setValue };
 }
 
 type ColorSlotHandle = {

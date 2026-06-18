@@ -17,6 +17,10 @@ export const MAX_SCALE = 8;
 
 export class Viewport {
   private m = new DOMMatrix(); // canvas -> screen
+  // Last viewport size we centred/laid out against, so a window resize can shift
+  // the view by half the size delta (keeping a centred canvas centred).
+  private viewW = 0;
+  private viewH = 0;
 
   constructor(private opts: ViewportOpts) {}
 
@@ -84,6 +88,8 @@ export class Viewport {
   // Centre the canvas and scale it to fill the viewport (no rotation).
   fit(margin = 24): void {
     const r = this.opts.viewportEl.getBoundingClientRect();
+    this.viewW = r.width;
+    this.viewH = r.height;
     const cs = this.opts.getCanvasSize();
     const raw = Math.min(
       (r.width - margin * 2) / cs.width,
@@ -99,6 +105,8 @@ export class Viewport {
   // 100% and centred (or fit when it doesn't fit at 100%).
   reset(): void {
     const r = this.opts.viewportEl.getBoundingClientRect();
+    this.viewW = r.width;
+    this.viewH = r.height;
     const cs = this.opts.getCanvasSize();
     if (cs.width <= r.width && cs.height <= r.height) {
       this.m = new DOMMatrix().translate(
@@ -109,6 +117,24 @@ export class Viewport {
     } else {
       this.fit(0);
     }
+  }
+
+  // Window resized: shift the view by half the size delta so a centred canvas
+  // stays centred (and a panned/zoomed one keeps the same point under the
+  // viewport centre, instead of drifting toward a corner), then refit if the
+  // canvas now overflows. Replaces a bare fitIfOverflowing(), which left the
+  // canvas pinned to its old offset whenever it still fit.
+  onResize(): void {
+    const r = this.opts.viewportEl.getBoundingClientRect();
+    const dw = r.width - this.viewW;
+    const dh = r.height - this.viewH;
+    this.viewW = r.width;
+    this.viewH = r.height;
+    if (dw !== 0 || dh !== 0) {
+      this.m = new DOMMatrix().translate(dw / 2, dh / 2).multiply(this.m);
+      this.apply();
+    }
+    this.fitIfOverflowing();
   }
 
   // Issue #3: when the canvas (at the current scale) overflows the viewport -
