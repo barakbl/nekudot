@@ -13,8 +13,10 @@ import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
+import { saveCustomPresets } from "./brushes/connections/custom-store";
+import { resetToDefault as runReset } from "./app/reset";
 import { DEFAULT_ART_STYLE } from "./brushes/round";
-import { showConfirm, showError } from "./confirm";
+import { showConfirm, showError, showTypedConfirm } from "./confirm";
 import { loadArtworkFile, applyArtwork } from "./load-artwork";
 import { LocalStorageStore } from "./store/local_storage";
 import type { BrushBase } from "./base";
@@ -684,7 +686,31 @@ const appSettingsBox = createAppSettingsBox({
     store.set("app.pixelLog", on);
     pixelLog.setEnabled(on);
   },
+  onResetToDefault: () => {
+    showTypedConfirm({
+      title: "Reset to default?",
+      message:
+        'This permanently deletes all settings, layers and saved artwork on this device, then reloads the app. Type "yes" to confirm.',
+      requireText: "yes",
+      placeholder: "Type yes",
+      confirmLabel: "Reset everything",
+      onConfirm: () => void resetToDefault(),
+    });
+  },
 });
+
+// Wipe every local data store + settings, then reload to the fresh (onboarding)
+// app. See src/app/reset.ts for the orchestration (and its tests).
+const resetToDefault = () =>
+  runReset({
+    clearers: [
+      () => history.clear(), // undo stack + paint snapshot (what boot restores)
+      () => pixelLog.clear(),
+      () => saveCustomPresets([]), // custom connection presets
+    ],
+    storage: localStorage,
+    reload: () => location.reload(),
+  });
 document.body.appendChild(appSettingsBox.el);
 registerWindow(appSettingsBox.el);
 const showAppSettings = () => showWindow(appSettingsBox.el);

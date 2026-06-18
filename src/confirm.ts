@@ -232,6 +232,109 @@ export function showChecklist(opts: ChecklistOptions): void {
   document.addEventListener("keydown", onKey);
 }
 
+export type TypedConfirmOptions = {
+  title?: string;
+  message: string;
+  // The user must type this (case-insensitive, trimmed) to enable Confirm, so a
+  // stray Enter/click can't trigger an irreversible action.
+  requireText: string;
+  placeholder?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel?: () => void;
+};
+
+// The gate for showTypedConfirm: does the typed value match the required word?
+// Case-insensitive and trimmed, so "Yes" / " yes " all pass for requireText
+// "yes". Exported so the gate semantics can be unit-tested without a DOM.
+export function matchesRequiredText(value: string, required: string): boolean {
+  return value.trim().toLowerCase() === required.trim().toLowerCase();
+}
+
+// A destructive confirm gated behind typing a specific word (e.g. "yes"). The
+// Confirm button stays disabled until the input matches requireText.
+export function showTypedConfirm(opts: TypedConfirmOptions): void {
+  const backdrop = document.createElement("div");
+  backdrop.className = "confirm-modal app-modal";
+  const card = document.createElement("div");
+  card.className = "confirm-card";
+
+  const header = document.createElement("div");
+  header.className = "confirm-header";
+  const icon = document.createElement("span");
+  icon.className = "confirm-icon";
+  icon.innerHTML =
+    '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
+    '<path d="M12 3 L22 20 L2 20 Z" fill="#d9534f"/>' +
+    '<rect x="11" y="9" width="2" height="6" fill="#fff" rx="0.5"/>' +
+    '<circle cx="12" cy="17.5" r="1.1" fill="#fff"/>' +
+    "</svg>";
+  header.appendChild(icon);
+  if (opts.title) {
+    const h = document.createElement("h3");
+    h.textContent = opts.title;
+    header.appendChild(h);
+  }
+  card.appendChild(header);
+
+  const msg = document.createElement("p");
+  msg.textContent = opts.message;
+  card.appendChild(msg);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "confirm-input";
+  input.autocapitalize = "off";
+  input.autocomplete = "off";
+  if (opts.placeholder) input.placeholder = opts.placeholder;
+  card.appendChild(input);
+
+  const actions = document.createElement("div");
+  actions.className = "confirm-actions";
+  const cancel = document.createElement("button");
+  cancel.className = "confirm-btn confirm-btn-cancel";
+  cancel.textContent = opts.cancelLabel ?? "Cancel";
+  const confirm = document.createElement("button");
+  confirm.className = "confirm-btn confirm-btn-destructive";
+  confirm.textContent = opts.confirmLabel ?? "Confirm";
+  confirm.disabled = true;
+  actions.append(cancel, confirm);
+  card.appendChild(actions);
+  backdrop.appendChild(card);
+  document.body.appendChild(backdrop);
+
+  const matches = () => matchesRequiredText(input.value, opts.requireText);
+  const sync = () => {
+    confirm.disabled = !matches();
+  };
+  input.addEventListener("input", sync);
+
+  const close = (then?: () => void) => {
+    document.removeEventListener("keydown", onKey);
+    backdrop.remove();
+    then?.();
+  };
+  const submit = () => {
+    if (!matches()) {
+      input.focus();
+      return;
+    }
+    close(opts.onConfirm);
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === "Escape") close(opts.onCancel);
+    else if (e.key === "Enter") submit();
+  };
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", submit);
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) close(opts.onCancel);
+  });
+  document.addEventListener("keydown", onKey);
+  input.focus();
+}
+
 export function showConfirm(opts: ConfirmOptions): void {
   const backdrop = document.createElement("div");
   backdrop.className = "confirm-modal app-modal";

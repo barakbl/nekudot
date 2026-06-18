@@ -19,6 +19,8 @@ export function createAppSettingsBox(opts: {
   onTogglePen: (on: boolean) => void;
   pixelLog: boolean;
   onTogglePixelLog: (on: boolean) => void;
+  // Wipe all local data and reload to a fresh app (opens its own confirm modal).
+  onResetToDefault: () => void;
 }): AppSettingsBox {
   const panel = document.createElement("div");
   panel.className = "layers-box app-settings-box";
@@ -81,6 +83,15 @@ export function createAppSettingsBox(opts: {
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
   const pixelLog = makeToggle(opts.pixelLog, opts.onTogglePixelLog);
 
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "appset-reset-btn";
+  resetBtn.textContent = "Reset to default";
+  resetBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    opts.onResetToDefault();
+  });
+
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -95,6 +106,12 @@ export function createAppSettingsBox(opts: {
       "Pixel log",
       pixelLog.el,
       "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
+    ),
+    sub("Reset"),
+    row(
+      "Erase all data",
+      resetBtn,
+      "Permanently deletes every setting, layer and saved artwork on this device, then reloads the app fresh. You'll have to confirm by typing \"yes\".",
     ),
   );
 

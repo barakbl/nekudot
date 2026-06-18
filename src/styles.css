@@ -1414,6 +1414,22 @@ body {
   color: var(--accent-text);
   border-color: var(--accent);
 }
+/* Destructive "Reset to default" button in App settings. */
+.appset-reset-btn {
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #d9534f;
+  background: transparent;
+  color: #d9534f;
+  white-space: nowrap;
+}
+.appset-reset-btn:hover {
+  background: #d9534f;
+  color: #fff;
+}
 .appset-seg-ic {
   font-size: 13px;
   line-height: 1;
@@ -1987,6 +2003,11 @@ body.help-mode .help-icon {
 .confirm-btn-primary:hover,
 .confirm-btn-destructive:hover {
   filter: brightness(1.1);
+}
+.confirm-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
 }
 
 /* Floating action bar for the paste-image placement flow (Place / Cancel). */
