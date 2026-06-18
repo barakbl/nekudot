@@ -41,6 +41,8 @@
     circles: "◯",
     marker:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z"/><path d="M13 6 L18 11"/><path d="M4 13 L10 19"/></svg>',
+    spray:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9 h6 v9 a1.5 1.5 0 0 1 -1.5 1.5 h-3 A1.5 1.5 0 0 1 4 18 Z"/><path d="M13.5 6 h.01 M17.5 8.5 h.01 M14.5 11 h.01 M19 12.5 h.01 M15 15 h.01 M20 6.5 h.01"/></svg>',
     symmetry:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg>',
     invisible:
@@ -98,6 +100,7 @@
             { label: "Squares", href: "/book/brushes/squares.html", icon: I.squares },
             { label: "Circles", href: "/book/brushes/circles.html", icon: I.circles },
             { label: "Marker", href: "/book/brushes/marker.html", icon: I.marker },
+            { label: "Spray", href: "/book/brushes/spray.html", icon: I.spray },
           ],
         },
         { label: "Symmetry", href: "/book/symmetry.html", icon: I.symmetry },

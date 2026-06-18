@@ -2,6 +2,7 @@
   { "name": "Round", "file": "round.ts", "shortcut": "1", "connections": true, "info": "The heart of the app — a round line plus the connecting web." },
   { "name": "Squares", "file": "squares.ts", "shortcut": "2", "menuGroup": "Shapes strokes", "info": "Speed-sized squares stamped along the stroke." },
   { "name": "Circles", "file": "circles.ts", "shortcut": "3", "menuGroup": "Shapes strokes", "info": "Speed-sized circles stamped along the stroke." },
+  { "name": "Spray", "file": "spray.ts", "shortcut": "4", "menuGroup": "Other", "info": "Airbrush: scatters specks within a radius, building density as you dwell. Feeds the memory map (throttled) so connecting brushes can web over it." },
   { "name": "Marker", "file": "marker.ts", "shortcut": "8", "menuGroup": "Other", "info": "A chisel-tip marker stroke." },
   { "name": "Invisible", "file": "invisible.ts", "shortcut": "9", "menuGroup": "Other", "info": "Deposits points (with a fading glow) without painting the layer." },
   { "name": "Eraser", "file": "eraser.ts", "menuGroup": "Other", "connections": true, "info": "Rubs out the layer with a round stroke. Can also erase connections — turn on a connect mode in Connecting settings (defaults to no connect)." }

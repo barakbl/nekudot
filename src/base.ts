@@ -445,7 +445,7 @@ export abstract class BrushBase {
   // Store the pixel into the configured trail map and append its provenance row.
   // The trail-map routing is the connection's job (selected / a pinned map / no
   // trail); a non-connecting brush just deposits into the selected map.
-  private depositPixel(x: number, y: number): Pixel {
+  protected depositPixel(x: number, y: number): Pixel {
     let px: Pixel;
     let mapId: string | undefined;
     let log = true;

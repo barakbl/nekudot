@@ -20,8 +20,10 @@ import {
 type PersistFn = (s: BrushSetting, value: unknown) => void;
 const NO_PERSIST: PersistFn = () => {};
 
-// Short what/why help for each art-style option, keyed by setting key.
-const ART_STYLE_HELP: Record<string, string> = {
+// Short what/why help for a setting, keyed by setting key - covers the
+// connecting dials and the brush dials. makeRow attaches a "?" bubble for any
+// key found here, in either tab.
+const SETTING_HELP: Record<string, string> = {
   strands:
     "How bold the mark is — each connection is drawn as this many thin 1px hairs. More hairs = heavier, but it's never one solid line.",
   spread:
@@ -34,6 +36,13 @@ const ART_STYLE_HELP: Record<string, string> = {
     "How far around each point to look for neighbours to connect. Larger reaches across bigger gaps.",
   links:
     "Connect each point to only its nearest few neighbours instead of every one in Reach. 0 = all (the usual web); a small number trims the long crossing lines into a clean, even mesh - and makes the Gradient / Rainbow colours read clearly.",
+  // Spray (airbrush) dials.
+  sprayRadius:
+    "How wide the spray scatters around the pointer. Small = a tight stipple; large = a soft cloud.",
+  sprayFlow:
+    "How many specks land each frame. Higher = denser, faster build-up (and heavier to draw).",
+  sprayDot:
+    "Size of each speck. Tiny = fine grain; larger = a coarse, splattery spray.",
   sampleSpacing:
     "Stipple: spacing the web samples the stroke at. 0 = smoothest web (weave through every point). Raise it to break the web into evenly spaced tufts/dots — an artistic effect, not needed to control darkness (build-up is already rate-independent).",
   fade:
@@ -432,19 +441,10 @@ function buildRoutingGroup(
   return box;
 }
 
-// One art-style row + its "?" help, kept together on the left.
+// A connecting art-style row. Help is attached by makeRow now (keyed by setting
+// key), so this is just makeRow.
 function styleRow(s: BrushSetting, persist: PersistFn): HTMLElement {
-  const row = makeRow(s, persist);
-  const help = ART_STYLE_HELP[s.key];
-  const label = row.querySelector("label");
-  if (help && label) {
-    const wrap = document.createElement("span");
-    wrap.className = "settings-label-help";
-    label.replaceWith(wrap);
-    wrap.appendChild(label);
-    attachHelp(label, help);
-  }
-  return row;
+  return makeRow(s, persist);
 }
 
 // Art-style group: how the connection lines look. The preset quick-pick lives
@@ -553,6 +553,16 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
   const label = document.createElement("label");
   label.textContent = s.label;
   row.appendChild(label);
+
+  // Attach the "?" help bubble (help mode) for any setting with a help entry.
+  const help = SETTING_HELP[s.key];
+  if (help) {
+    const wrap = document.createElement("span");
+    wrap.className = "settings-label-help";
+    label.replaceWith(wrap);
+    wrap.appendChild(label);
+    attachHelp(label, help);
+  }
 
   if (s.kind === "number") {
     const wrap = document.createElement("div");

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spray - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Brushes › Spray</p>
+      <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9 h6 v9 a1.5 1.5 0 0 1 -1.5 1.5 h-3 A1.5 1.5 0 0 1 4 18 Z"/><path d="M13.5 6 h.01 M17.5 8.5 h.01 M14.5 11 h.01 M19 12.5 h.01 M15 15 h.01 M20 6.5 h.01"/></svg></span>Spray <span class="tag">key 4</span></h1>
+      <p class="lead">An airbrush - soft specks that build up the longer you dwell.</p>
+
+      <h2>What it does</h2>
+      <p>
+        Spray scatters specks within a radius around the pointer. The longer you
+        <strong>hold still, the denser it builds</strong> (it keeps spraying while
+        the pointer is down), and moving spreads a thinner trail. Each speck
+        composites on its own, so overlapping specks stack into soft tone - the
+        classic airbrush feel.
+      </p>
+      <p>
+        It also quietly <strong>feeds the drawing's <a href="/book/map.html">memory</a></strong>:
+        it drops points into the map as you spray (throttled, so it won't flood),
+        which means you can spray a cloud and then switch to
+        <a href="/book/brushes/classic-round.html">Round</a> to weave a
+        <a href="/book/connections.html">web</a> over it.
+      </p>
+
+      <h2>How to use</h2>
+      <ul>
+        <li>Press <span class="kbd">4</span> or pick it from the brush menu.</li>
+        <li><strong>Dwell</strong> to build density; drag to lay a softer trail.</li>
+        <li>Selecting Spray drops the <em>Opacity</em> low (~20%) so it builds gently - raise it for a harder edge.</li>
+        <li>With a stylus, <strong>pressure</strong> drives density and spread (heavier = more, wider).</li>
+      </ul>
+
+      <div class="tip">
+        <span class="tip-label">Try this</span>
+        Spray a soft cloud, then switch to <strong>Round</strong> and scribble over
+        it - the web pulls toward the sprayed points. Pair that with a low
+        <a href="/book/connections.html#links">Links</a> and the
+        <a href="/book/connections.html#colour">Rainbow</a> colour for an
+        iridescent, nebula-like mesh.
+      </div>
+
+      <h2>Settings</h2>
+      <dl class="settings">
+        <dt>Radius</dt>
+        <dd>How wide the spray scatters. Small = a tight stipple; large = a soft cloud.</dd>
+        <dt>Flow</dt>
+        <dd>How many specks land each frame. Higher = denser, faster build-up.</dd>
+        <dt>Dot size</dt>
+        <dd>Size of each speck. Tiny = fine grain; larger = a coarse, splattery spray.</dd>
+        <dt>Opacity</dt>
+        <dd>The global <em>Opacity</em> slider sets how strongly each speck marks - low values are what make the build-up soft.</dd>
+        <dt>Pen</dt>
+        <dd>With a stylus, pressure scales the density and spread (respects the pen toggle in <a href="/book/ui/app-settings.html">Application settings</a>).</dd>
+      </dl>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>
