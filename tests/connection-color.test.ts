@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ConnectionBase } from "../src/brushes/connections/base";
-import { mixHex, hueHex } from "../src/brushes/color-source";
+import { mixHex, hueHex, connectionLineColor } from "../src/brushes/color-source";
 import type { Pixel } from "../src/neighbor-finder";
 
 // The gradient / palette connection colour source: per-line colour from the
@@ -104,6 +104,28 @@ function linkedTo(links: number): { x: number; y: number }[] {
   c.connect({ id: 0, x: 50, y: 50 });
   return drawn;
 }
+
+describe("connectionLineColor (palettes + complement)", () => {
+  const hex = /^#[0-9a-f]{6}$/;
+  it("main -> undefined; secondary -> the secondary hex", () => {
+    expect(connectionLineColor("main", 0.3, "#111111", "#eeeeee")).toBeUndefined();
+    expect(connectionLineColor("secondary", 0.3, "#111111", "#eeeeee")).toBe("#eeeeee");
+  });
+  it("a curated palette gives distinct valid colours across the circle", () => {
+    const cs = [0, 0.25, 0.5, 0.75].map((t) => connectionLineColor("sunset", t, "#000000", "#ffffff"));
+    expect(cs.every((c) => hex.test(c ?? ""))).toBe(true);
+    expect(new Set(cs).size).toBeGreaterThan(2);
+  });
+  it("complement runs Primary <-> its opposite hue", () => {
+    expect(connectionLineColor("complement", 0, "#ff0000", "#000000")).toBe("#ff0000"); // t=0 -> Primary
+    const opp = connectionLineColor("complement", 0.5, "#ff0000", "#000000");
+    expect(hex.test(opp ?? "")).toBe(true);
+    expect(opp).not.toBe("#ff0000"); // the opposite hue
+  });
+  it("an unknown source falls back to the Primary strokeStyle (undefined)", () => {
+    expect(connectionLineColor("bogus", 0.3, "#111111", "#eeeeee")).toBeUndefined();
+  });
+});
 
 describe("connection Links (k-nearest)", () => {
   it("0 connects to every in-range neighbour", () => {

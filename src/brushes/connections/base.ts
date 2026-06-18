@@ -20,9 +20,12 @@ import {
   type ConnectingFlat,
 } from "../../connecting-types";
 import type { BrushSetting } from "../../base";
-import { COLOR_SOURCE_LABELS, colorSourceIcons, mixHex, hueHex } from "../color-source";
-
-type ColorSource = "main" | "secondary" | "gradient" | "rainbow";
+import {
+  COLOR_SOURCE_LABELS,
+  colorSourceIcons,
+  connectionLineColor,
+  CONNECTION_COLOR_OPTIONS,
+} from "../color-source";
 
 // Cap how many hairs a single connection fans into (perf guard).
 const MAX_CONNECT_STRANDS = 12;
@@ -83,7 +86,7 @@ export class ConnectionBase {
   protected connectionStyle: LineStyle = { alpha: 0.2, width: 1 };
   protected connectType: LineConnectType = "quadraticCurve";
   protected connectionDash: DashStyle = "solid";
-  protected connectionColorSource: ColorSource = "main";
+  protected connectionColorSource = "main"; // one of CONNECTION_COLOR_OPTIONS
   protected connectInset = 0;
   protected connectAlphaFade = 0;
   protected connectStrands = 1;
@@ -364,17 +367,18 @@ export class ConnectionBase {
     return this.deps.store?.get<string>("app.color.secondary") ?? "#888888";
   }
 
-  // The colour for one web line. main -> undefined (the renderer uses the
-  // Primary strokeStyle); secondary -> the secondary hex; gradient/rainbow ->
-  // computed per line from its angle (0..1 around the circle).
+  // The colour for one web line, by the line's angle (0..1 around the circle).
+  // main -> undefined (the renderer uses the Primary strokeStyle); everything
+  // else is resolved in color-source (gradient/rainbow/complement/palettes).
   private lineColor(dx: number, dy: number): string | undefined {
-    const src = this.connectionColorSource;
-    if (src === "main") return undefined;
-    if (src === "secondary") return this.secondaryColor();
-    const t = Math.atan2(dy, dx) / (2 * Math.PI) + 0.5; // 0..1 around the circle
-    return src === "rainbow"
-      ? hueHex(t * 360)
-      : mixHex(this.primaryColor(), this.secondaryColor(), t);
+    if (this.connectionColorSource === "main") return undefined;
+    const t = Math.atan2(dy, dx) / (2 * Math.PI) + 0.5;
+    return connectionLineColor(
+      this.connectionColorSource,
+      t,
+      this.primaryColor(),
+      this.secondaryColor(),
+    );
   }
 
   // --- presets / flat application --------------------------------------------
@@ -484,9 +488,10 @@ export class ConnectionBase {
       case "connect": if (typeof v === "string") this.connectType = v as LineConnectType; break;
       case "dash": if (typeof v === "string") this.connectionDash = v as DashStyle; break;
       case "color":
-        if (v === "secondary" || v === "gradient" || v === "rainbow")
-          this.connectionColorSource = v;
-        else this.connectionColorSource = "main";
+        this.connectionColorSource =
+          typeof v === "string" && (CONNECTION_COLOR_OPTIONS as readonly string[]).includes(v)
+            ? v
+            : "main";
         break;
       case "connecting_from_map":
         if (typeof v === "string") this.connectFromMap = decodeConnectMap(v);
@@ -672,7 +677,7 @@ export class ConnectionBase {
         key: "color",
         label: "Color",
         section: STYLE_SECTION,
-        options: ["main", "secondary", "gradient", "rainbow"] as const,
+        options: CONNECTION_COLOR_OPTIONS,
         optionLabels: COLOR_SOURCE_LABELS,
         icons: colorSourceIcons(this.deps.store),
         value: this.connectionColorSource,

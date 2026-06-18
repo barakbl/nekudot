@@ -77,7 +77,7 @@ const SETTING_HELP: Record<string, string> = {
     "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
   dash: "Solid, dashed, or dotted connection lines.",
   color:
-    "Draw connections in the primary or secondary color from the toolbar.",
+    "How the web is coloured. Primary/Secondary use your toolbar colours; Gradient blends Primary to Secondary; Complement pairs Primary with its opposite hue; Rainbow and the palettes (Sunset/Ocean/Neon/Fire) cycle the spectrum. Everything past Secondary colours each line by its angle.",
 };
 
 // Per-preset slider visibility. The art-style group shows the dials a preset
