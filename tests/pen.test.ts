@@ -161,6 +161,26 @@ describe("PenSmoother", () => {
     heavy.smooth(pen(1), 0.05);
     expect(heavy.smooth(pen(0), 0.05).pressure).toBeCloseTo(0.95); // barely moves
   });
+
+  it("smooths the nib direction on the circle, easing between leans", () => {
+    const sm = new PenSmoother();
+    const tilted = (azimuth: number) => pen(1, { hasTilt: true, tilt: 0.5, azimuth });
+    expect(sm.smooth(tilted(0.4)).azimuth).toBeCloseTo(0.4); // first sample = raw
+    const eased = sm.smooth(tilted(1.0), 0.5).azimuth; // half-step toward 1.0
+    expect(eased).toBeGreaterThan(0.4);
+    expect(eased).toBeLessThan(1.0);
+  });
+
+  it("a lean crossing over does not flip the nib by ~180° (mod-π)", () => {
+    const sm = new PenSmoother();
+    const tilted = (azimuth: number) => pen(1, { hasTilt: true, tilt: 0.5, azimuth });
+    // Two leans a hair either side of vertical read as nearly opposite raw
+    // azimuths but are the same nib edge — the smoothed value must not swing ~π.
+    const a = sm.smooth(tilted(1.55)).azimuth;
+    sm.reset();
+    const b = sm.smooth(tilted(1.55 - Math.PI)).azimuth;
+    expect(Math.abs(a - b)).toBeLessThan(0.01);
+  });
 });
 
 describe("Round brush modulation", () => {
@@ -221,15 +241,21 @@ describe("Round brush modulation", () => {
 });
 
 describe("Marker chisel angle", () => {
-  it("follows the pen's azimuth when tilted, falls back when not", () => {
+  it("follows the pen's azimuth when tilted, holding briefly through vertical", () => {
     const { renderer, chisels } = makeRecorder();
     const marker = new MarkerBrush(createBareHost(renderer, makeFinder()));
     marker.strokeStart(0, 0);
     marker.stroke(5, 0, true, pen(1, { hasTilt: true, tilt: 0.5, azimuth: 1.2 }));
     expect(chisels.at(-1)?.angle).toBeCloseTo(1.2);
-    marker.stroke(10, 0, true, pen(1)); // vertical pen → no usable direction
+    // A brief pass through vertical holds the last good nib direction
+    // (hysteresis) rather than snapping to the fixed angle.
+    marker.stroke(10, 0, true, pen(1));
+    expect(chisels.at(-1)?.angle).toBeCloseTo(1.2);
+    // Held only briefly: sustained vertical releases to the fixed nib angle.
+    for (let i = 0; i < 20; i++) marker.stroke(11 + i, 0, true, pen(1));
     expect(chisels.at(-1)?.angle).toBeCloseTo(CHISEL_ANGLE);
-    marker.stroke(15, 0); // mouse
+    // A mouse sample resets the pen state → falls back to the fixed nib angle.
+    marker.stroke(40, 0);
     expect(chisels.at(-1)?.angle).toBeCloseTo(CHISEL_ANGLE);
   });
 

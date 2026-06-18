@@ -28,6 +28,7 @@ import {
   DIAL_FLOOR,
   type PenSample,
 } from "./pen";
+import { Streamliner } from "./brushes/streamline";
 
 // Re-exported so brushes can keep importing dash helpers from "./base".
 export { DASH_STYLES, DASH_PATTERNS, DASH_ICONS };
@@ -166,6 +167,18 @@ export abstract class BrushBase {
   private penSmoother = new PenSmoother();
   private pen: PenSample = MOUSE_SAMPLE;
 
+  // Position smoothing ("Streamline"), opt-in per brush via streamlines(). Off
+  // by default so every existing brush — and the connecting web sampler — stays
+  // byte-for-byte unchanged. The strength is a plain brush-own dial (0..100).
+  private streamliner = new Streamliner();
+  protected streamlineStrength = 50;
+
+  // Brushes that want their path smoothed (e.g. the calligraphy Marker) override
+  // this to true; they also spread streamlineSettings() into getSettings().
+  protected streamlines(): boolean {
+    return false;
+  }
+
   // 0..100 → EMA step per sample: 0 = raw samples, 100 = heaviest smoothing.
   private penSmoothStep(): number {
     return Math.max(0.05, 1 - this.penSmoothing / 100);
@@ -222,6 +235,12 @@ export abstract class BrushBase {
     // Smooth and latch this sample's pen state first: onStroke and connect()
     // below both read it (via penStyle()/the connection factors).
     this.pen = this.penSmoother.smooth(pen, this.penSmoothStep());
+    // Streamline the path (opt-in): replace the raw point so draw, deposit and
+    // the web all use the same smoothed coordinate. Runs on every sample
+    // (including coalesced sub-frames) so the trajectory uses all the data.
+    if (this.streamlines()) {
+      ({ x, y } = this.streamliner.push(x, y, this.streamlineStrength));
+    }
     this.connection?.setPenFactors(
       this.penWebDensity && this.pen.isPen
         ? penFactor(this.pen.pressure, DIAL_FLOOR, this.penGamma())
@@ -412,6 +431,24 @@ export abstract class BrushBase {
     return items;
   }
 
+  // The "Streamline" dial — a brush-own setting (Brush tab). Opt-in brushes
+  // spread this into their getSettings(); see streamlines().
+  protected streamlineSettings(): BrushSetting[] {
+    return [
+      {
+        kind: "number",
+        key: "streamline",
+        label: "Streamline",
+        min: 0,
+        // Capped at 75 - beyond that the path lags too far behind the cursor.
+        max: 75,
+        step: 1,
+        value: this.streamlineStrength,
+        onChange: (v) => (this.streamlineStrength = v),
+      },
+    ];
+  }
+
   // Whether this brush draws a connecting web (and so shows the navbar
   // Connecting combo + Connecting settings box).
   supportsConnecting(): boolean {
@@ -436,6 +473,13 @@ export abstract class BrushBase {
   }
 
   strokeEnd(): void {
+    // Draw the streamline catch-up tail (no deposit — purely visual) so the
+    // stroke reaches the pen-up location before we tear the stroke down.
+    if (this.streamlines()) {
+      for (const p of this.streamliner.drain(this.streamlineStrength))
+        this.onStroke(p.x, p.y, { id: -1, x: p.x, y: p.y });
+    }
+    this.streamliner.reset();
     this.hasConnectSample = false;
     this.penSmoother.reset();
     this.connection?.resetStroke();

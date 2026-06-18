@@ -18,12 +18,15 @@
     <main>
       <p class="crumbs"><a href="/book/">Book</a> › Brushes › Marker</p>
       <h1><span class="page-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z"/><path d="M13 6 L18 11"/><path d="M4 13 L10 19"/></svg></span>Marker <span class="tag">key 8</span></h1>
-      <p class="lead">A chisel-nib marker for solid, flat strokes.</p>
+      <p class="lead">A broad-edged calligraphy pen for solid, flat strokes.</p>
 
       <h2>What it does</h2>
       <p>
-        Marker draws with an angled chisel tip, giving calligraphic strokes that
-        are thick across and thin along the diagonal. By default it
+        Marker draws with a broad chisel nib: strokes run thick across the edge
+        and thin along it - the hallmark of a broad-edged pen. The
+        <em>Nib angle</em> sets which way that edge points, so you can dial in a
+        hand like italic or foundational, and <em>Streamline</em> irons out the
+        wobble the wide nib would otherwise magnify. By default it
         <strong>doesn't connect</strong> - it behaves like a plain marker, with
         no web, so it's your go-to for clean lettering and flat fills.
       </p>
@@ -33,6 +36,8 @@
         <li>Press <span class="kbd">8</span> or pick it from the brush menu.</li>
         <li>Its opacity comes from the <em>Opacity</em> slider at the top of the brush settings panel (selecting Marker sets it to ~75%). Lower it to build up translucent layers.</li>
         <li>Change the brush <em>Size</em> (also at the top of the settings panel) to widen the nib.</li>
+        <li>Set the <em>Nib angle</em> to orient the chisel edge: strokes along the edge come out as hairlines, strokes across it at full width.</li>
+        <li>Raise <em>Streamline</em> if your strokes look shaky - it smooths the path so curves stay clean, which matters more here because the broad nib magnifies every wobble.</li>
       </ul>
 
       <div class="tip">
@@ -47,8 +52,12 @@
       <dl class="settings">
         <dt>Opacity</dt>
         <dd>Uses the global <em>Opacity</em> slider at the top of the brush settings panel (shared by every brush).</dd>
+        <dt>Nib angle</dt>
+        <dd>The orientation of the chisel's flat edge, from -90° to 90°. Strokes along the edge are thin hairlines, strokes across it full width - exactly like turning a broad-edged pen in your hand. Default -45°. When <em>Chisel follows pen</em> is on, a tilted stylus overrides this; the dial is the fallback for a mouse or a vertical pen.</dd>
+        <dt>Streamline</dt>
+        <dd>Smooths the stroke's path so hand wobble doesn't ripple the broad nib's edge - Procreate calls it Streamline, Krita the stabilizer. <strong>0</strong> follows your hand exactly; higher values pull the ink along with a gentle lag for cleaner curves. Default 50.</dd>
         <dt>Chisel follows pen</dt>
-        <dd>With a stylus, the chisel nib rotates to match the direction the pen leans - true calligraphy-marker behaviour. On by default; a mouse (or a perfectly vertical pen) keeps the classic 45° nib. See <a href="/book/pen.html">Pen &amp; pressure</a>.</dd>
+        <dd>With a stylus, the chisel nib rotates to match the direction the pen leans - true calligraphy-marker behaviour, smoothed so the nib holds steady instead of jittering (and it rides briefly through vertical rather than snapping to the fixed angle). On by default; a mouse (or a perfectly vertical pen) keeps the fixed <em>Nib angle</em>. See <a href="/book/pen.html">Pen &amp; pressure</a>.</dd>
         <dt>Pen bindings</dt>
         <dd>Pressure and tilt can drive the nib's width and opacity - the <em>Pen</em> section in this brush's settings. <a href="/book/pen.html">Full guide</a>.</dd>
         <dt>Connecting style</dt>

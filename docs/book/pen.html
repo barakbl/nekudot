@@ -66,15 +66,19 @@
         <dt>Chisel follows pen <span class="tag">Marker</span></dt>
         <dd>
           The Marker's chisel nib rotates with the direction the pen leans,
-          like a real calligraphy marker. <strong>On by default</strong>; with
-          a mouse (or a perfectly vertical pen) the nib keeps its classic 45°.
+          like a real calligraphy marker - smoothed so the nib holds steady
+          and rides briefly through vertical instead of snapping.
+          <strong>On by default</strong>; with a mouse (or a perfectly vertical
+          pen) the nib keeps its fixed <em>Nib angle</em>.
         </dd>
         <dt>Smoothing</dt>
         <dd>
-          Evens out sensor wobble so pressure changes read as one confident
-          mark. <strong>0</strong> follows the raw samples instantly,
-          <strong>100</strong> is heaviest; the default sits at 65. Lower it if
-          the response feels laggy, raise it if marks look jittery.
+          Evens out sensor wobble so pressure, tilt and the Marker's nib
+          direction read as one confident mark. <strong>0</strong> follows the
+          raw samples instantly, <strong>100</strong> is heaviest; the default
+          sits at 65. Lower it if the response feels laggy, raise it if marks
+          look jittery. (For path wobble, the Marker also has its own
+          <em>Streamline</em> dial.)
         </dd>
         <dt>Response</dt>
         <dd>
