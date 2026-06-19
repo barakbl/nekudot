@@ -10,7 +10,12 @@ export type MenuGroup<T extends string> = {
   items: MenuOption<T>[];
 };
 export type MenuEntry<T extends string> = MenuOption<T> | MenuGroup<T>;
-export type MenuAction = { label: string; onClick: () => void; icon?: string };
+export type MenuAction = {
+  label: string;
+  onClick: () => void;
+  icon?: string;
+  className?: string; // extra class on the navbar button (e.g. to hide on mobile)
+};
 export type ColorSlot = { initial: string; onChange: (color: string) => void };
 export type ColorControl = { main: ColorSlot; secondary: ColorSlot };
 
@@ -176,7 +181,7 @@ export function createMenu<T extends string>(
 
   for (const action of actions) {
     const btn = document.createElement("button");
-    btn.className = "icon-btn";
+    btn.className = action.className ? `icon-btn ${action.className}` : "icon-btn";
     btn.title = action.label;
     if (action.icon) btn.innerHTML = action.icon;
     else btn.textContent = action.label;

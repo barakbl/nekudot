@@ -2093,6 +2093,21 @@ body.help-mode .help-icon {
     pointer-events: none;
   }
 
+  /* Full-width app-bar on phones: edge to edge, using all the width. */
+  .toolbar {
+    top: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    justify-content: space-between;
+    gap: 4px;
+    border-radius: 0 0 14px 14px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-top, 0px));
+  }
+
   /* Slim the toolbar so it needs fewer rows on a phone: brush + connecting pills
      show icon only (drop the name), the maps pill drops its point count, and
      undo/redo go away (use the 2/3-finger tap gestures instead). */
@@ -2104,6 +2119,12 @@ body.help-mode .help-icon {
   }
   .toolbar .history-btn,
   .toolbar .history-divider {
+    display: none;
+  }
+  /* Drop the symmetry combo (use the Symmetry panel) and the Delete-canvas
+     button (rare + destructive) from the phone navbar to free space. */
+  .toolbar .sym-combo-pill,
+  .toolbar .nav-action-delete {
     display: none;
   }
 }
