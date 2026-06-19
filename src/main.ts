@@ -284,11 +284,16 @@ const updateSymmetryOverlay = () => {
 symmetry.subscribe(updateSymmetryOverlay);
 updateSymmetryOverlay();
 
-// Both overlays track the canvas size (New art / Load artwork).
-const resizeOverlays = (size: CanvasSize) => {
+// A new canvas was opened (New art / mandala / blank / Load artwork): resize the
+// overlays to match, and re-frame the camera. Without the reframe the camera
+// stays laid out for the *previous* canvas size, so the new canvas lands
+// off-centre or partly off-screen until you hit "Reset view" - exactly what the
+// camera-reset button does, just done automatically here.
+const applyNewCanvasSize = (size: CanvasSize) => {
   invisibleOverlay.resize(size);
   symmetryOverlay.resize(size);
   updateSymmetryOverlay();
+  viewport.reset();
 };
 
 // ---- brushes --------------------------------------------------------------------
@@ -588,7 +593,7 @@ const loadArtwork = async (file: File): Promise<void> => {
   }
 
   const { size } = result.artwork;
-  resizeOverlays(size);
+  applyNewCanvasSize(size);
   applyStageBackground();
   layersBox.refreshPreviews();
   renderActiveBrush();
@@ -626,7 +631,7 @@ const sizePicker = createSizePicker({
       destructive: true,
       onConfirm: () => {
         layerManager.reset(size);
-        resizeOverlays(size);
+        applyNewCanvasSize(size);
         resetArtState();
         store.set(CANVAS_SIZE_KEY, size);
         void history.clear();
@@ -931,7 +936,7 @@ const onboarding = createOnboarding({
       const max = screenMax();
       const size = squareOfScreen(max.width, max.height);
       layerManager.reset(size);
-      resizeOverlays(size);
+      applyNewCanvasSize(size);
       resetArtState();
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
@@ -952,7 +957,7 @@ const onboarding = createOnboarding({
           ? squareOfScreen(max.width, max.height)
           : fullScreenSize(max.width, max.height);
       layerManager.reset(size);
-      resizeOverlays(size);
+      applyNewCanvasSize(size);
       resetArtState();
       layerManager.setBackground({ color: "#ffffff", transparent: false });
       applyStageBackground();

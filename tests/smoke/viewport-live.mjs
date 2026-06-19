@@ -43,6 +43,11 @@ async function main() {
     await S("Page.navigate", { url: PAGE });
     await waitFor(() => E("!!document.querySelector('.stage canvas')"));
     await sleep(500);
+    // Cleared storage means a first run, so the Start page (onboarding) covers
+    // the canvas - dismiss it (revealing the default canvas) before drawing,
+    // else every dab lands on the overlay.
+    const dismissOnboarding = () => E(`(() => { const b = document.querySelector('.onboarding-close'); const o = document.querySelector('.onboarding'); if (b && o && getComputedStyle(o).display !== 'none') { b.click(); return true; } return false; })()`);
+    await dismissOnboarding(); await sleep(150);
 
     // ---- page-side helpers (re-injectable: the page reloads for F/G) ---------
     const injectView = () => E(`(${function () {
@@ -173,6 +178,7 @@ async function main() {
     await S("Page.navigate", { url: PAGE });
     await waitFor(() => E("!!document.querySelector('.stage canvas')"));
     await sleep(500); await injectView();
+    await dismissOnboarding(); await sleep(150);
     await E(`document.querySelector('[title="Reset view"]').click()`); await sleep(120);
     // one committed stroke
     await S("Input.dispatchMouseEvent", { type: "mousePressed", x: 500, y: 320, button: "left", clickCount: 1, buttons: 1 });

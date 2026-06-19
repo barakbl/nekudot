@@ -15,6 +15,48 @@ export type ViewportOpts = {
 export const MIN_SCALE = 0.1;
 export const MAX_SCALE = 8;
 
+// Where to place a canvas inside the viewport: a uniform scale plus the screen
+// translation of the canvas's top-left corner (no rotation). Pure geometry, so
+// the framing is unit-testable without a DOM / DOMMatrix.
+export type Placement = { scale: number; tx: number; ty: number };
+
+// Centre the canvas and scale it to fill the viewport, leaving `margin` px of
+// padding on every side (scale clamped to [MIN_SCALE, MAX_SCALE]).
+export function fitPlacement(
+  viewW: number,
+  viewH: number,
+  canvasW: number,
+  canvasH: number,
+  margin: number,
+): Placement {
+  const raw = Math.min(
+    (viewW - margin * 2) / canvasW,
+    (viewH - margin * 2) / canvasH,
+  );
+  const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, raw));
+  return {
+    scale,
+    tx: (viewW - canvasW * scale) / 2,
+    ty: (viewH - canvasH * scale) / 2,
+  };
+}
+
+// The "Reset view" framing: 100% and centred, or fit (margin 0) when the canvas
+// is bigger than the viewport at 100% so it stays fully reachable. Depends only
+// on the current viewport + canvas size, never the previous view - so opening a
+// canvas of size X always frames the same way, whatever size came before.
+export function resetPlacement(
+  viewW: number,
+  viewH: number,
+  canvasW: number,
+  canvasH: number,
+): Placement {
+  if (canvasW <= viewW && canvasH <= viewH) {
+    return { scale: 1, tx: (viewW - canvasW) / 2, ty: (viewH - canvasH) / 2 };
+  }
+  return fitPlacement(viewW, viewH, canvasW, canvasH, 0);
+}
+
 export class Viewport {
   private m = new DOMMatrix(); // canvas -> screen
   // Last viewport size we centred/laid out against, so a window resize can shift
@@ -85,38 +127,27 @@ export class Viewport {
     this.zoomAt(r.left + r.width / 2, r.top + r.height / 2, scale / this.scale);
   }
 
+  // Build the camera matrix from a Placement (scale about, then translate, the
+  // canvas's top-left) and record the viewport size we laid out against.
+  private place(viewW: number, viewH: number, p: Placement): void {
+    this.viewW = viewW;
+    this.viewH = viewH;
+    this.m = new DOMMatrix().translate(p.tx, p.ty).scale(p.scale);
+    this.apply();
+  }
+
   // Centre the canvas and scale it to fill the viewport (no rotation).
   fit(margin = 24): void {
     const r = this.opts.viewportEl.getBoundingClientRect();
-    this.viewW = r.width;
-    this.viewH = r.height;
     const cs = this.opts.getCanvasSize();
-    const raw = Math.min(
-      (r.width - margin * 2) / cs.width,
-      (r.height - margin * 2) / cs.height,
-    );
-    const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, raw));
-    this.m = new DOMMatrix()
-      .translate((r.width - cs.width * scale) / 2, (r.height - cs.height * scale) / 2)
-      .scale(scale);
-    this.apply();
+    this.place(r.width, r.height, fitPlacement(r.width, r.height, cs.width, cs.height, margin));
   }
 
   // 100% and centred (or fit when it doesn't fit at 100%).
   reset(): void {
     const r = this.opts.viewportEl.getBoundingClientRect();
-    this.viewW = r.width;
-    this.viewH = r.height;
     const cs = this.opts.getCanvasSize();
-    if (cs.width <= r.width && cs.height <= r.height) {
-      this.m = new DOMMatrix().translate(
-        (r.width - cs.width) / 2,
-        (r.height - cs.height) / 2,
-      );
-      this.apply();
-    } else {
-      this.fit(0);
-    }
+    this.place(r.width, r.height, resetPlacement(r.width, r.height, cs.width, cs.height));
   }
 
   // Window resized: shift the view by half the size delta so a centred canvas
