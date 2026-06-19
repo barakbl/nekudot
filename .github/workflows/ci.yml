@@ -1,0 +1,48 @@
+name: CI
+
+# Typecheck, test, and - crucially - prove the deployed single-file app
+# (docs/app/index.html, what GitHub Pages serves) is in sync with the source.
+# It's a committed build artifact, so it's easy to merge a feature and forget to
+# rebuild it; this rebuilds it and fails if the committed copy is stale.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Test
+        run: npx vitest run
+
+      # Rebuild the deployed app from source. The build is deterministic (deps
+      # are pinned by package-lock; the inliner emits hashless content), so a
+      # correct, committed build reproduces byte-for-byte here.
+      - name: Build the deployed app
+        run: bash build.sh
+
+      - name: Verify docs/app/index.html is up to date
+        run: |
+          if ! git diff --quiet -- docs/app/index.html; then
+            echo "::error::docs/app/index.html is stale. Run ./build.sh and commit it (the deployed app must match source)."
+            git --no-pager diff --stat -- docs/app/index.html
+            exit 1
+          fi
+          echo "Deployed app is in sync with source."
