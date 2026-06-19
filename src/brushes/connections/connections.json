@@ -2,6 +2,7 @@
   "Classic": [
     {
       "name": "classic",
+      "webWeight": { "light": { "strands": 1, "density": 20, "links": 20 }, "heavy": { "strands": 2, "density": 75, "links": 0 } },
       "label": "Airy",
       "file": "classic.ts",
       "info": "Loose, faint crossing lines — inspired by the sketchy brush in Harmony.",
@@ -34,6 +35,7 @@
     },
     {
       "name": "web",
+      "webWeight": { "light": { "strands": 1, "density": 5, "links": 20 }, "heavy": { "strands": 2, "density": 22, "links": 0 } },
       "label": "String Art",
       "file": "classic.ts",
       "info": "Sparse, strong strands stretched between points — inspired by the web brush in Harmony.",
@@ -66,6 +68,7 @@
     },
     {
       "name": "shaded",
+      "webWeight": { "light": { "strands": 1, "density": 45, "links": 20 }, "heavy": { "strands": 2, "density": 100, "links": 0 } },
       "label": "Shading",
       "file": "classic.ts",
       "info": "Dense, distance-faded lines that build smooth tone — inspired by the shaded brush in Harmony.",
@@ -100,12 +103,14 @@
   "More": [
     {
       "name": "fur",
+      "webWeight": { "light": { "strands": 4, "density": 35, "links": 20 }, "heavy": { "strands": 11, "density": 85, "links": 0 } },
       "label": "Fur",
       "file": "fur.ts",
       "info": "Combed pelt — dense soft guard hairs that taper, sweep and fray."
     },
     {
       "name": "lace",
+      "webWeight": { "light": { "strands": 1, "density": 22, "links": 20 }, "heavy": { "strands": 2, "density": 68, "links": 0 } },
       "label": "Lace",
       "file": "classic.ts",
       "info": "Fine crossing net of floating, dotted scallops.",
@@ -137,6 +142,7 @@
     },
     {
       "name": "arc",
+      "webWeight": { "light": { "strands": 1, "density": 6, "links": 20 }, "heavy": { "strands": 2, "density": 26, "links": 0 } },
       "label": "Arc",
       "file": "classic.ts",
       "info": "Bulging arcs between points.",

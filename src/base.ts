@@ -137,6 +137,11 @@ export abstract class BrushBase {
   // initConnection(); applyArtStylePreset() swaps it.
   protected connection: ConnectionBase | null = null;
 
+  // The active connection's FACTORY dial values (snapshot at creation, before any
+  // saved customisation is restored). The "Web weight" group reads this as the
+  // per-style "Normal" baseline so it survives the user customising the dials.
+  private connectionFactoryFlat: ConnectingFlat = {};
+
   // Connection-sampler throttle state (see CONNECT_SAMPLE_SPACING). Reset each
   // stroke in strokeEnd(); the first sample of a stroke always deposits.
   private lastConnectX = 0;
@@ -472,6 +477,41 @@ export abstract class BrushBase {
     return this.connection;
   }
 
+  // The "Web weight" presets (Light / Normal / Heavy) for the active style,
+  // limited to the preset levers (Weight/Density/Links). Normal == the style's
+  // FACTORY defaults; Light/Heavy come from the style spec (per-style), or are
+  // derived when a style declares none (e.g. a custom preset). Empty for
+  // non-connecting brushes. The settings panel renders these as the pills.
+  webWeightLevels(): { name: string; flat: ConnectingFlat }[] {
+    if (!this.connection) return [];
+    const LEVERS = ["strands", "density", "links"] as const;
+    const pick = (flat: ConnectingFlat): ConnectingFlat => {
+      const out: ConnectingFlat = {};
+      for (const k of LEVERS) out[k] = flat[k] ?? (k === "strands" ? 1 : 0);
+      return out;
+    };
+    const factory = this.connectionFactoryFlat;
+    const normal = pick(factory);
+    const nStrands = typeof normal.strands === "number" ? normal.strands : 1;
+    const nDensity = typeof normal.density === "number" ? normal.density : 10;
+    const ww = this.connection.webWeightSpec();
+    const light = ww.light ?? {
+      strands: Math.max(1, Math.round(nStrands * 0.6)),
+      density: Math.round(nDensity * 0.45),
+      links: 20,
+    };
+    const heavy = ww.heavy ?? {
+      strands: Math.min(12, Math.max(2, Math.round(nStrands * 1.5))),
+      density: Math.min(100, Math.round(nDensity * 1.4)),
+      links: 0,
+    };
+    return [
+      { name: "Light", flat: pick({ ...factory, ...light }) },
+      { name: "Normal", flat: normal },
+      { name: "Heavy", flat: pick({ ...factory, ...heavy }) },
+    ];
+  }
+
   strokeEnd(): void {
     // Draw the streamline catch-up tail (no deposit — purely visual) so the
     // stroke reaches the pen-up location before we tear the stroke down.
@@ -551,6 +591,7 @@ export abstract class BrushBase {
   // `connection` stays null and the connecting UI/engine never engages for them.
   protected initConnection(name: string): void {
     this.connection = createConnection(name, this.connectionDeps());
+    this.connectionFactoryFlat = this.connection.toFlat();
   }
 
   private connectionDeps(): ConnectionDeps {
@@ -574,6 +615,7 @@ export abstract class BrushBase {
     const next = createConnection(name, this.connectionDeps());
     next.copyRoutingFrom(this.connection);
     this.connection = next;
+    this.connectionFactoryFlat = next.toFlat(); // factory baseline for Web weight
   }
 
   // Switch to an art style AND restore this brush's saved dials for it, so each

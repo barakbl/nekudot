@@ -80,6 +80,19 @@ const SETTING_HELP: Record<string, string> = {
     "How the web is coloured. Primary/Secondary use your toolbar colours; Gradient blends Primary to Secondary; Complement pairs Primary with its opposite hue; Rainbow and the palettes (Sunset/Ocean/Neon/Fire) cycle the spectrum. Everything past Secondary colours each line by its angle.",
 };
 
+// "Web weight" group: how heavy the connecting web reads (how many lines go out).
+// The Light / Normal / Heavy presets are PER-STYLE - Normal is the active style's
+// own factory default, Light/Heavy come from its spec (ConnectionSpec.webWeight,
+// surfaced via brush.webWeightLevels()) - so each connecting style gets sensible
+// values. They move only the "amount" levers (Weight/Density/Links); Customize
+// also shows Spread (Weight's hair-fan shaper). Reach, Opacity, colour, dash
+// stay in art style. A manual tweak matches no preset, so none stays highlighted.
+const WEB_WEIGHT_KEYS = ["strands", "spread", "density", "links"] as const;
+const WEB_WEIGHT_HELP =
+  "Sets how heavy the web is for this connecting style: Weight (lines per point), Density and Links. Normal is this style's default look, Light makes it sparser, Heavy fills it in. Each style has its own Light/Normal/Heavy. Open Customize to fine-tune the sliders.";
+const isWebWeight = (s: BrushSetting): boolean =>
+  (WEB_WEIGHT_KEYS as readonly string[]).includes(s.key);
+
 // Per-preset slider visibility. The art-style group shows the dials a preset
 // actually uses by default and folds the inactive (default-valued) ones under
 // "More". Which dials a preset *supports* at all is decided upstream by the
@@ -217,6 +230,7 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
 
   // Persisted across re-renders so applying a preset doesn't collapse the fold.
   let advancedOpen = false;
+  let webCustomizeOpen = false;
 
   const render = (brush: BrushBase) => {
     closeIconSelectPopover(); // body-anchored dropdowns would orphan otherwise
@@ -308,9 +322,23 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
         // which map the web reads from / writes to) - see buildRoutingControls.
       } else if (section === STYLE_SECTION) {
         const openKeys = new Set(brush.activeConnection()?.defaultOpenKeys() ?? []);
+        // Split the web-weight dials into their own preset group, above the rest.
+        const webItems = run.filter(isWebWeight);
+        const others = run.filter((s) => !isWebWeight(s));
+        if (webItems.length) {
+          content.appendChild(
+            buildWebWeightGroup(
+              webItems,
+              brush.webWeightLevels(),
+              { get: () => webCustomizeOpen, set: (v) => (webCustomizeOpen = v) },
+              () => render(brush),
+              persist,
+            ),
+          );
+        }
         content.appendChild(
           buildStyleGroup(
-            run,
+            others,
             { get: () => advancedOpen, set: (v) => (advancedOpen = v) },
             openKeys,
             persist,
@@ -445,6 +473,80 @@ function buildRoutingGroup(
 // key), so this is just makeRow.
 function styleRow(s: BrushSetting, persist: PersistFn): HTMLElement {
   return makeRow(s, persist);
+}
+
+// Web-weight group: three one-click presets (Light / Normal / Heavy) for how
+// heavy the web reads, with the underlying Weight/Density/Links sliders folded
+// under a "Customize" toggle (a "?" hint explains the group). Sits at the top
+// of the connecting settings since it's the first thing most people reach for.
+function buildWebWeightGroup(
+  items: BrushSetting[],
+  levels: { name: string; flat: ConnectingFlat }[],
+  customize: { get: () => boolean; set: (v: boolean) => void },
+  rerender: () => void,
+  persist: PersistFn,
+): HTMLElement {
+  const box = document.createElement("div");
+  box.className = "settings-group settings-group-webweight";
+
+  const title = document.createElement("h4");
+  title.className = "settings-group-title";
+  title.textContent = "Web weight";
+  box.appendChild(title);
+
+  // Per-style preset pills (Light/Normal/Heavy). At most one matches; a manual
+  // tweak matches none (custom), so none stays highlighted.
+  const row = document.createElement("div");
+  row.className = "settings-presets";
+  const current = currentValues(items);
+  for (const { name, flat } of levels) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "settings-preset-btn";
+    btn.textContent = name;
+    if (presetMatches(flat, current)) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      applyPreset(items, flat, persist);
+      rerender();
+    });
+    row.appendChild(btn);
+  }
+  box.appendChild(row);
+
+  // "Customize" fold + a "?" hint explaining the group.
+  const open = customize.get();
+  const bar = document.createElement("div");
+  bar.className = "settings-customize-bar";
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "settings-group-toggle";
+  toggle.classList.toggle("open", open);
+  toggle.setAttribute("aria-expanded", String(open));
+  toggle.innerHTML =
+    '<svg class="settings-chevron" viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M6 4 L10 8 L6 12"/>' +
+    "</svg><span>Customize</span>";
+  bar.appendChild(toggle);
+  // The "?" hint uses the app help system: it inserts a help chip after the
+  // toggle that only shows in help mode (press ?) and opens the standard popover.
+  attachHelp(toggle, WEB_WEIGHT_HELP);
+  box.appendChild(bar);
+
+  const body = document.createElement("div");
+  body.className = "settings-group-body";
+  body.style.display = open ? "" : "none";
+  for (const s of items) body.appendChild(styleRow(s, persist));
+  box.appendChild(body);
+
+  toggle.addEventListener("click", () => {
+    const next = !customize.get();
+    customize.set(next);
+    body.style.display = next ? "" : "none";
+    toggle.classList.toggle("open", next);
+    toggle.setAttribute("aria-expanded", String(next));
+  });
+
+  return box;
 }
 
 // Art-style group: how the connection lines look. The preset quick-pick lives

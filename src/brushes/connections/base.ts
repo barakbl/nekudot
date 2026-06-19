@@ -67,6 +67,9 @@ export type ConnectionSpec = {
   // main.ts on select/load via the brush's getSelectOpacity().
   strokeAlpha?: number;
   defaults?: ConnectingFlat;
+  // Per-style "Web weight" Light/Heavy presets (Weight/Density/Links). Normal is
+  // the style's own defaults, so only Light/Heavy are declared here.
+  webWeight?: { light?: ConnectingFlat; heavy?: ConnectingFlat };
   file: string;
 };
 
@@ -131,6 +134,12 @@ export class ConnectionBase {
   // spec; a code connection (e.g. Fur) overrides this to supply its own.
   protected defaults(): ConnectingFlat {
     return this.spec.defaults ?? {};
+  }
+
+  // The style's Light/Heavy web-weight presets (the "Normal" preset is just the
+  // style's own defaults, so only Light/Heavy are declared per style).
+  webWeightSpec(): { light?: ConnectingFlat; heavy?: ConnectingFlat } {
+    return this.spec.webWeight ?? {};
   }
 
   // The live drawing surface: the LayerManager (via the symmetry proxy) in the

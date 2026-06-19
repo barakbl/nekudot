@@ -1249,6 +1249,20 @@ body {
 .settings-group-body {
   margin-top: 4px;
 }
+/* Web-weight group: the heaviness presets + Customize fold. */
+.settings-group-webweight {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border-subtle));
+}
+.settings-customize-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+.settings-customize-bar .settings-group-toggle {
+  width: auto;
+}
 /* Keep a setting's label and its "?" together on the left of the row. */
 .settings-label-help {
   display: inline-flex;

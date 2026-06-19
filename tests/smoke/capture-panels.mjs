@@ -68,9 +68,12 @@ try {
   await shot(".settings-panel", "panel-settings.png");
   await key("b", "KeyB", 66);
 
-  // Connecting settings tab.
+  // Connecting settings tab - open the Web weight "Customize" fold so the figure
+  // shows the presets AND the underlying sliders.
   await key("c", "KeyC", 67);
   await sleep(120);
+  await E("(()=>{const t=document.querySelector('.settings-group-webweight .settings-group-toggle'); if(t) t.click();})()");
+  await sleep(150);
   await shot(".settings-panel", "panel-settings-connecting.png");
   await key("c", "KeyC", 67);
 
