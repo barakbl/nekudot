@@ -52,6 +52,12 @@ try {
     console.log("✓", out, `${Math.round(rect.w)}×${Math.round(rect.h)} @2x`);
   };
 
+  // Start page (onboarding) - it's showing now because we just cleared storage
+  // (first run). Capture the content card, then dismiss it for the panel shots.
+  await shot(".onboarding-card", "start-page.png", 20, false);
+  await E("(()=>{const b=document.querySelector('.onboarding-close'); if(b) b.click();})()");
+  await sleep(150);
+
   // Toolbar (always present, centred) - now includes the Reset view button.
   await shot(".toolbar", "toolbar.png", 0, false);
 
