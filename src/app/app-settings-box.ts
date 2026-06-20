@@ -93,9 +93,13 @@ export function createAppSettingsBox(opts: {
   });
 
   // App version (compiled in from package.json via Vite — see vite.config.ts).
+  // `typeof` guard so a dev server started before the Vite `define` existed
+  // (config isn't hot-reloaded) degrades to "vdev" instead of throwing a
+  // ReferenceError that would abort init and leave the app with no toolbar.
   const version = document.createElement("span");
   version.className = "appset-value";
-  version.textContent = `v${__APP_VERSION__}`;
+  version.textContent =
+    "v" + (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev");
 
   body.append(
     sub("Appearance"),
