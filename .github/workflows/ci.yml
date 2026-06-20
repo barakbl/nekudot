@@ -4,10 +4,15 @@ name: CI
 # (docs/app/index.html, what GitHub Pages serves) is in sync with the source.
 # It's a committed build artifact, so it's easy to merge a feature and forget to
 # rebuild it; this rebuilds it and fails if the committed copy is stale.
+#
+# Runs on every branch push (public repo = unlimited Actions minutes), so you
+# get verification before opening a PR. No separate pull_request trigger: a push
+# run reports its check on the head commit, which still satisfies a PR's required
+# status check - and that avoids running twice per push once a PR is open. (Add a
+# fork-aware pull_request trigger if external contributors ever open PRs.)
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches: ["**"]
 
 concurrency:
   group: ci-${{ github.ref }}
