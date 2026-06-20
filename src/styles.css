@@ -1403,6 +1403,10 @@ body {
   font-size: 12px;
   color: var(--text-body);
 }
+.appset-value {
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted);
+}
 .appset-seg {
   display: flex;
   gap: 4px;

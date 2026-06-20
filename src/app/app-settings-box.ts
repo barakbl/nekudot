@@ -92,6 +92,11 @@ export function createAppSettingsBox(opts: {
     opts.onResetToDefault();
   });
 
+  // App version (compiled in from package.json via Vite — see vite.config.ts).
+  const version = document.createElement("span");
+  version.className = "appset-value";
+  version.textContent = `v${__APP_VERSION__}`;
+
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -113,6 +118,8 @@ export function createAppSettingsBox(opts: {
       resetBtn,
       "Permanently deletes every setting, layer and saved artwork on this device, then reloads the app fresh. You'll have to confirm by typing \"yes\".",
     ),
+    sub("About"),
+    row("Version", version),
   );
 
   const toggle = () => {

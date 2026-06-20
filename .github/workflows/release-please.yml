@@ -1,0 +1,62 @@
+name: release-please
+
+# Maintains a "release PR" that bumps package.json, updates CHANGELOG.md from the
+# Conventional Commit titles merged since the last release, and (on merge) tags
+# vX.Y.Z + cuts a GitHub Release. Squash-merge so each PR's title is the commit
+# release-please reads.
+#
+# Token: set a RELEASE_TOKEN secret (a fine-grained PAT or GitHub App token with
+# contents:write + pull-requests:write). It's required for two reasons — its PRs
+# (and the rebuild push below) then trigger CI, and it can push the rebuilt app.
+# Falls back to GITHUB_TOKEN if unset (works, but its PRs won't trigger CI).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # The deployed app (docs/app/index.html) embeds the version, so when the
+      # release PR bumps it the committed bundle goes stale. Rebuild it on the
+      # release PR branch so CI's staleness check passes and the shipped app
+      # shows the new version. (Needs RELEASE_TOKEN so this push triggers CI.)
+      - if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      - if: ${{ steps.release.outputs.prs_created == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - if: ${{ steps.release.outputs.prs_created == 'true' }}
+        run: npm ci
+      - if: ${{ steps.release.outputs.prs_created == 'true' }}
+        name: Rebuild the deployed app for the release
+        run: |
+          bash build.sh
+          if ! git diff --quiet -- docs/app/index.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/app/index.html
+            git commit -m "chore: rebuild deployed app for release"
+            git push
+          fi
