@@ -1,4 +1,5 @@
 import type { Store } from "../store/base";
+import { mixOklch } from "../colors/oklch";
 
 // Shared bits for the "color source" selects — the connecting Color dial and
 // the Squares/Circles Fill dropdown. Both choose between the toolbar's two
@@ -7,6 +8,7 @@ import type { Store } from "../store/base";
 
 // Internal value -> display label. Values stay "main"/"secondary"/"none" so
 // persisted settings and the draw logic are untouched; only the wording changes.
+// The multi-stop palette sources are added dynamically (see connectionColorLabels).
 export const COLOR_SOURCE_LABELS: Record<string, string> = {
   none: "None",
   main: "Primary",
@@ -14,10 +16,6 @@ export const COLOR_SOURCE_LABELS: Record<string, string> = {
   gradient: "Gradient",
   rainbow: "Rainbow",
   complement: "Complement",
-  sunset: "Sunset",
-  ocean: "Ocean",
-  neon: "Neon",
-  fire: "Fire",
 };
 
 const PRIMARY_DEFAULT = "#000000";
@@ -111,37 +109,109 @@ export function complementHex(hex: string): string {
 }
 
 // Position t (0..1) along a multi-stop palette, CYCLIC (wraps last->first) so it
-// has no seam when driven around the circle by the line angle.
+// has no seam when driven around the circle by the line angle. Blends in the
+// configured space (OKLCH by default - perceptually smooth midpoints).
 function paletteHex(stops: readonly string[], t: number): string {
   const n = stops.length;
   if (n === 1) return stops[0];
   const x = (((t % 1) + 1) % 1) * n;
   const i = Math.floor(x) % n;
-  return mixHex(stops[i], stops[(i + 1) % n], x - Math.floor(x));
+  return blend(stops[i], stops[(i + 1) % n], x - Math.floor(x));
 }
 
-// Curated multi-stop palettes for the connection Color dial - blended by the
-// line's angle, like Gradient/Rainbow. Fixed colours (they don't track the
-// toolbar; use Gradient or Complement for that).
-const PALETTES: Record<string, readonly string[]> = {
-  sunset: ["#ff5e62", "#ff9966", "#ffd194", "#fde9b0"],
-  ocean: ["#0083b0", "#00b4db", "#48cae4", "#90e0ef"],
-  neon: ["#00ffa3", "#00b3ff", "#7a5cff", "#ff00d4"],
-  fire: ["#7a0010", "#e63900", "#ff7b00", "#ffd000"],
+// Curated multi-stop connection gradients, the defaults that ship as built-in
+// gradient palettes (App tab) and seed the gradient source cache below.
+const CONNECTION_GRADIENTS: { name: string; label: string; colors: readonly string[] }[] = [
+  { name: "sunset", label: "Sunset", colors: ["#ff5e62", "#ff9966", "#ffd194", "#fde9b0"] },
+  { name: "ocean", label: "Ocean", colors: ["#0083b0", "#00b4db", "#48cae4", "#90e0ef"] },
+  { name: "neon", label: "Neon", colors: ["#00ffa3", "#00b3ff", "#7a5cff", "#ff00d4"] },
+  { name: "fire", label: "Fire", colors: ["#7a0010", "#e63900", "#ff7b00", "#ffd000"] },
+];
+
+// The default connection palettes surfaced to the colour palette panel as
+// read-only swatch groups. The dynamic sources (gradient/rainbow/complement) are
+// angle-driven, not fixed colour lists, so they're not included.
+export function connectionPalettes(): { name: string; label: string; colors: string[] }[] {
+  return CONNECTION_GRADIENTS.map((g) => ({ name: g.name, label: g.label, colors: [...g.colors] }));
+}
+
+// --- gradient sources from the colour palette mechanism ---------------------
+// The multi-stop palettes the connection Color dial offers are the palettes the
+// user has activated as gradients (built-ins on by default + custom ones), fed in
+// from the palette store via setGradientPalettes. Seeded synchronously with the
+// built-in connection gradients so they're available before the async load (and
+// in tests). Each id matches the palette's id in the colours mechanism.
+type GradientPalette = { id: string; label: string; colors: readonly string[] };
+let gradientPalettes: GradientPalette[] = CONNECTION_GRADIENTS.map((g) => ({
+  id: `conn:${g.name}`,
+  label: g.label,
+  colors: g.colors,
+}));
+
+export function setGradientPalettes(list: readonly GradientPalette[]): void {
+  gradientPalettes = list.filter((p) => p.colors.length > 0).map((p) => ({ ...p }));
+  rebuildGradientLut();
+}
+
+// How gradients blend between stops: "oklch" (perceptual, smooth - the default)
+// or "srgb" (the classic linear-RGB blend). App-level setting, wired from
+// main.ts. Switching rebuilds the ramps.
+type GradientSpace = "oklch" | "srgb";
+let gradientSpace: GradientSpace = "oklch";
+export function setGradientSpace(space: GradientSpace): void {
+  if (space === gradientSpace) return;
+  gradientSpace = space;
+  rebuildGradientLut();
+}
+function blend(a: string, b: string, t: number): string {
+  return gradientSpace === "oklch" ? mixOklch(a, b, t) : mixHex(a, b, t);
+}
+
+// Precomputed gradient ramp per palette id, so the connection draw hot path is a
+// table lookup rather than a per-line blend (256 steps reads as smooth). Rebuilt
+// whenever the activated palette set or the blend space changes.
+const LUT_N = 256;
+let gradientLut: Record<string, string[]> = {};
+function buildLut(colors: readonly string[]): string[] {
+  const lut = new Array<string>(LUT_N);
+  for (let k = 0; k < LUT_N; k++) lut[k] = paletteHex(colors, k / LUT_N);
+  return lut;
+}
+function rebuildGradientLut(): void {
+  gradientLut = {};
+  for (const p of gradientPalettes) gradientLut[p.id] = buildLut(p.colors);
+}
+rebuildGradientLut();
+
+// The angle-driven, non-palette sources, in dropdown order.
+const STATIC_COLOR_SOURCES = ["main", "secondary", "gradient", "rainbow", "complement"] as const;
+
+// Legacy connection colour values (pre-palette-mechanism) -> the new palette ids,
+// so saved presets/settings keep resolving to the same gradient.
+const LEGACY_SOURCE: Record<string, string> = {
+  sunset: "conn:sunset",
+  ocean: "conn:ocean",
+  neon: "conn:neon",
+  fire: "conn:fire",
 };
 
-// The connection Color dial options, in dropdown order.
-export const CONNECTION_COLOR_OPTIONS = [
-  "main",
-  "secondary",
-  "gradient",
-  "rainbow",
-  "complement",
-  "sunset",
-  "ocean",
-  "neon",
-  "fire",
-] as const;
+// Map a stored/incoming colour source to its canonical value (legacy name -> id).
+export function normalizeColorSource(v: string): string {
+  return LEGACY_SOURCE[v] ?? v;
+}
+
+// The connection Color dial options, in dropdown order: the static sources then
+// every activated gradient palette.
+export function connectionColorOptions(): string[] {
+  return [...STATIC_COLOR_SOURCES, ...gradientPalettes.map((p) => p.id)];
+}
+
+// Labels for the dial: the static ones plus a label per activated gradient.
+export function connectionColorLabels(): Record<string, string> {
+  const out: Record<string, string> = { ...COLOR_SOURCE_LABELS };
+  for (const p of gradientPalettes) out[p.id] = p.label;
+  return out;
+}
 
 // The colour for one connection line: the source, a 0..1 driver (the line's
 // angle), and the live toolbar colours. "main" -> undefined so the renderer uses
@@ -158,43 +228,62 @@ export function connectionLineColor(
     case "secondary":
       return secondary;
     case "gradient":
-      return mixHex(primary, secondary, t);
+      return blend(primary, secondary, t);
     case "rainbow":
       return hueHex(t * 360);
     case "complement":
       return paletteHex([primary, complementHex(primary)], t);
     default: {
-      const stops = PALETTES[source];
-      return stops ? paletteHex(stops, t) : undefined;
+      // Palette gradients read from the precomputed OKLCH ramp.
+      const lut = gradientLut[normalizeColorSource(source)];
+      if (!lut) return undefined;
+      return lut[Math.floor((((t % 1) + 1) % 1) * LUT_N) % LUT_N];
     }
   }
 }
 
-// Multi-stop palette swatch. A unique gradient id per call avoids clashes when
-// the icon is rendered more than once.
-function paletteSwatch(stops: readonly string[]): string {
-  const id = "csp" + Math.random().toString(36).slice(2, 8);
-  const ss = stops
-    .map((c, i) => `<stop offset="${(i / (stops.length - 1)).toFixed(3)}" stop-color="${c}"/>`)
-    .join("");
+// Build SVG <stop>s by sampling a blend at n+1 evenly-spaced points, so the swatch
+// preview matches the configured blend space (OKLCH/sRGB) rather than the browser's
+// default sRGB <linearGradient> interpolation.
+function sampledStops(sample: (t: number) => string, n = 10): string {
+  let out = "";
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    out += `<stop offset="${t.toFixed(3)}" stop-color="${sample(t)}"/>`;
+  }
+  return out;
+}
+
+// Non-cyclic blend through a multi-stop palette (left -> right preview).
+function blendStops(stops: readonly string[], t: number): string {
+  const n = stops.length;
+  if (n === 1) return stops[0];
+  const x = Math.max(0, Math.min(1, t)) * (n - 1);
+  const i = Math.min(n - 2, Math.floor(x));
+  return blend(stops[i], stops[i + 1], x - i);
+}
+
+function svgGradient(id: string, stops: string): string {
   return (
     '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
-    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0">${ss}</linearGradient></defs>` +
+    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient></defs>` +
     `<rect x="1" y="1" width="14" height="14" rx="3" fill="url(#${id})" stroke="rgba(128,128,128,0.55)" stroke-width="1"/></svg>`
   );
 }
 
-// A two-stop gradient swatch (live Primary -> Secondary). A unique gradient id
-// per call avoids clashes when the icon is rendered more than once.
+// Multi-stop palette swatch, sampled in the active blend space. A unique gradient
+// id per call avoids clashes when the icon is rendered more than once.
+function paletteSwatch(stops: readonly string[]): string {
+  const id = "csp" + Math.random().toString(36).slice(2, 8);
+  return svgGradient(id, sampledStops((t) => blendStops(stops, t)));
+}
+
+// A two-stop gradient swatch (live Primary -> Secondary), in the active blend space.
 function gradientSwatch(a: string, b: string): string {
   const id = "csg" + Math.random().toString(36).slice(2, 8);
-  return (
-    '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
-    `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="0">` +
-    `<stop offset="0" stop-color="${HEX.test(a) ? a : PRIMARY_DEFAULT}"/>` +
-    `<stop offset="1" stop-color="${HEX.test(b) ? b : SECONDARY_DEFAULT}"/></linearGradient></defs>` +
-    `<rect x="1" y="1" width="14" height="14" rx="3" fill="url(#${id})" stroke="rgba(128,128,128,0.55)" stroke-width="1"/></svg>`
-  );
+  const A = HEX.test(a) ? a : PRIMARY_DEFAULT;
+  const B = HEX.test(b) ? b : SECONDARY_DEFAULT;
+  return svgGradient(id, sampledStops((t) => blend(A, B, t), 8));
 }
 
 const rainbowSwatch =
@@ -209,7 +298,7 @@ const rainbowSwatch =
 // Rebuilt each render (getSettings is called fresh), so the swatch tracks the
 // current Primary/Secondary colours and the selected source.
 export function colorSourceIcons(store?: Store): Record<string, string> {
-  return {
+  const icons: Record<string, string> = {
     none: noneSwatch,
     main: swatch(store?.get<string>("app.color.main") ?? PRIMARY_DEFAULT),
     secondary: swatch(
@@ -224,9 +313,8 @@ export function colorSourceIcons(store?: Store): Record<string, string> {
       store?.get<string>("app.color.main") ?? PRIMARY_DEFAULT,
       complementHex(store?.get<string>("app.color.main") ?? PRIMARY_DEFAULT),
     ),
-    sunset: paletteSwatch(PALETTES.sunset),
-    ocean: paletteSwatch(PALETTES.ocean),
-    neon: paletteSwatch(PALETTES.neon),
-    fire: paletteSwatch(PALETTES.fire),
   };
+  // A multi-stop swatch per activated gradient palette.
+  for (const p of gradientPalettes) icons[p.id] = paletteSwatch(p.colors);
+  return icons;
 }

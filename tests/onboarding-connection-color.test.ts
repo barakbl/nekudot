@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createBareHost } from "../src/paint-host";
 import { RoundBrush } from "../src/brushes/round";
-import { CONNECTION_COLOR_OPTIONS } from "../src/brushes/color-source";
+import { connectionColorOptions } from "../src/brushes/color-source";
 import type { IRenderer } from "../src/renderer";
 import type { NeighborFinder } from "../src/neighbor-finder";
 import {
@@ -30,9 +30,7 @@ const roundBrush = () => new RoundBrush(createBareHost(noopRenderer(), makeFinde
 describe("onboarding mandala connection colour", () => {
   it("defaults to rainbow, which is a real colour-source option", () => {
     expect(DEFAULT_MANDALA_CONNECTION_COLOR).toBe("rainbow");
-    expect(CONNECTION_COLOR_OPTIONS as readonly string[]).toContain(
-      DEFAULT_MANDALA_CONNECTION_COLOR,
-    );
+    expect(connectionColorOptions()).toContain(DEFAULT_MANDALA_CONNECTION_COLOR);
   });
 
   it("uses the JSON-configured colour, falling back to the default", () => {

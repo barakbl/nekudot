@@ -15,6 +15,8 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 // draggable box sharing the Layers/Symmetry panel chrome.
 export function createAppSettingsBox(opts: {
   theme: { initial: Theme; onChange: (t: Theme) => void };
+  smoothGradients: boolean;
+  onToggleSmoothGradients: (on: boolean) => void;
   penEnabled: boolean;
   onTogglePen: (on: boolean) => void;
   pixelLog: boolean;
@@ -80,6 +82,7 @@ export function createAppSettingsBox(opts: {
   }
   syncTheme();
 
+  const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
   const pixelLog = makeToggle(opts.pixelLog, opts.onTogglePixelLog);
 
@@ -104,6 +107,11 @@ export function createAppSettingsBox(opts: {
   body.append(
     sub("Appearance"),
     row("Theme", seg),
+    row(
+      "Smooth gradients",
+      smoothGrad.el,
+      "Blend gradients in OKLCH for perceptually even, vivid transitions (no muddy or grey midpoints). Off uses the classic linear-RGB blend.",
+    ),
     sub("Input"),
     row(
       "Pen pressure",
