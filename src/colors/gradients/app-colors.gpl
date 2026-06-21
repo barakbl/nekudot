@@ -1,0 +1,16 @@
+GIMP Palette
+Name: App Colors
+Columns: 12
+# Nekudot built-in palette - the curated app default colours.
+ 26  26  26	#1a1a1a
+255 255 255	#ffffff
+154 160 166	#9aa0a6
+230  57  70	#e63946
+243 114  44	#f3722c
+249 199  79	#f9c74f
+144 190 109	#90be6d
+ 67 170 139	#43aa8b
+ 39 125 161	#277da1
+ 87  98 213	#5762d5
+155  93 229	#9b5de5
+241  91 181	#f15bb5

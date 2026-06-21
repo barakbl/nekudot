@@ -31,6 +31,9 @@ import type { UndoSnapshot } from "./undo";
 import { attachHelp } from "./help";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./window-stack";
+import { createPalettePanel } from "./colors/panel";
+import { clearColorsStore, loadGradientPalettes } from "./colors/store";
+import { setGradientPalettes, setGradientSpace } from "./brushes/color-source";
 import {
   clampSize,
   fullScreenSize,
@@ -510,6 +513,7 @@ const layersBox = createLayersBox(
     applyStageBackground();
     layersBox.refreshPreviews();
   },
+  (req) => palettePanel.open(req), // background swatch opens the colour palette
 );
 document.body.appendChild(layersBox.el);
 registerWindow(layersBox.el);
@@ -681,6 +685,11 @@ const canvasMenuOptions = {
 // The global Application settings panel (theme / input / advanced) - the
 // app-wide counterpart to the per-brush settings panel. Theme + pen pressure
 // moved here from the More menu.
+// Gradient blend space (OKLCH "smooth" vs classic sRGB). Default on; applied to
+// the colour-source module here and toggled from App settings.
+let smoothGradients = store.get<boolean>("app.gradient.oklch") ?? true;
+setGradientSpace(smoothGradients ? "oklch" : "srgb");
+
 const appSettingsBox = createAppSettingsBox({
   theme: {
     initial: savedTheme,
@@ -688,6 +697,13 @@ const appSettingsBox = createAppSettingsBox({
       applyTheme(t);
       store.set("app.theme", t);
     },
+  },
+  smoothGradients,
+  onToggleSmoothGradients: (on) => {
+    smoothGradients = on;
+    store.set("app.gradient.oklch", on);
+    setGradientSpace(on ? "oklch" : "srgb");
+    refreshSettingsColors(); // regenerate the Color dial swatches in the new space
   },
   penEnabled,
   onTogglePen: (on) => {
@@ -722,6 +738,7 @@ const resetToDefault = () =>
       () => history.clear(), // undo stack + paint snapshot (what boot restores)
       () => pixelLog.clear(),
       () => saveCustomPresets([]), // custom connection presets
+      () => clearColorsStore(), // palettes + seeded flag, so gradients re-onboard
     ],
     storage: localStorage,
     reload: () => location.reload(),
@@ -775,6 +792,40 @@ function buildBrushMenu(defs: BrushDef[]): MenuEntry<string>[] {
   }
   return out;
 }
+
+// The colour palette popover. It's target-agnostic: each opener supplies a
+// request (title + anchor + getColor + onPick) and the popover pops up next to the
+// anchor and auto-closes on pick. The toolbar swatches drive Primary/Secondary via
+// the menu setters (same onChange path as the swatch); the Layers box uses it for
+// the background colour (see createLayersBox below).
+// Feed the activated gradient palettes into the connection Color dial (replacing
+// the old hard-coded sunset/ocean/neon/fire), and refresh the open settings so
+// the dial reflects them. Runs at startup and whenever a Gradient toggle changes.
+const refreshConnectionGradients = () => {
+  void loadGradientPalettes().then((gradients) => {
+    setGradientPalettes(
+      gradients.map((p) => ({ id: p.id, label: p.name, colors: p.colors })),
+    );
+    refreshSettingsColors();
+  });
+};
+
+const palettePanel = createPalettePanel({ onGradientsChanged: refreshConnectionGradients });
+document.body.appendChild(palettePanel.el);
+refreshConnectionGradients();
+
+// Open the palette as a picker for a toolbar slot (Primary/Secondary), next to the
+// clicked swatch.
+const openColorPalette = (target: "main" | "secondary", anchor: HTMLElement) =>
+  palettePanel.open({
+    title: target === "main" ? "Primary color" : "Secondary color",
+    anchor,
+    getColor: () =>
+      store.get<string>(`app.color.${target}`) ??
+      (target === "main" ? "#000000" : "#888888"),
+    onPick: (hex) =>
+      target === "main" ? menu.setMainColor(hex) : menu.setSecondaryColor(hex),
+  });
 
 const menu = createMenu(
   buildBrushMenu(BRUSH_DEFS),
@@ -844,6 +895,7 @@ const menu = createMenu(
         refreshSettingsColors();
       },
     },
+    onOpenPalette: (target, anchor) => openColorPalette(target, anchor),
   },
   initialBrushKey,
   showSettings,

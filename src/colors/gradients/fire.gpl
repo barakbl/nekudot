@@ -1,0 +1,8 @@
+GIMP Palette
+Name: Fire
+Columns: 4
+# Nekudot built-in gradient - exported from the app defaults.
+122   0  16	#7a0010
+230  57   0	#e63900
+255 123   0	#ff7b00
+255 208   0	#ffd000

@@ -1,0 +1,8 @@
+GIMP Palette
+Name: Neon
+Columns: 4
+# Nekudot built-in gradient - exported from the app defaults.
+  0 255 163	#00ffa3
+  0 179 255	#00b3ff
+122  92 255	#7a5cff
+255   0 212	#ff00d4

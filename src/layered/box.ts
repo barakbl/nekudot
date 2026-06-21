@@ -17,6 +17,17 @@ const PREVIEW_CSS_W = 36;
 const CHECKER_CSS =
   "repeating-conic-gradient(#c8c8c8 0% 25%, #fff 0% 50%) 0 0 / 8px 8px";
 
+// A colour-pick request handed to the palette panel (structurally matches
+// PickRequest in colors/panel.ts). When wired, the background swatch opens the
+// palette instead of the OS colour input.
+type ColorPickRequest = {
+  title: string;
+  anchor: HTMLElement;
+  getColor: () => string;
+  onPick: (hex: string) => void;
+};
+type OpenColorPicker = (req: ColorPickRequest) => void;
+
 // Paint a checkerboard onto a preview canvas to signal "no background".
 function drawChecker(ctx: CanvasRenderingContext2D, w: number, h: number): void {
   const s = Math.max(3, Math.round(6 * (window.devicePixelRatio || 1)));
@@ -33,6 +44,7 @@ export function createLayersBox(
   getBackgroundColor: () => string = () => "transparent",
   onCommit: (description: string) => void = () => {},
   onBackgroundApply: () => void = () => {},
+  openColorPicker?: OpenColorPicker,
 ): LayersBox {
   const panel = document.createElement("div");
   panel.className = "layers-box";
@@ -83,7 +95,9 @@ export function createLayersBox(
         ),
       );
     }
-    list.appendChild(makeBackgroundRow(manager, onCommit, onBackgroundApply));
+    list.appendChild(
+      makeBackgroundRow(manager, onCommit, onBackgroundApply, openColorPicker),
+    );
     addBtn.disabled = !manager.canAddMore();
   };
 
@@ -305,6 +319,7 @@ function makeBackgroundRow(
   manager: LayerManager,
   onCommit: (description: string) => void,
   onBackgroundApply: () => void,
+  openColorPicker?: OpenColorPicker,
 ): HTMLElement {
   const row = document.createElement("div");
   row.className = "layer-row layer-row-background";
@@ -329,18 +344,33 @@ function makeBackgroundRow(
   };
   syncSwatch();
 
-  swatch.addEventListener("click", (e) => {
-    e.stopPropagation();
-    colorInput.click();
-  });
-
-  colorInput.addEventListener("input", () => {
-    // Picking a colour implies an opaque background.
-    manager.setBackground({ color: colorInput.value, transparent: false }, { emit: false });
+  // Picking a colour implies an opaque background.
+  const applyBackgroundColor = (color: string) => {
+    manager.setBackground({ color, transparent: false }, { emit: false });
     bgToggle.set(false);
     syncSwatch();
     onBackgroundApply();
+  };
+
+  swatch.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (openColorPicker) {
+      openColorPicker({
+        title: "Background",
+        anchor: swatch,
+        getColor: () => manager.getBackground().color,
+        onPick: (hex) => {
+          applyBackgroundColor(hex);
+          onCommit(`Background color → ${hex}`);
+        },
+      });
+    } else {
+      colorInput.click();
+    }
   });
+
+  // Fallback path (no palette wired): the native OS colour input.
+  colorInput.addEventListener("input", () => applyBackgroundColor(colorInput.value));
   colorInput.addEventListener("change", () => {
     onCommit(`Background color → ${colorInput.value}`);
   });

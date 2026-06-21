@@ -21,10 +21,11 @@ import {
 } from "../../connecting-types";
 import type { BrushSetting } from "../../base";
 import {
-  COLOR_SOURCE_LABELS,
   colorSourceIcons,
+  connectionColorLabels,
+  connectionColorOptions,
   connectionLineColor,
-  CONNECTION_COLOR_OPTIONS,
+  normalizeColorSource,
 } from "../color-source";
 
 // Cap how many hairs a single connection fans into (perf guard).
@@ -497,10 +498,10 @@ export class ConnectionBase {
       case "connect": if (typeof v === "string") this.connectType = v as LineConnectType; break;
       case "dash": if (typeof v === "string") this.connectionDash = v as DashStyle; break;
       case "color":
-        this.connectionColorSource =
-          typeof v === "string" && (CONNECTION_COLOR_OPTIONS as readonly string[]).includes(v)
-            ? v
-            : "main";
+        // Keep the source as-is (mapping legacy names); unknown sources resolve to
+        // the Primary strokeStyle in connectionLineColor, and become valid once
+        // their gradient palette loads - so don't reject them here.
+        this.connectionColorSource = typeof v === "string" ? normalizeColorSource(v) : "main";
         break;
       case "connecting_from_map":
         if (typeof v === "string") this.connectFromMap = decodeConnectMap(v);
@@ -686,8 +687,8 @@ export class ConnectionBase {
         key: "color",
         label: "Color",
         section: STYLE_SECTION,
-        options: CONNECTION_COLOR_OPTIONS,
-        optionLabels: COLOR_SOURCE_LABELS,
+        options: connectionColorOptions(),
+        optionLabels: connectionColorLabels(),
         icons: colorSourceIcons(this.deps.store),
         value: this.connectionColorSource,
         onChange: (v) => this.setKey("color", v),

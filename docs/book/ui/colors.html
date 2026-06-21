@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Colours palette - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Interface › Panels › Colours palette</p>
+      <h1>Colours palette</h1>
+      <p class="lead">
+        A floating colour picker that pops up next to the swatch you opened it
+        from - browse palettes by mood, mix a colour, and pick it.
+      </p>
+
+      <h2>What it is</h2>
+      <p>
+        Click a colour swatch - the toolbar's front/back swatches, or the
+        background swatch in the <a href="/book/ui/layers-panel.html">Layers panel</a> -
+        and the palette popover opens beside it, like the OS colour picker.
+        Picking a colour applies it and closes the popover; clicking outside or
+        pressing <span class="kbd">Esc</span> also closes it. Everything you do
+        here - your palettes, recent colours, the chosen tab and mood - is saved
+        locally on this device.
+      </p>
+
+      <h2>Layout</h2>
+      <dl class="settings">
+        <dt>Recent</dt>
+        <dd>The colours you picked most recently, newest first - one click to reuse one. <strong>Clear</strong> empties the row.</dd>
+        <dt>Palette tab</dt>
+        <dd>All your palettes as rows of swatches. A <strong>Mood</strong> dropdown filters them; the palette you last picked from floats to the top.</dd>
+        <dt>Picker tab</dt>
+        <dd>Mix an exact colour: <strong>OKLCH</strong> (perceptual lightness / chroma / hue sliders) or <strong>HSB</strong> (a saturation-brightness square + hue bar), a hex field, an eyedropper where the browser supports it, and <strong>Apply</strong>.</dd>
+      </dl>
+
+      <h2>Moods</h2>
+      <p>
+        Every palette carries one <strong>mood</strong>, and the Palette tab's
+        dropdown filters by it. The moods are
+        <strong>Calm</strong>, <strong>Hot</strong>, <strong>Cool</strong>,
+        <strong>Vibrant</strong>, <strong>Earthy</strong>,
+        <strong>Pastel</strong> and <strong>General</strong> (the default for a
+        palette you haven't tagged). Choose <strong>All moods</strong> to see
+        everything at once.
+      </p>
+
+      <h2>Edit mode</h2>
+      <p>
+        The popover opens in a clean pick-only view. Tap <strong>Edit</strong>
+        (top-right of the popover) to reveal the editing tools; tap
+        <strong>Done</strong> to hide them again. While editing you get:
+      </p>
+      <dl class="settings">
+        <dt>+ New palette</dt>
+        <dd>Name a palette, give it a mood, then add swatches and pick each colour. It's saved alongside the rest.</dd>
+        <dt>Import</dt>
+        <dd>Opens a list of the bundled palettes you don't already have, plus an <strong>Upload .gpl file</strong> button - see below.</dd>
+        <dt>Per-palette actions</dt>
+        <dd>Each palette row gains <strong>edit</strong> (rename, retag, change colours), <strong>export</strong> and <strong>delete</strong> icons, plus a <strong>Gradient</strong> toggle.</dd>
+      </dl>
+
+      <h2>Import &amp; export</h2>
+      <p>
+        Nekudot reads and writes <strong>GIMP palette</strong> files
+        (<code>.gpl</code>) - the plain-text colour-list format that GIMP, Krita,
+        Inkscape and Aseprite all export.
+      </p>
+      <dl class="settings">
+        <dt>Import a bundled palette</dt>
+        <dd>The <strong>Import</strong> dialog lists every palette that ships with the app but isn't in your list yet. Tap one to add it. (Delete a palette and it becomes available to add again - the originals are never lost.)</dd>
+        <dt>Upload a .gpl</dt>
+        <dd>Pick a <code>.gpl</code> file from your computer and its colours arrive as a new palette.</dd>
+        <dt>Export</dt>
+        <dd>The export icon on a palette downloads it as a <code>.gpl</code> you can open in GIMP and friends - or re-import here.</dd>
+      </dl>
+
+      <h2>Gradients</h2>
+      <p>
+        Turning on a palette's <strong>Gradient</strong> toggle makes it a colour
+        source for the <a href="/book/connections.html">connecting</a> lines: it
+        then shows up in the connecting <strong>Color</strong> dial, where the
+        line colour sweeps through the palette around the circle. The default
+        gradient palettes (Ocean, Sunset, Fire, Neon, …) ship with this on.
+      </p>
+
+      <div class="tip">
+        <span class="tip-label">First run</span>
+        A starter set of palettes - the app colours plus mood-tagged gradients -
+        is added automatically the first time you open the app (and again if you
+        <a href="/book/ui/app-settings.html">reset to default</a>). They're
+        ordinary palettes after that: edit, retag or delete them freely.
+      </div>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

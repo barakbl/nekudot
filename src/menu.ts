@@ -17,7 +17,14 @@ export type MenuAction = {
   className?: string; // extra class on the navbar button (e.g. to hide on mobile)
 };
 export type ColorSlot = { initial: string; onChange: (color: string) => void };
-export type ColorControl = { main: ColorSlot; secondary: ColorSlot };
+export type ColorControl = {
+  main: ColorSlot;
+  secondary: ColorSlot;
+  // When set, clicking a toolbar swatch opens the colour palette popover next to
+  // it for that slot (the popover reaches the OS picker itself). `anchor` is the
+  // clicked swatch, so the popover can position itself beside it.
+  onOpenPalette?: (target: "main" | "secondary", anchor: HTMLElement) => void;
+};
 
 export type HistoryControl = {
   onUndo: () => void;
@@ -107,6 +114,7 @@ export function createMenu<T extends string>(
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
   setSymmetryValue: (v: string) => void;
   setMainColor: (v: string) => void;
+  setSecondaryColor: (v: string) => void;
   refreshHistoryState: () => void;
   refreshMapsPill: () => void;
   toggleCanvasMenu: () => void;
@@ -197,6 +205,7 @@ export function createMenu<T extends string>(
     setConnectingOptions,
     setSymmetryValue,
     setMainColor: swatch.setMain,
+    setSecondaryColor: swatch.setSecondary,
     refreshHistoryState,
     refreshMapsPill,
     toggleCanvasMenu,
@@ -597,13 +606,13 @@ function makeDragDots(bar: HTMLElement): HTMLElement {
 
 function makeColorSwatch(
   colors?: ColorControl,
-): { el: HTMLElement; setMain: (v: string) => void } {
+): { el: HTMLElement; setMain: (v: string) => void; setSecondary: (v: string) => void } {
   const wrap = document.createElement("span");
   wrap.className = "swatch-wrap";
   wrap.title = "Right-click to swap colors";
 
-  const back = makeColorSlot("swatch-back", colors?.secondary);
-  const front = makeColorSlot("swatch-front", colors?.main);
+  const back = makeColorSlot("swatch-back", colors?.secondary, "secondary", colors?.onOpenPalette);
+  const front = makeColorSlot("swatch-front", colors?.main, "main", colors?.onOpenPalette);
 
   wrap.addEventListener("contextmenu", (e) => {
     e.preventDefault();
@@ -616,9 +625,9 @@ function makeColorSwatch(
 
   wrap.appendChild(back.el);
   wrap.appendChild(front.el);
-  // setMain updates the swatch AND fires the main-color onChange (so callers like
-  // the Mandala start option can switch to a light stroke on a dark canvas).
-  return { el: wrap, setMain: front.setValue };
+  // setMain/setSecondary update the swatch AND fire the slot's onChange (so callers
+  // like the Mandala start option, or the palette panel, drive the live colour).
+  return { el: wrap, setMain: front.setValue, setSecondary: back.setValue };
 }
 
 type ColorSlotHandle = {
@@ -630,6 +639,8 @@ type ColorSlotHandle = {
 function makeColorSlot(
   className: string,
   slot: ColorSlot | undefined,
+  target?: "main" | "secondary",
+  onOpenPalette?: (target: "main" | "secondary", anchor: HTMLElement) => void,
 ): ColorSlotHandle {
   const el = document.createElement("span");
   el.className = className;
@@ -646,9 +657,13 @@ function makeColorSlot(
   input.className = "swatch-input";
   el.appendChild(input);
 
+  // With a palette panel wired, the swatch opens it (the panel reaches the OS
+  // picker on its own); otherwise the swatch is the OS picker directly. The
+  // hidden input stays the source of truth for the slot's value either way.
   el.addEventListener("click", (e) => {
     e.stopPropagation();
-    input.click();
+    if (onOpenPalette && target) onOpenPalette(target, el);
+    else input.click();
   });
   input.addEventListener("input", () => {
     el.style.background = input.value;

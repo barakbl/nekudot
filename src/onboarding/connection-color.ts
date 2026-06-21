@@ -1,5 +1,5 @@
 import type { BrushBase } from "../base";
-import { CONNECTION_COLOR_OPTIONS } from "../brushes/color-source";
+import { connectionColorOptions } from "../brushes/color-source";
 
 // The onboarding "Mandala" start option opens the connecting (web) brush in a
 // vivid colour source so the first kaleidoscope stroke is colourful. The value
@@ -23,7 +23,7 @@ export function mandalaConnectionColor(configured?: string): string {
 export function applyConnectionColor(brush: BrushBase, color: string): boolean {
   const connection = brush.activeConnection();
   if (!connection) return false;
-  if (!(CONNECTION_COLOR_OPTIONS as readonly string[]).includes(color)) return false;
+  if (!connectionColorOptions().includes(color)) return false;
   connection.applyFlat({ color });
   return true;
 }
