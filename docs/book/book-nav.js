@@ -29,6 +29,8 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="2.5"/><circle cx="7" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="11" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></svg>',
     sliders:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 7h8M16 7h4M4 17h4M12 17h8"/><circle cx="14" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    colors:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C6.8 3 3 6.6 3 11c0 3.3 2.5 5.3 5 5.3 1.3 0 1.9-.8 1.9-1.7 0-1-.9-1.4-.9-2.2 0-1 .8-1.7 1.9-1.7H14c3.1 0 5.5-2 5.5-4.8C19.5 5.3 16.2 3 12 3Z"/><circle cx="7.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="6.9" r="1" fill="currentColor" stroke="none"/><circle cx="14.4" cy="7.1" r="1" fill="currentColor" stroke="none"/></svg>',
     image:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5L5 20"/></svg>',
     gear:
@@ -84,6 +86,7 @@
           label: "Panels",
           children: [
             { label: "Brush & Connecting settings", href: "/book/ui/settings.html", icon: I.sliders },
+            { label: "Colours palette", href: "/book/ui/colors.html", icon: I.colors },
             { label: "Layers panel", href: "/book/ui/layers-panel.html", icon: I.layers },
             { label: "Memory Maps panel", href: "/book/ui/maps-panel.html", icon: I.map },
             { label: "Symmetry panel", href: "/book/ui/symmetry-panel.html", icon: I.symmetry },
