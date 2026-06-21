@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseGpl, toGpl } from "../src/colors/gpl";
+import { MAX_SWATCHES } from "../src/colors/palette";
 
 describe("parseGpl", () => {
   it("parses a well-formed palette: header name + colour rows", () => {
@@ -48,6 +49,15 @@ describe("parseGpl", () => {
   it("tolerates a leading BOM on the magic line", () => {
     const p = parseGpl("﻿GIMP Palette\n10 20 30");
     expect(p?.colors).toEqual(["#0a141e"]);
+  });
+
+  it("caps a large (e.g. hostile) palette at MAX_SWATCHES", () => {
+    const rows = Array.from(
+      { length: 400 },
+      (_, i) => `${i % 256} ${Math.floor(i / 256)} 0`,
+    ).join("\n");
+    const p = parseGpl(`GIMP Palette\nName: Big\n${rows}`);
+    expect(p?.colors.length).toBe(MAX_SWATCHES);
   });
 });
 

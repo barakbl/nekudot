@@ -19,24 +19,6 @@ export type Palette = {
   gradient?: boolean;
 };
 
-// A tasteful 12-colour default set: ink/paper/grey plus a warm→cool accent ramp.
-// This is the source the bundled gradients/app-colors.gpl was generated from; the
-// app now seeds "App Colors" from that .gpl rather than this array directly.
-export const DEFAULT_APP_COLORS: string[] = [
-  "#1a1a1a",
-  "#ffffff",
-  "#9aa0a6",
-  "#e63946",
-  "#f3722c",
-  "#f9c74f",
-  "#90be6d",
-  "#43aa8b",
-  "#277da1",
-  "#5762d5",
-  "#9b5de5",
-  "#f15bb5",
-];
-
 // Normalize a colour to lower-case "#rrggbb", or null if it isn't a valid hex.
 // Accepts "#rgb"/"#rrggbb" with or without the leading "#".
 export function normalizeHex(input: string): string | null {

@@ -102,6 +102,7 @@ const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   let current: PickRequest | null = null;
   let custom: Palette[] = [];
+  let loaded = false; // the initial loadCustomPalettes has resolved (guards early saves)
   let recent: string[] = [];
   let lastUsedId: string | null = null; // palette last picked from (pinned top)
   let activeTab: Tab = loadTab();
@@ -648,6 +649,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   // gradient palette's colours updates consumers (e.g. the connection Color dial)
   // live.
   function saveCustom(): void {
+    // Don't persist before the initial load has populated `custom` - otherwise an
+    // early mutation could overwrite the seeded palettes with an empty/stale list.
+    if (!loaded) return;
     void saveCustomPalettes(custom).then(() => opts.onGradientsChanged?.());
   }
   function setGradient(p: Palette, on: boolean): void {
@@ -971,9 +975,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       saveCustom();
       setStatus(msg);
     }
-    activeMood = normalizeMood(p.mood);
-    moodSelect.value = activeMood;
-    saveMood(activeMood);
+    // Only touch the mood filter if it would otherwise hide the result - drop to
+    // "All moods" so the palette is visible, without overriding a deliberate filter
+    // when it already matches.
+    if (activeMood !== ALL_MOODS && normalizeMood(p.mood) !== activeMood) {
+      activeMood = ALL_MOODS;
+      moodSelect.value = activeMood;
+      saveMood(activeMood);
+    }
     renderCustom();
     reposition();
   }
@@ -1107,7 +1116,10 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       close();
     };
     onKeyDown = (e) => {
-      if (e.key === "Escape") close();
+      if (e.key !== "Escape") return;
+      // Escape dismisses the topmost layer: the Import modal first, else the popover.
+      if (importModal.style.display !== "none") closeImportModal();
+      else close();
     };
     document.addEventListener("pointerdown", onDocPointerDown, true);
     document.addEventListener("keydown", onKeyDown, true);
@@ -1160,6 +1172,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   renderRecent();
   void loadCustomPalettes().then((p) => {
     custom = p;
+    loaded = true;
     renderCustom();
   });
   void loadLastUsedPalette().then((id) => {

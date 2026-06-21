@@ -34,6 +34,13 @@ describe("palette store: gradient flag, mood, and seeding", () => {
     expect(all.filter((p) => p.id === "conn:ocean")).toHaveLength(1);
   });
 
+  it("clearColorsStore (reset) wipes the seed flag so gradients re-onboard", async () => {
+    expect((await loadGradientPalettes()).map((p) => p.id)).toContain("conn:ocean");
+    await clearColorsStore(); // simulates "Reset to default"
+    // A fresh load re-seeds from the bundled catalog rather than staying empty.
+    expect((await loadGradientPalettes()).map((p) => p.id)).toContain("conn:ocean");
+  });
+
   it("loadGradientPalettes = seeded gradients + custom gradient:true palettes", async () => {
     await saveCustomPalettes([
       { id: "p1", name: "A", colors: ["#ff0000"], gradient: true },

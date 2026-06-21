@@ -38,8 +38,14 @@ function basename(file: string): string {
 }
 
 // Parse settings.json + the matching .gpl files into ready-to-store palettes.
-// Skips entries whose file is missing or whose .gpl yields no colours.
+// Skips entries whose file is missing or whose .gpl yields no colours. Memoized:
+// the bundled files are build-time constant, so we parse them once (the Import
+// modal and seeding both call this repeatedly).
+let cache: CatalogItem[] | null = null;
 export function gradientCatalog(): CatalogItem[] {
+  return (cache ??= buildCatalog());
+}
+function buildCatalog(): CatalogItem[] {
   const out: CatalogItem[] = [];
   for (const row of rawSettings as unknown[]) {
     const parsed = EntrySchema.safeParse(row);

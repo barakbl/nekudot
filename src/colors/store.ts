@@ -66,19 +66,24 @@ async function writePalettes(palettes: readonly Palette[]): Promise<void> {
 // added.
 let seedPromise: Promise<void> | null = null;
 export function ensureSeeded(): Promise<void> {
-  return (seedPromise ??= doSeed());
+  // On failure, clear the cached promise so a later call retries - otherwise a
+  // single transient IDB error would leave gradients un-seeded for the whole
+  // session (the memoized promise would stay resolved).
+  if (!seedPromise) {
+    seedPromise = doSeed().catch((e) => {
+      console.warn("seed gradients failed", e);
+      seedPromise = null;
+    });
+  }
+  return seedPromise;
 }
 async function doSeed(): Promise<void> {
-  try {
-    if (await db.get<unknown>(SEEDED_KEY)) return;
-    const existing = await readPalettes();
-    const have = new Set(existing.map((p) => p.id));
-    const seeds = onboardingPalettes().filter((p) => !have.has(p.id));
-    if (seeds.length) await writePalettes([...seeds, ...existing]);
-    await db.put(SEEDED_KEY, true);
-  } catch (e) {
-    console.warn("seed gradients failed", e);
-  }
+  if (await db.get<unknown>(SEEDED_KEY)) return;
+  const existing = await readPalettes();
+  const have = new Set(existing.map((p) => p.id));
+  const seeds = onboardingPalettes().filter((p) => !have.has(p.id));
+  if (seeds.length) await writePalettes([...seeds, ...existing]);
+  await db.put(SEEDED_KEY, true);
 }
 
 export async function loadCustomPalettes(): Promise<Palette[]> {

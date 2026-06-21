@@ -1,7 +1,7 @@
 import type { Store } from "../store/base";
 import { mixOklch } from "../colors/oklch";
 
-// Shared bits for the "color source" selects — the connecting Color dial and
+// Shared bits for the "color source" selects - the connecting Color dial and
 // the Squares/Circles Fill dropdown. Both choose between the toolbar's two
 // colors (kept internally as "main"/"secondary"); the UI shows them as
 // Primary/Secondary with a live swatch of the actual colour.
