@@ -119,34 +119,16 @@ function paletteHex(stops: readonly string[], t: number): string {
   return blend(stops[i], stops[(i + 1) % n], x - Math.floor(x));
 }
 
-// Curated multi-stop connection gradients, the defaults that ship as built-in
-// gradient palettes (App tab) and seed the gradient source cache below.
-const CONNECTION_GRADIENTS: { name: string; label: string; colors: readonly string[] }[] = [
-  { name: "sunset", label: "Sunset", colors: ["#ff5e62", "#ff9966", "#ffd194", "#fde9b0"] },
-  { name: "ocean", label: "Ocean", colors: ["#0083b0", "#00b4db", "#48cae4", "#90e0ef"] },
-  { name: "neon", label: "Neon", colors: ["#00ffa3", "#00b3ff", "#7a5cff", "#ff00d4"] },
-  { name: "fire", label: "Fire", colors: ["#7a0010", "#e63900", "#ff7b00", "#ffd000"] },
-];
-
-// The default connection palettes surfaced to the colour palette panel as
-// read-only swatch groups. The dynamic sources (gradient/rainbow/complement) are
-// angle-driven, not fixed colour lists, so they're not included.
-export function connectionPalettes(): { name: string; label: string; colors: string[] }[] {
-  return CONNECTION_GRADIENTS.map((g) => ({ name: g.name, label: g.label, colors: [...g.colors] }));
-}
-
 // --- gradient sources from the colour palette mechanism ---------------------
 // The multi-stop palettes the connection Color dial offers are the palettes the
-// user has activated as gradients (built-ins on by default + custom ones), fed in
-// from the palette store via setGradientPalettes. Seeded synchronously with the
-// built-in connection gradients so they're available before the async load (and
-// in tests). Each id matches the palette's id in the colours mechanism.
+// user has activated as gradients, fed in from the palette store via
+// setGradientPalettes. The defaults (Sunset/Ocean/Neon/Fire/...) are no longer
+// hard-coded here - they're seeded into the palette store from
+// colors/gradients/*.gpl and arrive via the async load. Starts empty; main.ts
+// calls setGradientPalettes on boot (and on every Gradient toggle). Each id
+// matches the palette's id in the colours mechanism.
 type GradientPalette = { id: string; label: string; colors: readonly string[] };
-let gradientPalettes: GradientPalette[] = CONNECTION_GRADIENTS.map((g) => ({
-  id: `conn:${g.name}`,
-  label: g.label,
-  colors: g.colors,
-}));
+let gradientPalettes: GradientPalette[] = [];
 
 export function setGradientPalettes(list: readonly GradientPalette[]): void {
   gradientPalettes = list.filter((p) => p.colors.length > 0).map((p) => ({ ...p }));

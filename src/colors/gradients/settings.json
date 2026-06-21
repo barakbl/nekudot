@@ -1,0 +1,28 @@
+[
+  { "file": "app-colors.gpl", "id": "app", "mood": "GENERAL", "onboarding": true, "gradient": true },
+  { "file": "ocean.gpl", "mood": "CALM", "onboarding": true, "gradient": true },
+  { "file": "sunset.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
+  { "file": "fire.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
+  { "file": "neon.gpl", "mood": "VIBRANT", "onboarding": true, "gradient": true },
+
+  { "file": "arctic.gpl", "mood": "COOL", "onboarding": false, "gradient": true },
+  { "file": "forest.gpl", "mood": "COOL", "onboarding": false, "gradient": true },
+  { "file": "mint.gpl", "mood": "COOL", "onboarding": true, "gradient": true },
+  { "file": "glacier.gpl", "mood": "COOL", "onboarding": true, "gradient": true },
+
+  { "file": "terracotta.gpl", "mood": "EARTHY", "onboarding": true, "gradient": true },
+  { "file": "autumn.gpl", "mood": "EARTHY", "onboarding": false, "gradient": true },
+  { "file": "desert-sand.gpl", "mood": "EARTHY", "onboarding": false, "gradient": true },
+
+  { "file": "sorbet.gpl", "mood": "PASTEL", "onboarding": true, "gradient": true },
+  { "file": "macaron.gpl", "mood": "PASTEL", "onboarding": true, "gradient": true },
+
+  { "file": "lavender.gpl", "mood": "CALM", "onboarding": true, "gradient": true },
+  { "file": "magma.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
+  { "file": "pop.gpl", "mood": "VIBRANT", "onboarding": true, "gradient": true },
+  { "file": "grayscale.gpl", "mood": "GENERAL", "onboarding": true, "gradient": true },
+
+  { "file": "copic_classic.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false },
+  { "file": "copic_sketch.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false },
+  { "file": "copic_ciao.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false }
+]

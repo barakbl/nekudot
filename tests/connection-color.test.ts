@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { ConnectionBase } from "../src/brushes/connections/base";
-import { mixHex, hueHex, connectionLineColor } from "../src/brushes/color-source";
+import {
+  mixHex,
+  hueHex,
+  connectionLineColor,
+  setGradientPalettes,
+} from "../src/brushes/color-source";
 import type { Pixel } from "../src/neighbor-finder";
 
 // The gradient / palette connection colour source: per-line colour from the
@@ -112,6 +117,10 @@ describe("connectionLineColor (palettes + complement)", () => {
     expect(connectionLineColor("secondary", 0.3, "#111111", "#eeeeee")).toBe("#eeeeee");
   });
   it("a curated palette gives distinct valid colours across the circle", () => {
+    // Gradients arrive via the palette mechanism; legacy "sunset" -> conn:sunset.
+    setGradientPalettes([
+      { id: "conn:sunset", label: "Sunset", colors: ["#ff5e62", "#ff9966", "#ffd194", "#fde9b0"] },
+    ]);
     const cs = [0, 0.25, 0.5, 0.75].map((t) => connectionLineColor("sunset", t, "#000000", "#ffffff"));
     expect(cs.every((c) => hex.test(c ?? ""))).toBe(true);
     expect(new Set(cs).size).toBeGreaterThan(2);

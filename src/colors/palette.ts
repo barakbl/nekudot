@@ -1,7 +1,6 @@
 // Core data model + pure helpers for the colour palette feature. The panel
 // (panel.ts), persistence (store.ts) and GPL import (gpl.ts) all build on this.
 // Kept framework-free and side-effect-free so it's trivially unit-testable.
-import { connectionPalettes } from "../brushes/color-source";
 
 // Max colours in a single palette. A constant so it's easy to raise later.
 export const MAX_SWATCHES = 120;
@@ -12,14 +11,17 @@ export type Palette = {
   id: string; // stable id (storage key / dedupe); see makeId()
   name: string; // display name (the "name behind the scenes")
   colors: string[]; // "#rrggbb", deduped + capped at MAX_SWATCHES
-  builtin?: boolean; // true => read-only (App Colors + connection gradients)
-  // Marks the palette as usable as a gradient elsewhere in the app. Built-in
-  // palettes default to true; for those the live on/off lives in storage (the
-  // objects are regenerated), so read it via the panel's gradient overrides.
+  // Mood tag (a moods.ts id like "CALM"); the panel filters by it. Absent =>
+  // treated as the default mood (GENERAL).
+  mood?: string;
+  // Marks the palette as usable as a gradient elsewhere in the app (e.g. the
+  // connection Color dial). Seeded gradients default it on; the user toggles it.
   gradient?: boolean;
 };
 
 // A tasteful 12-colour default set: ink/paper/grey plus a warm→cool accent ramp.
+// This is the source the bundled gradients/app-colors.gpl was generated from; the
+// app now seeds "App Colors" from that .gpl rather than this array directly.
 export const DEFAULT_APP_COLORS: string[] = [
   "#1a1a1a",
   "#ffffff",
@@ -76,25 +78,4 @@ export function makeId(): string {
   const c = globalThis.crypto as Crypto | undefined;
   if (c?.randomUUID) return c.randomUUID();
   return `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-// The read-only default palettes: the curated App Colors plus every static
-// connection gradient (Sunset/Ocean/Neon/Fire), in that order.
-export function builtinPalettes(): Palette[] {
-  return [
-    {
-      id: "app",
-      name: "App Colors",
-      colors: clampColors(DEFAULT_APP_COLORS),
-      builtin: true,
-      gradient: true,
-    },
-    ...connectionPalettes().map((p) => ({
-      id: `conn:${p.name}`,
-      name: p.label,
-      colors: clampColors(p.colors),
-      builtin: true,
-      gradient: true,
-    })),
-  ];
 }

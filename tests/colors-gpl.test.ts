@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseGpl } from "../src/colors/gpl";
+import { parseGpl, toGpl } from "../src/colors/gpl";
 
 describe("parseGpl", () => {
   it("parses a well-formed palette: header name + colour rows", () => {
@@ -48,5 +48,30 @@ describe("parseGpl", () => {
   it("tolerates a leading BOM on the magic line", () => {
     const p = parseGpl("﻿GIMP Palette\n10 20 30");
     expect(p?.colors).toEqual(["#0a141e"]);
+  });
+});
+
+describe("toGpl (export)", () => {
+  it("emits a valid header + R G B rows", () => {
+    const text = toGpl({ name: "Mine", colors: ["#ff0000", "#00ff00"] });
+    const lines = text.trim().split("\n");
+    expect(lines[0]).toBe("GIMP Palette");
+    expect(lines[1]).toBe("Name: Mine");
+    expect(lines[2]).toBe("Columns: 2");
+    expect(text).toContain("255   0   0\t#ff0000");
+  });
+
+  it("round-trips through parseGpl (name + colours preserved)", () => {
+    const pal = { name: "Sunset", colors: ["#ff5e62", "#ff9966", "#ffd194"] };
+    const back = parseGpl(toGpl(pal));
+    expect(back?.name).toBe("Sunset");
+    expect(back?.colors).toEqual(pal.colors);
+  });
+
+  it("skips invalid colours and names an empty palette sensibly", () => {
+    const text = toGpl({ name: "", colors: ["#abc", "nope"] });
+    expect(text).toContain("Name: Palette");
+    expect(text).toContain("#aabbcc"); // #abc expanded
+    expect(text).not.toContain("nope");
   });
 });

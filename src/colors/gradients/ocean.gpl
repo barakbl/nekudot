@@ -1,0 +1,8 @@
+GIMP Palette
+Name: Ocean
+Columns: 4
+# Nekudot built-in gradient - exported from the app defaults.
+  0 131 176	#0083b0
+  0 180 219	#00b4db
+ 72 202 228	#48cae4
+144 224 239	#90e0ef

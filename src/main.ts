@@ -32,7 +32,7 @@ import { attachHelp } from "./help";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./window-stack";
 import { createPalettePanel } from "./colors/panel";
-import { loadGradientPalettes } from "./colors/store";
+import { clearColorsStore, loadGradientPalettes } from "./colors/store";
 import { setGradientPalettes, setGradientSpace } from "./brushes/color-source";
 import {
   clampSize,
@@ -738,6 +738,7 @@ const resetToDefault = () =>
       () => history.clear(), // undo stack + paint snapshot (what boot restores)
       () => pixelLog.clear(),
       () => saveCustomPresets([]), // custom connection presets
+      () => clearColorsStore(), // palettes + seeded flag, so gradients re-onboard
     ],
     storage: localStorage,
     reload: () => location.reload(),

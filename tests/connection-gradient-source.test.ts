@@ -9,21 +9,21 @@ import {
 
 const hex = /^#[0-9a-f]{6}$/;
 
-// The connection Color dial's gradients now come from the palette mechanism
-// (setGradientPalettes), not a hard-coded list. The module seeds itself with the
-// built-in connection gradients so this runs in order: defaults first, then a
-// feed replaces them.
+// The connection Color dial's gradients come entirely from the palette mechanism
+// (setGradientPalettes) - they're no longer hard-coded here; the defaults are
+// seeded into the palette store and fed in by main.ts. So this module starts with
+// only the static sources until a feed arrives.
 describe("connection gradient sources (driven by the palette mechanism)", () => {
-  it("defaults to the static sources + the built-in connection gradients", () => {
+  it("defaults to just the static sources (no gradients until fed)", () => {
     const opts = connectionColorOptions();
-    expect(opts.slice(0, 5)).toEqual(["main", "secondary", "gradient", "rainbow", "complement"]);
-    expect(opts).toEqual(
-      expect.arrayContaining(["conn:sunset", "conn:ocean", "conn:neon", "conn:fire"]),
-    );
+    expect(opts).toEqual(["main", "secondary", "gradient", "rainbow", "complement"]);
   });
 
-  it("maps legacy names to ids and still resolves them", () => {
+  it("maps legacy names to ids and resolves them once fed", () => {
     expect(normalizeColorSource("sunset")).toBe("conn:sunset");
+    setGradientPalettes([
+      { id: "conn:sunset", label: "Sunset", colors: ["#ff5e62", "#ffd194"] },
+    ]);
     expect(connectionLineColor("sunset", 0.3, "#000000", "#ffffff")).toMatch(hex);
   });
 

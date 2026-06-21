@@ -2,18 +2,18 @@
 // swatch it was launched from (the toolbar Primary/Secondary swatches, the Layers
 // background swatch, ...), like the OS colour picker. Layout, top to bottom:
 //   - Recent colours
-//   - Tabs: "App" (read-only default palettes) / "Custom" (the user's palettes +
-//     New / Import GPL) / "Picker". The active tab is remembered across sessions.
+//   - Tabs: "Palette" (all palettes, filtered by a Mood combo, with New / Import) /
+//     "Picker". The active tab + selected mood are remembered across sessions.
 //   - The Picker tab reveals OKLCH / HSB sub-tabs: OKLCH L/C/H sliders, or a
 //     Photoshop-style saturation/brightness square + hue bar, plus an Eyedropper
 //     (where supported) and a shared preview + Apply.
-// Picking a colour applies it (via the request's onPick), records it as recent,
-// and auto-closes. Clicking outside or pressing Escape also closes it.
+// Palettes are seeded from colors/gradients on first run (see store.ensureSeeded)
+// and are all editable. Picking a colour applies it (via the request's onPick),
+// records it as recent, and auto-closes. Outside-click / Escape also closes it.
 import { makeCloseButton } from "../settings-panel";
 import { makeToggle } from "../toggle";
 import { attachHelp } from "../help";
 import {
-  builtinPalettes,
   clampColors,
   makeId,
   MAX_SWATCHES,
@@ -21,15 +21,16 @@ import {
   pushRecent,
   type Palette,
 } from "./palette";
+import { ALL_MOODS, allMoods, DEFAULT_MOOD, moodName, normalizeMood } from "./moods";
+import { gradientCatalog } from "./gradients/catalog";
 import { hexToOklch, oklchToHex } from "./oklch";
 import { hexToHsv, hsvToHex } from "./hsv";
-import { parseGpl } from "./gpl";
+import { parseGpl, toGpl } from "./gpl";
+import { triggerDownload } from "../export";
 import {
-  loadBuiltinGradients,
   loadCustomPalettes,
   loadLastUsedPalette,
   loadRecent,
-  saveBuiltinGradients,
   saveCustomPalettes,
   saveLastUsedPalette,
   saveRecent,
@@ -58,9 +59,10 @@ export type PalettePanelOpts = {
   onGradientsChanged?: () => void;
 };
 
-type Tab = "app" | "custom" | "picker";
+type Tab = "palette" | "picker";
 type PickerMode = "oklch" | "hsb";
 const TAB_KEY = "nekudot.colors.tab";
+const MOOD_KEY = "nekudot.colors.mood"; // selected mood id, or ALL_MOODS
 
 const trashIcon =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -76,10 +78,16 @@ const editIcon =
   '<path d="M12 20 h9"/><path d="M16.5 3.5 a2.12 2.12 0 0 1 3 3 L7 19 l-4 1 1 -4 12.5 -12.5 z"/></svg>';
 
 // A standard "import" glyph (down arrow dropping into a tray) for the Import
-// Palette File button, drawn in the same stroke style as the other icons.
+// button, drawn in the same stroke style as the other icons.
 const importIcon =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M12 3 V14"/><path d="M7.5 9.5 L12 14 l4.5 -4.5"/>' +
+  '<path d="M4 16.5 V19 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2 -2 v-2.5"/></svg>';
+
+// The mirror of importIcon (up arrow rising out of a tray) for per-palette export.
+const exportIcon =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M12 15 V3"/><path d="M7.5 7.5 L12 3 l4.5 4.5"/>' +
   '<path d="M4 16.5 V19 a2 2 0 0 0 2 2 h12 a2 2 0 0 0 2 -2 v-2.5"/></svg>';
 
 // The browser EyeDropper API (Chromium). Absent in Safari/Firefox - feature-detect.
@@ -95,8 +103,13 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   let current: PickRequest | null = null;
   let custom: Palette[] = [];
   let recent: string[] = [];
-  let lastUsedId: string | null = null; // custom palette last picked from (pinned top)
+  let lastUsedId: string | null = null; // palette last picked from (pinned top)
   let activeTab: Tab = loadTab();
+  let activeMood: string = loadMood(); // selected mood filter (ALL_MOODS = show all)
+  // List "Edit" mode (off by default for a clean pick view): reveals the New /
+  // Import actions + per-palette edit/export/delete + gradient toggles. Distinct
+  // from the focused single-palette editor (enterEdit/editView).
+  let listEditing = false;
   let pickerMode: PickerMode = "oklch";
   let working = "#000000"; // the colour the Picker tab is editing
   // Focused palette editing: a draft copy of the palette being built/edited. While
@@ -104,8 +117,6 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   let editDraft: Palette | null = null;
   let editSelected = -1; // index of the swatch the picker is bound to (-1 = none)
   let editSwatchEls: HTMLElement[] = []; // swatch DOM, for live colour updates
-  let builtinGradients: Record<string, boolean> = {}; // built-in gradient on/off
-  const builtins = builtinPalettes();
   const MAXC = 0.37; // OKLCH chroma at the C slider's max
 
   const panel = document.createElement("div");
@@ -120,7 +131,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   header.appendChild(title);
   const actions = document.createElement("div");
   actions.className = "panel-header-actions";
-  actions.appendChild(makeCloseButton(() => close()));
+  // "Edit" toggle (shown only on the Palette tab). Off => clean pick view.
+  const editToggleBtn = document.createElement("button");
+  editToggleBtn.type = "button";
+  editToggleBtn.className = "palette-edit-toggle";
+  editToggleBtn.textContent = "Edit";
+  editToggleBtn.title = "Edit palettes: add, import, rename, export, delete";
+  editToggleBtn.addEventListener("click", () => setListEditing(!listEditing));
+  actions.append(editToggleBtn, makeCloseButton(() => close()));
   header.appendChild(actions);
   panel.appendChild(header);
 
@@ -132,24 +150,16 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const recentWrap = document.createElement("div");
   body.appendChild(recentWrap);
 
-  // --- Tabs: App / Custom / Picker -------------------------------------------
+  // --- Tabs: Palette / Picker ------------------------------------------------
   const tabBar = document.createElement("div");
   tabBar.className = "settings-tabs palette-tabs";
-  const appTabBtn = makeTab("App", "app");
-  const customTabBtn = makeTab("Custom", "custom");
+  const paletteTabBtn = makeTab("Palette", "palette");
   const pickerTabBtn = makeTab("Picker", "picker");
-  tabBar.append(appTabBtn, customTabBtn, pickerTabBtn);
+  tabBar.append(paletteTabBtn, pickerTabBtn);
   body.appendChild(tabBar);
 
-  // App pane: read-only default palettes.
-  const appPane = document.createElement("div");
-  appPane.className = "palette-pane";
-  const builtinWrap = document.createElement("div");
-  builtinWrap.className = "palette-list";
-  appPane.appendChild(builtinWrap);
-  body.appendChild(appPane);
-
-  // Custom pane: the user's palettes + New / Import GPL.
+  // Palette pane: New / Import actions, a Mood filter combo, then the (mood-
+  // filtered) list of all palettes.
   const customPane = document.createElement("div");
   customPane.className = "palette-pane";
   const customWrap = document.createElement("div");
@@ -157,27 +167,48 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const customFooter = document.createElement("div");
   customFooter.className = "palette-footer";
   const newPaletteBtn = makeActionBtn("+ New palette", () => enterEdit(null));
-  const importGplBtn = makeActionBtn(
-    "Import Palette File (.gpl)",
-    () => fileInput.click(),
-    importIcon,
-  );
-  importGplBtn.classList.add("palette-action-wide"); // longer label: smaller + wraps
-  customFooter.append(newPaletteBtn, importGplBtn);
+  const importBtn = makeActionBtn("Import", () => openImportModal(), importIcon);
+  customFooter.append(newPaletteBtn, importBtn);
   // "?" hints (shown in help mode, toggled by the ? key) explain each action.
   attachHelp(
     newPaletteBtn,
-    "Build your own palette: name it, then add swatches and pick each colour. " +
-      "It's saved here under Custom, ready to edit or use as a gradient.",
+    "Build your own palette: name it, choose a mood, then add swatches and pick " +
+      "each colour. It's saved here, ready to edit or use as a gradient.",
   );
   attachHelp(
-    importGplBtn,
-    "Load a GIMP palette (.gpl) - the plain-text colour-list format GIMP, Krita, " +
-      "Inkscape and Aseprite all export. Pick a .gpl file and its colours arrive " +
-      "as a new custom palette.",
+    importBtn,
+    "Add a palette: pick one of the bundled gradients, or upload a GIMP palette " +
+      "(.gpl) - the plain-text format GIMP, Krita, Inkscape and Aseprite export.",
   );
-  // Actions (New palette / Import GPL) sit at the top, just under the tabs.
-  customPane.append(customFooter, customWrap);
+
+  // Mood filter combo (under the actions). Default "All moods" shows everything.
+  const moodRow = document.createElement("div");
+  moodRow.className = "palette-mood-row";
+  const moodLabel = document.createElement("label");
+  moodLabel.className = "palette-mood-label";
+  moodLabel.textContent = "Mood";
+  const moodSelect = document.createElement("select");
+  moodSelect.className = "palette-mood-select";
+  const allOpt = document.createElement("option");
+  allOpt.value = ALL_MOODS;
+  allOpt.textContent = "All moods";
+  moodSelect.appendChild(allOpt);
+  for (const m of allMoods()) {
+    const o = document.createElement("option");
+    o.value = m.id;
+    o.textContent = m.name;
+    moodSelect.appendChild(o);
+  }
+  moodSelect.value = activeMood;
+  moodSelect.addEventListener("change", () => {
+    activeMood = moodSelect.value;
+    saveMood(activeMood);
+    renderCustom();
+    reposition();
+  });
+  moodRow.append(moodLabel, moodSelect);
+
+  customPane.append(customFooter, moodRow, customWrap);
   body.appendChild(customPane);
 
   // Picker pane: OKLCH / HSB sub-tabs + eyedropper, the editors, and a shared
@@ -249,6 +280,24 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   editNameInput.addEventListener("input", () => {
     if (editDraft) editDraft.name = editNameInput.value;
   });
+  // Mood selector for the draft (its value is set from the draft in enterEdit).
+  const editMoodRow = document.createElement("div");
+  editMoodRow.className = "palette-mood-row palette-edit-mood";
+  const editMoodLabel = document.createElement("span");
+  editMoodLabel.className = "palette-mood-label";
+  editMoodLabel.textContent = "Mood";
+  const editMoodSelect = document.createElement("select");
+  editMoodSelect.className = "palette-mood-select";
+  for (const m of allMoods()) {
+    const o = document.createElement("option");
+    o.value = m.id;
+    o.textContent = m.name;
+    editMoodSelect.appendChild(o);
+  }
+  editMoodSelect.addEventListener("change", () => {
+    if (editDraft) editDraft.mood = editMoodSelect.value;
+  });
+  editMoodRow.append(editMoodLabel, editMoodSelect);
   const editGrid = document.createElement("div");
   editGrid.className = "palette-grid";
   const editPickerSlot = document.createElement("div"); // pickerGroup moves here
@@ -259,7 +308,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const saveBtn = makeActionBtn("Save palette", () => exitEdit(true));
   saveBtn.classList.add("palette-save-btn");
   editActions.append(cancelBtn, saveBtn);
-  editView.append(editNameInput, editGrid, editPickerSlot, editGradWrap, editActions);
+  editView.append(
+    editNameInput,
+    editMoodRow,
+    editGrid,
+    editPickerSlot,
+    editGradWrap,
+    editActions,
+  );
   body.appendChild(editView);
 
   const statusEl = document.createElement("div");
@@ -278,26 +334,53 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   function setTab(tab: Tab): void {
     activeTab = tab;
     saveTab(tab);
-    appPane.style.display = tab === "app" ? "" : "none";
-    customPane.style.display = tab === "custom" ? "" : "none";
+    customPane.style.display = tab === "palette" ? "" : "none";
     pickerPane.style.display = tab === "picker" ? "" : "none";
-    appTabBtn.classList.toggle("active", tab === "app");
-    customTabBtn.classList.toggle("active", tab === "custom");
+    paletteTabBtn.classList.toggle("active", tab === "palette");
     pickerTabBtn.classList.toggle("active", tab === "picker");
+    editToggleBtn.style.display = tab === "palette" ? "" : "none"; // Edit is palette-only
     if (tab === "picker") setPickerMode(pickerMode);
+    reposition();
+  }
+  // Reflect list-edit mode in the toggle's label + the New/Import footer's
+  // visibility (the per-palette actions are gated inside renderCustom).
+  function applyListEditing(): void {
+    editToggleBtn.textContent = listEditing ? "Done" : "Edit";
+    editToggleBtn.classList.toggle("active", listEditing);
+    customFooter.style.display = listEditing ? "" : "none";
+  }
+  function setListEditing(on: boolean): void {
+    listEditing = on;
+    applyListEditing();
+    renderCustom();
     reposition();
   }
   function loadTab(): Tab {
     try {
-      const v = localStorage.getItem(TAB_KEY);
-      return v === "custom" || v === "picker" ? v : "app";
+      // Migrate the old "app"/"custom" tabs (now merged) to "palette".
+      return localStorage.getItem(TAB_KEY) === "picker" ? "picker" : "palette";
     } catch {
-      return "app";
+      return "palette";
     }
   }
   function saveTab(tab: Tab): void {
     try {
       localStorage.setItem(TAB_KEY, tab);
+    } catch {
+      // ignore (private mode etc.)
+    }
+  }
+  function loadMood(): string {
+    try {
+      const v = localStorage.getItem(MOOD_KEY);
+      return v && (v === ALL_MOODS || normalizeMood(v) === v) ? v : ALL_MOODS;
+    } catch {
+      return ALL_MOODS;
+    }
+  }
+  function saveMood(mood: string): void {
+    try {
+      localStorage.setItem(MOOD_KEY, mood);
     } catch {
       // ignore (private mode etc.)
     }
@@ -557,29 +640,20 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   }
 
   // --- Gradient flag + swatch editing ----------------------------------------
-  // Built-ins default to gradient=on; their live state lives in builtinGradients
-  // (the palette objects are regenerated each load). Custom palettes carry it on
-  // the object.
   function isGradient(p: Palette): boolean {
-    return p.builtin ? (builtinGradients[p.id] ?? true) : !!p.gradient;
+    return !!p.gradient;
   }
-  // Persist custom palettes, then notify (after the write commits, so a reload in
-  // the listener reads fresh data). Used by every custom-palette mutation so that
-  // editing a gradient palette's colours updates consumers (e.g. the connection
-  // Color dial) live.
+  // Persist palettes, then notify (after the write commits, so a reload in the
+  // listener reads fresh data). Used by every palette mutation so that editing a
+  // gradient palette's colours updates consumers (e.g. the connection Color dial)
+  // live.
   function saveCustom(): void {
     void saveCustomPalettes(custom).then(() => opts.onGradientsChanged?.());
   }
   function setGradient(p: Palette, on: boolean): void {
-    if (p.builtin) {
-      builtinGradients[p.id] = on;
-      renderBuiltins();
-      void saveBuiltinGradients(builtinGradients).then(() => opts.onGradientsChanged?.());
-    } else {
-      p.gradient = on;
-      renderCustom();
-      saveCustom();
-    }
+    p.gradient = on;
+    renderCustom();
+    saveCustom();
   }
   function gradientCss(colors: string[]): string {
     if (colors.length === 1) return colors[0];
@@ -609,9 +683,10 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   function enterEdit(p: Palette | null): void {
     editDraft = p
       ? { ...p, colors: [...p.colors] }
-      : { id: makeId(), name: "New palette", colors: [], gradient: false };
+      : { id: makeId(), name: "New palette", colors: [], gradient: false, mood: DEFAULT_MOOD };
     editSelected = editDraft.colors.length ? 0 : -1;
     editNameInput.value = editDraft.name;
+    editMoodSelect.value = normalizeMood(editDraft.mood);
     // Draft gradient toggle (committed on Save, so it doesn't touch `custom` yet).
     const gradRow = document.createElement("div");
     gradRow.className = "palette-grad-row";
@@ -705,9 +780,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       renderRecent();
     } else {
       recentWrap.style.display = "none";
-      appPane.style.display = "none";
       customPane.style.display = "none";
       pickerPane.style.display = "none";
+      editToggleBtn.style.display = "none"; // hidden inside the focused editor
     }
   }
 
@@ -769,35 +844,46 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     recentWrap.appendChild(section);
   }
 
-  // App tab: read-only swatches. Not editable; each palette has a Gradient toggle
-  // (default on).
-  function renderBuiltins(): void {
-    builtinWrap.replaceChildren();
-    for (const p of builtins) {
-      const { section, grid } = makeSection(p.name);
-      for (const c of p.colors) grid.appendChild(makeSwatch(c, () => pick(c)));
-      section.appendChild(makeGradRow(p));
-      builtinWrap.appendChild(section);
-    }
+  function emptyNote(text: string): HTMLElement {
+    const p = document.createElement("p");
+    p.className = "palette-empty";
+    p.textContent = text;
+    return p;
+  }
+  function paletteMatchesMood(p: Palette): boolean {
+    return activeMood === ALL_MOODS || normalizeMood(p.mood) === activeMood;
   }
 
-  // Custom tab: each palette shows its swatches (click to select that colour), an
-  // Edit button (opens the focused editor) and a delete button, plus its Gradient
-  // toggle.
+  // The palette list, filtered by the active mood (ALL shows everything). Each
+  // palette shows its swatches (click to pick), a mood tag, Edit + Delete, and a
+  // Gradient toggle. The last-used palette floats to the top.
   function renderCustom(): void {
     customWrap.replaceChildren();
     if (custom.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "palette-empty";
-      empty.textContent = "No custom palettes yet. Create one or import a .gpl file.";
-      customWrap.appendChild(empty);
+      customWrap.appendChild(
+        emptyNote(
+          listEditing
+            ? "No palettes yet. Use New palette or Import to add one."
+            : "No palettes yet. Tap Edit to create or import one.",
+        ),
+      );
       return;
     }
-    // Float the last-used palette to the top so it's the first thing under the
-    // actions - quick re-access to whatever the user was just painting with.
-    for (const p of orderedCustom()) {
+    const visible = orderedCustom().filter(paletteMatchesMood);
+    if (visible.length === 0) {
+      customWrap.appendChild(
+        emptyNote(`No "${moodName(activeMood)}" palettes. Switch mood or create one.`),
+      );
+      return;
+    }
+    for (const p of visible) {
       const { section, head, grid } = makeSection(p.name);
       section.classList.add("palette-custom");
+      // Mood tag (helps tell palettes apart when viewing "All moods").
+      const moodTag = document.createElement("span");
+      moodTag.className = "palette-mood-tag";
+      moodTag.textContent = moodName(normalizeMood(p.mood));
+      head.appendChild(moodTag);
       // A subtle "Last used" tag (only worth showing when there's more than one).
       if (custom.length > 1 && p.id === lastUsedId) {
         const tag = document.createElement("span");
@@ -805,30 +891,40 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
         tag.textContent = "Last used";
         head.appendChild(tag);
       }
-      const edit = document.createElement("button");
-      edit.type = "button";
-      edit.className = "palette-icon-btn";
-      edit.title = "Edit palette";
-      edit.innerHTML = editIcon;
-      edit.addEventListener("click", () => enterEdit(p));
-      const del = document.createElement("button");
-      del.type = "button";
-      del.className = "palette-icon-btn";
-      del.title = "Delete palette";
-      del.innerHTML = trashIcon;
-      del.addEventListener("click", () => {
-        custom = custom.filter((x) => x.id !== p.id);
-        saveCustom();
-        renderCustom();
-      });
-      const acts = document.createElement("div");
-      acts.className = "palette-head-actions";
-      acts.append(edit, del);
-      head.appendChild(acts);
+      // Edit affordances (per-palette actions + the Gradient toggle) only show in
+      // list-edit mode, keeping the default pick view clean.
+      if (listEditing) {
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "palette-icon-btn";
+        edit.title = "Edit palette";
+        edit.innerHTML = editIcon;
+        edit.addEventListener("click", () => enterEdit(p));
+        const exportBtn = document.createElement("button");
+        exportBtn.type = "button";
+        exportBtn.className = "palette-icon-btn";
+        exportBtn.title = "Export as .gpl";
+        exportBtn.innerHTML = exportIcon;
+        exportBtn.addEventListener("click", () => downloadPalette(p));
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "palette-icon-btn";
+        del.title = "Delete palette";
+        del.innerHTML = trashIcon;
+        del.addEventListener("click", () => {
+          custom = custom.filter((x) => x.id !== p.id);
+          saveCustom();
+          renderCustom();
+        });
+        const acts = document.createElement("div");
+        acts.className = "palette-head-actions";
+        acts.append(edit, exportBtn, del);
+        head.appendChild(acts);
+      }
 
       for (const c of p.colors)
         grid.appendChild(makeSwatch(c, () => useCustomColor(p, c)));
-      section.appendChild(makeGradRow(p));
+      if (listEditing) section.appendChild(makeGradRow(p));
       customWrap.appendChild(section);
     }
   }
@@ -850,6 +946,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     pick(color);
   }
 
+  // Export a palette as a downloaded .gpl file (re-importable here or in GIMP).
+  function downloadPalette(p: Palette): void {
+    const slug =
+      p.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    triggerDownload(new Blob([toGpl(p)], { type: "text/plain" }), `${slug || "palette"}.gpl`);
+    setStatus(`Exported "${p.name}".`);
+  }
+
   let statusTimer = 0;
   function setStatus(msg: string): void {
     statusEl.textContent = msg;
@@ -857,7 +961,24 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     statusTimer = window.setTimeout(() => (statusEl.textContent = ""), 4000);
   }
 
-  // --- Hidden file input (GPL import) ----------------------------------------
+  // Add a palette to the list (dedup by id), reveal it by switching the mood
+  // filter to its mood, persist, and report. Shared by catalog-add and upload.
+  function addPalette(p: Palette, msg: string): void {
+    if (custom.some((x) => x.id === p.id)) {
+      setStatus(`"${p.name}" is already in your palettes.`);
+    } else {
+      custom = [...custom, p];
+      saveCustom();
+      setStatus(msg);
+    }
+    activeMood = normalizeMood(p.mood);
+    moodSelect.value = activeMood;
+    saveMood(activeMood);
+    renderCustom();
+    reposition();
+  }
+
+  // --- Hidden file input (.gpl upload) ---------------------------------------
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = ".gpl,text/plain";
@@ -873,13 +994,78 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       setStatus("Couldn't read that .gpl file.");
       return;
     }
-    custom = [...custom, pal];
-    saveCustom();
-    renderCustom();
-    setStatus(`Imported "${pal.name}" (${pal.colors.length} colours).`);
+    pal.mood = DEFAULT_MOOD;
+    closeImportModal();
+    addPalette(pal, `Imported "${pal.name}" (${pal.colors.length} colours).`);
   });
-
   panel.appendChild(fileInput);
+
+  // --- Import modal: the bundled gradient catalog + an upload button ----------
+  // A child of `panel` so the popover's outside-click dismiss treats clicks in it
+  // as "inside" (it stays open). Its own backdrop click / close button dismiss it.
+  const importModal = document.createElement("div");
+  importModal.className = "palette-import-overlay";
+  importModal.style.display = "none";
+  const importCard = document.createElement("div");
+  importCard.className = "palette-import-card";
+  const importHead = document.createElement("div");
+  importHead.className = "palette-import-head";
+  const importTitle = document.createElement("h4");
+  importTitle.textContent = "Add a palette";
+  importHead.append(importTitle, makeCloseButton(() => closeImportModal()));
+  const importList = document.createElement("div");
+  importList.className = "palette-import-list";
+  const importFootEl = document.createElement("div");
+  importFootEl.className = "palette-import-foot";
+  const uploadBtn = makeActionBtn("Upload .gpl file", () => fileInput.click(), importIcon);
+  importFootEl.appendChild(uploadBtn);
+  importCard.append(importHead, importList, importFootEl);
+  importModal.appendChild(importCard);
+  importModal.addEventListener("click", (e) => {
+    if (e.target === importModal) closeImportModal(); // backdrop only
+  });
+  panel.appendChild(importModal);
+
+  function openImportModal(): void {
+    importList.replaceChildren();
+    // Only palettes not already in the list. Deleting one (persisted in the
+    // custom store) drops it from `custom`, so it reappears here keyed by its
+    // catalog id - the bundled catalog is the persistent "source".
+    const present = new Set(custom.map((p) => p.id));
+    const available = gradientCatalog().filter((item) => !present.has(item.id));
+    if (available.length === 0) {
+      const note = document.createElement("p");
+      note.className = "palette-empty";
+      note.textContent =
+        "Every bundled palette is in your list. Upload a .gpl, or delete a palette to make it available here again.";
+      importList.appendChild(note);
+    }
+    for (const item of available) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "palette-import-item";
+      const bar = document.createElement("span");
+      bar.className = "palette-import-preview";
+      bar.style.background = gradientCss(item.palette.colors);
+      const name = document.createElement("span");
+      name.className = "palette-import-name";
+      name.textContent = item.palette.name;
+      const mood = document.createElement("span");
+      mood.className = "palette-mood-tag";
+      mood.textContent = moodName(normalizeMood(item.palette.mood));
+      row.append(bar, name, mood);
+      row.addEventListener("click", () => {
+        addPalette({ ...item.palette }, `Added "${item.palette.name}".`);
+        closeImportModal();
+      });
+      importList.appendChild(row);
+    }
+    importModal.style.display = "";
+    reposition();
+  }
+  function closeImportModal(): void {
+    importModal.style.display = "none";
+  }
 
   // --- Open / close / positioning --------------------------------------------
   // Dismiss handlers (outside click + Escape) are only attached while open.
@@ -892,6 +1078,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     lastAnchor = req.anchor;
     title.textContent = req.title;
     if (editDraft) exitEdit(false); // discard any in-progress edit from last time
+    closeImportModal();
+    listEditing = false; // always open in the clean pick view
+    applyListEditing();
     setWorking(normalizeHex(req.getColor()) ?? "#000000");
     renderCustom();
     setTab(activeTab); // re-seeds the Picker editor if that tab is active
@@ -905,6 +1094,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
 
   function close(): void {
     panel.style.display = "none";
+    closeImportModal();
     detachDismiss();
   }
 
@@ -964,14 +1154,10 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
 
   // --- Init ------------------------------------------------------------------
   title.textContent = "Colors";
+  applyListEditing(); // start in the clean (non-edit) pick view
   setTab(activeTab);
-  renderBuiltins();
   renderCustom();
   renderRecent();
-  void loadBuiltinGradients().then((m) => {
-    builtinGradients = m;
-    renderBuiltins();
-  });
   void loadCustomPalettes().then((p) => {
     custom = p;
     renderCustom();

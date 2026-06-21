@@ -1,40 +1,90 @@
 import { z } from "zod";
 import { IndexedDbStore } from "../store/indexeddb";
-import { builtinPalettes, clampColors, MAX_RECENT, type Palette } from "./palette";
+import { clampColors, MAX_RECENT, type Palette } from "./palette";
+import { normalizeMood } from "./moods";
+import { onboardingPalettes } from "./gradients/catalog";
 
-// User-saved custom palettes + the recents stack, persisted in their own
-// IndexedDB so they never collide with the paint/connection stores. Mirrors the
-// custom-connection-presets pattern (sanitize-on-load: drop bad rows, keep the
-// rest), since stored rows are untrusted (older code, hand-edited, etc.).
+// User palettes + the recents stack, persisted in their own IndexedDB so they
+// never collide with the paint/connection stores. Sanitize-on-load (drop bad
+// rows, keep the rest) since stored rows are untrusted (older code, hand-edited).
+//
+// There's no longer a built-in/custom split: the default gradients are *seeded*
+// into this store on first run (see ensureSeeded) and then behave like any user
+// palette. `gradient: true` palettes are also the connection Color dial's sources.
 const db = new IndexedDbStore("nekudot-colors", "palettes");
 const CUSTOM_KEY = "custom";
 const RECENT_KEY = "recent";
-const BUILTIN_GRADIENTS_KEY = "builtin-gradients"; // { [paletteId]: boolean }
-const LAST_USED_KEY = "last-used"; // id of the custom palette last picked from
+const LAST_USED_KEY = "last-used"; // id of the palette last picked from
+const SEEDED_KEY = "seeded"; // set once the bundled gradients have been seeded
+const LEGACY_BUILTIN_GRADIENTS_KEY = "builtin-gradients"; // removed; cleared on reset
 
 const PaletteSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   colors: z.array(z.string()), // individual colours validated by clampColors
+  mood: z.string().optional(),
   gradient: z.boolean().optional(),
 });
 
+function rowToPalette(r: z.infer<typeof PaletteSchema>): Palette {
+  return {
+    id: r.id,
+    name: r.name,
+    colors: clampColors(r.colors),
+    mood: normalizeMood(r.mood),
+    gradient: r.gradient ?? false,
+  };
+}
+
+// Raw read (no seeding) - the seeding path uses this to avoid recursing.
+async function readPalettes(): Promise<Palette[]> {
+  const raw = await db.get<unknown>(CUSTOM_KEY);
+  if (!Array.isArray(raw)) return [];
+  const out: Palette[] = [];
+  for (const row of raw) {
+    const r = PaletteSchema.safeParse(row);
+    if (r.success) out.push(rowToPalette(r.data));
+  }
+  return out;
+}
+
+async function writePalettes(palettes: readonly Palette[]): Promise<void> {
+  const rows = palettes.map((p) => ({
+    id: p.id,
+    name: p.name,
+    colors: p.colors,
+    mood: normalizeMood(p.mood),
+    gradient: !!p.gradient,
+  }));
+  await db.put(CUSTOM_KEY, rows);
+}
+
+// Seed the bundled onboarding gradients exactly once: first run, after a reset
+// (clearColorsStore wipes the flag), or a one-time migration for existing users.
+// Idempotent + memoized so concurrent callers (panel load + connection feed)
+// trigger a single seed. Existing palettes are kept; only missing seed ids are
+// added.
+let seedPromise: Promise<void> | null = null;
+export function ensureSeeded(): Promise<void> {
+  return (seedPromise ??= doSeed());
+}
+async function doSeed(): Promise<void> {
+  try {
+    if (await db.get<unknown>(SEEDED_KEY)) return;
+    const existing = await readPalettes();
+    const have = new Set(existing.map((p) => p.id));
+    const seeds = onboardingPalettes().filter((p) => !have.has(p.id));
+    if (seeds.length) await writePalettes([...seeds, ...existing]);
+    await db.put(SEEDED_KEY, true);
+  } catch (e) {
+    console.warn("seed gradients failed", e);
+  }
+}
+
 export async function loadCustomPalettes(): Promise<Palette[]> {
   try {
-    const raw = await db.get<unknown>(CUSTOM_KEY);
-    if (!Array.isArray(raw)) return [];
-    const out: Palette[] = [];
-    for (const row of raw) {
-      const r = PaletteSchema.safeParse(row);
-      if (r.success)
-        out.push({
-          id: r.data.id,
-          name: r.data.name,
-          colors: clampColors(r.data.colors),
-          gradient: r.data.gradient ?? false,
-        });
-    }
-    return out;
+    await ensureSeeded();
+    return await readPalettes();
   } catch (e) {
     console.warn("loadCustomPalettes failed", e);
     return [];
@@ -43,59 +93,26 @@ export async function loadCustomPalettes(): Promise<Palette[]> {
 
 export async function saveCustomPalettes(palettes: readonly Palette[]): Promise<void> {
   try {
-    // Strip the `builtin` flag / any extras: only persist user palettes' shape.
-    const rows = palettes.map((p) => ({
-      id: p.id,
-      name: p.name,
-      colors: p.colors,
-      gradient: !!p.gradient,
-    }));
-    await db.put(CUSTOM_KEY, rows);
+    await writePalettes(palettes);
   } catch (e) {
     console.warn("saveCustomPalettes failed", e);
   }
 }
 
-// The on/off gradient state for the (regenerated) built-in palettes, keyed by id.
-// Absent keys default to true (built-ins are gradients by default).
-export async function loadBuiltinGradients(): Promise<Record<string, boolean>> {
-  try {
-    const raw = await db.get<unknown>(BUILTIN_GRADIENTS_KEY);
-    if (!raw || typeof raw !== "object") return {};
-    const out: Record<string, boolean> = {};
-    for (const [k, v] of Object.entries(raw as Record<string, unknown>))
-      if (typeof v === "boolean") out[k] = v;
-    return out;
-  } catch (e) {
-    console.warn("loadBuiltinGradients failed", e);
-    return {};
-  }
-}
-
-export async function saveBuiltinGradients(map: Record<string, boolean>): Promise<void> {
-  try {
-    await db.put(BUILTIN_GRADIENTS_KEY, { ...map });
-  } catch (e) {
-    console.warn("saveBuiltinGradients failed", e);
-  }
-}
-
-// Every palette currently marked as a gradient - built-ins (default on, minus any
-// toggled off) plus custom palettes with gradient enabled. For consumers
-// elsewhere in the app that want to draw with these as gradient sources.
+// Every palette marked as a gradient - the connection Color dial's sources.
 export async function loadGradientPalettes(): Promise<Palette[]> {
-  const [customs, overrides] = await Promise.all([
-    loadCustomPalettes(),
-    loadBuiltinGradients(),
-  ]);
-  const builtinOn = builtinPalettes().filter((p) => overrides[p.id] ?? true);
-  const customOn = customs.filter((p) => p.gradient);
-  return [...builtinOn, ...customOn];
+  try {
+    await ensureSeeded();
+    return (await readPalettes()).filter((p) => p.gradient);
+  } catch (e) {
+    console.warn("loadGradientPalettes failed", e);
+    return [];
+  }
 }
 
-// The custom palette the user most recently picked a colour from, so the panel
-// can float it to the top of the Custom list for quick re-access. Just an id;
-// the panel ignores it if no custom palette matches (deleted, etc.).
+// The palette the user most recently picked a colour from, so the panel can float
+// it to the top for quick re-access. Just an id; the panel ignores it if no
+// palette matches (deleted, etc.).
 export async function loadLastUsedPalette(): Promise<string | null> {
   try {
     const raw = await db.get<unknown>(LAST_USED_KEY);
@@ -130,5 +147,22 @@ export async function saveRecent(colors: readonly string[]): Promise<void> {
     await db.put(RECENT_KEY, [...colors]);
   } catch (e) {
     console.warn("saveRecent failed", e);
+  }
+}
+
+// Wipe every colours key so "Reset to default" re-onboards the gradients from
+// scratch (this store lives outside localStorage, which runReset clears).
+export async function clearColorsStore(): Promise<void> {
+  try {
+    await Promise.all([
+      db.delete(CUSTOM_KEY),
+      db.delete(RECENT_KEY),
+      db.delete(LAST_USED_KEY),
+      db.delete(SEEDED_KEY),
+      db.delete(LEGACY_BUILTIN_GRADIENTS_KEY),
+    ]);
+    seedPromise = null;
+  } catch (e) {
+    console.warn("clearColorsStore failed", e);
   }
 }

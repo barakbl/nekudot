@@ -3091,6 +3091,71 @@ body.help-mode .help-icon {
   padding: 1px 6px;
   opacity: 0.85;
 }
+/* Header "Edit" toggle: a small pill that flips the Palette tab between the clean
+   pick view and edit mode (New/Import + per-palette actions). */
+.palette-edit-toggle {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--border-stronger);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font: 600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.palette-edit-toggle:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+.palette-edit-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+/* Per-palette mood chip (in the list head + the Import modal rows). */
+.palette-mood-tag {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  border: 1px solid var(--border-stronger);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+/* Mood filter combo (Palette tab) + the editor's mood selector. */
+.palette-mood-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.palette-mood-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.palette-mood-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border-stronger);
+  border-radius: 7px;
+  background: var(--pill-bg);
+  color: var(--text-body);
+  font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+}
+.palette-mood-select:hover,
+.palette-mood-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
 .palette-icon-btn {
   flex: 0 0 auto;
   background: transparent;
@@ -3235,4 +3300,98 @@ body.help-mode .help-icon {
 }
 .palette-status:empty {
   display: none;
+}
+
+/* --- Import modal: bundled gradient catalog + an upload button -------------- */
+/* A DOM child of the popover (so its outside-click dismiss treats this as
+   "inside"), but a fixed, centred overlay visually. */
+.palette-import-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--modal-overlay);
+}
+.palette-import-card {
+  width: min(360px, 92vw);
+  max-height: min(72vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border: 1px solid var(--border-stronger);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.palette-import-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.palette-import-head h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+.palette-import-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-stronger) transparent;
+}
+.palette-import-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-stronger);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.palette-import-item:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--pill-hover);
+}
+.palette-import-item:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.palette-import-preview {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid rgba(128, 128, 128, 0.45);
+}
+.palette-import-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-import-foot {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle);
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clampColors, makeId, type Palette } from "./palette";
+import { clampColors, makeId, normalizeHex, type Palette } from "./palette";
 
 // Import GIMP palette (.gpl) files. Format:
 //   GIMP Palette
@@ -60,4 +60,26 @@ export function parseGpl(text: string, fallbackName = "Imported"): Palette | nul
   const clamped = clampColors(colors);
   if (!clamped.length) return null;
   return { id: makeId(), name, colors: clamped };
+}
+
+// Serialize a palette to GIMP .gpl text (the inverse of parseGpl), for export /
+// download. Emits "R G B<tab>#hex" rows, right-aligned to the conventional width.
+// parseGpl(toGpl(p)) round-trips the name + colours.
+export function toGpl(palette: { name: string; colors: readonly string[] }): string {
+  const pad = (v: number) => String(v).padStart(3);
+  const lines = [
+    "GIMP Palette",
+    `Name: ${palette.name || "Palette"}`,
+    `Columns: ${palette.colors.length}`,
+    "#",
+  ];
+  for (const c of palette.colors) {
+    const n = normalizeHex(c);
+    if (!n) continue;
+    const r = parseInt(n.slice(1, 3), 16);
+    const g = parseInt(n.slice(3, 5), 16);
+    const b = parseInt(n.slice(5, 7), 16);
+    lines.push(`${pad(r)} ${pad(g)} ${pad(b)}\t${n}`);
+  }
+  return lines.join("\n") + "\n";
 }

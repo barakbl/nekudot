@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  builtinPalettes,
   clampColors,
-  DEFAULT_APP_COLORS,
   MAX_RECENT,
   MAX_SWATCHES,
   normalizeHex,
@@ -60,16 +58,5 @@ describe("pushRecent", () => {
   });
   it("leaves the list unchanged for invalid input", () => {
     expect(pushRecent(["#ff0000"], "nope")).toEqual(["#ff0000"]);
-  });
-});
-
-describe("builtinPalettes", () => {
-  it("starts with the 12 App Colors and includes the connection gradients, all read-only", () => {
-    const b = builtinPalettes();
-    expect(b[0].name).toBe("App Colors");
-    expect(b[0].colors).toHaveLength(DEFAULT_APP_COLORS.length);
-    expect(b[0].colors).toHaveLength(12);
-    expect(b.map((p) => p.id)).toContain("conn:sunset");
-    expect(b.every((p) => p.builtin === true)).toBe(true);
   });
 });
