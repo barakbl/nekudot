@@ -3,6 +3,7 @@ import type { LayerManager } from "../layered/manager";
 import type { SymmetryController } from "../symmetry/controller";
 import type { Viewport } from "./viewport";
 import { readPenSample, MOUSE_SAMPLE } from "../pen";
+import { dlog, isDiagnostics } from "../diagnostics";
 
 // Pointer wiring for the stage: start/feed/end brush strokes. Freezes the
 // symmetry transforms per stroke, opens the wet-stroke buffer around
@@ -59,6 +60,19 @@ export function bindDrawingInput(opts: {
     // one alpha), and skipped when the pen modulates opacity (BrushBase.bufferedStroke).
     buffered = brush.bufferedStroke(pen) && !symmetry.active();
     if (buffered) layerManager.beginStroke();
+    if (isDiagnostics()) {
+      const bg = layerManager.getBackground();
+      dlog("stroke", "begin", {
+        brush: brush.name(),
+        pointer: pen.isPen ? "pen" : "mouse/touch",
+        pressure: Math.round(pen.pressure * 100) / 100,
+        buffered, // true => the live "wet" overlay canvas is in use
+        alpha: layerManager.strokeAlpha(),
+        bg: bg.transparent ? "transparent" : bg.color,
+        symmetry: symmetry.active(),
+        at: `${Math.round(p.x)},${Math.round(p.y)}`,
+      });
+    }
     brush.strokeStart(p.x, p.y);
     brush.stroke(p.x, p.y, true, pen);
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.
