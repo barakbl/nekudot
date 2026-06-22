@@ -3418,6 +3418,24 @@ body.help-mode .help-icon {
   gap: 6px;
   padding: 6px 0 2px 10px;
 }
+/* Export modal: a checkbox row per palette. */
+.palette-export-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-body);
+  font-size: 12px;
+}
+.palette-export-row:hover {
+  background: var(--pill-hover);
+}
+.palette-export-row input {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
 .palette-import-item {
   display: flex;
   align-items: center;

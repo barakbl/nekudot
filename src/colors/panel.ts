@@ -29,6 +29,7 @@ import {
   normalizeCategory,
 } from "./categories";
 import { gradientCatalog, type CatalogItem } from "./gradients/catalog";
+import { palettesToOklchJson, palettesFromOklchJson } from "./palette-json";
 import { hexToOklch, oklchToHex } from "./oklch";
 import { hexToHsv, hsvToHex } from "./hsv";
 import { parseGpl, toGpl } from "./gpl";
@@ -186,7 +187,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   customFooter.className = "palette-footer";
   const newPaletteBtn = makeActionBtn("+ New palette", () => enterEdit(null));
   const importBtn = makeActionBtn("Import", () => openImportModal(), importIcon);
-  customFooter.append(newPaletteBtn, importBtn);
+  const exportJsonBtn = makeActionBtn("Export JSON", () => openExportModal(), exportIcon);
+  const importJsonBtn = makeActionBtn("Import JSON", () => jsonFileInput.click(), importIcon);
+  customFooter.append(newPaletteBtn, importBtn, exportJsonBtn, importJsonBtn);
   // "?" hints (shown in help mode, toggled by the ? key) explain each action.
   attachHelp(
     newPaletteBtn,
@@ -1055,6 +1058,101 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   });
   panel.appendChild(importModal);
 
+  // --- Backup: export / import all palettes as one OKLCH JSON file ------------
+  const jsonFileInput = document.createElement("input");
+  jsonFileInput.type = "file";
+  jsonFileInput.accept = ".json,application/json";
+  jsonFileInput.style.display = "none";
+  jsonFileInput.addEventListener("change", async () => {
+    const file = jsonFileInput.files?.[0];
+    jsonFileInput.value = "";
+    if (!file) return;
+    const incoming = palettesFromOklchJson(await file.text());
+    if (!incoming.length) {
+      setStatus("Couldn't read that palette file.");
+      return;
+    }
+    // Merge by id: same-id palettes are replaced, new ones appended.
+    const byId = new Map(custom.map((p) => [p.id, p] as const));
+    for (const p of incoming) byId.set(p.id, p);
+    custom = [...byId.values()];
+    saveCustom();
+    renderCustom();
+    reposition();
+    setStatus(`Imported ${incoming.length} palette${incoming.length === 1 ? "" : "s"}.`);
+  });
+  panel.appendChild(jsonFileInput);
+
+  // Export modal: a checkbox list of every palette (all checked) -> JSON download.
+  const exportModal = document.createElement("div");
+  exportModal.className = "palette-import-overlay";
+  exportModal.style.display = "none";
+  const exportCard = document.createElement("div");
+  exportCard.className = "palette-import-card";
+  const exportHead = document.createElement("div");
+  exportHead.className = "palette-import-head";
+  const exportTitle = document.createElement("h4");
+  exportTitle.textContent = "Export palettes";
+  exportHead.append(exportTitle, makeCloseButton(() => closeExportModal()));
+  const exportList = document.createElement("div");
+  exportList.className = "palette-import-list";
+  const exportFootEl = document.createElement("div");
+  exportFootEl.className = "palette-import-foot";
+  const exportBtn = makeActionBtn("Export selected", () => doExport(), exportIcon);
+  exportFootEl.appendChild(exportBtn);
+  exportCard.append(exportHead, exportList, exportFootEl);
+  exportModal.appendChild(exportCard);
+  exportModal.addEventListener("click", (e) => {
+    if (e.target === exportModal) closeExportModal();
+  });
+  panel.appendChild(exportModal);
+
+  const exportChecks = new Map<string, HTMLInputElement>(); // palette id -> checkbox
+  function openExportModal(): void {
+    exportList.replaceChildren();
+    exportChecks.clear();
+    if (custom.length === 0) {
+      const note = document.createElement("p");
+      note.className = "palette-empty";
+      note.textContent = "No palettes to export yet.";
+      exportList.appendChild(note);
+    }
+    for (const p of custom) {
+      const row = document.createElement("label");
+      row.className = "palette-export-row";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = true; // select all by default
+      exportChecks.set(p.id, cb);
+      const bar = document.createElement("span");
+      bar.className = "palette-import-preview";
+      bar.style.background = gradientCss(p.colors);
+      const name = document.createElement("span");
+      name.className = "palette-import-name";
+      name.textContent = p.name;
+      row.append(cb, bar, name);
+      exportList.appendChild(row);
+    }
+    exportModal.style.display = "";
+    reposition();
+  }
+  function closeExportModal(): void {
+    exportModal.style.display = "none";
+  }
+  function doExport(): void {
+    const chosen = custom.filter((p) => exportChecks.get(p.id)?.checked);
+    if (!chosen.length) {
+      setStatus("Select at least one palette to export.");
+      return;
+    }
+    triggerDownload(
+      new Blob([palettesToOklchJson(chosen)], { type: "application/json" }),
+      "nekudot-palettes.json",
+    );
+    closeExportModal();
+    setStatus(`Exported ${chosen.length} palette${chosen.length === 1 ? "" : "s"}.`);
+  }
+
   // One tappable row in the import list (a swatch preview + name → add it).
   function makeImportRow(item: CatalogItem): HTMLElement {
     const row = document.createElement("button");
@@ -1145,6 +1243,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     title.textContent = req.title;
     if (editDraft) exitEdit(false); // discard any in-progress edit from last time
     closeImportModal();
+    closeExportModal();
     listEditing = false; // always open in the clean pick view
     applyListEditing();
     setWorking(normalizeHex(req.getColor()) ?? "#000000");
@@ -1161,6 +1260,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   function close(): void {
     panel.style.display = "none";
     closeImportModal();
+    closeExportModal();
     detachDismiss();
   }
 
@@ -1174,8 +1274,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     };
     onKeyDown = (e) => {
       if (e.key !== "Escape") return;
-      // Escape dismisses the topmost layer: the Import modal first, else the popover.
+      // Escape dismisses the topmost layer: an open modal first, else the popover.
       if (importModal.style.display !== "none") closeImportModal();
+      else if (exportModal.style.display !== "none") closeExportModal();
       else close();
     };
     document.addEventListener("pointerdown", onDocPointerDown, true);
