@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { bindDrawingInput } from "../src/app/drawing-input";
+import { bindDrawingInput, coalescedEvents } from "../src/app/drawing-input";
 import type { BrushBase } from "../src/base";
 import type { LayerManager } from "../src/layered/manager";
 import type { SymmetryController } from "../src/symmetry/controller";
@@ -200,5 +200,29 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
     input.cancelActiveStroke(); // 2nd finger now → commit, not drop
     expect(starts()).toBe(1);
     expect(ends()).toBe(1);
+  });
+});
+
+// Regression: an artist on iPad (iOS 17 Safari) saw no lines because
+// PointerEvent.getCoalescedEvents() - which only shipped in Safari 18 - was
+// called unguarded, throwing on every pointermove and aborting the draw.
+describe("coalescedEvents (Safari 17 fallback)", () => {
+  const ev = (over: Partial<PointerEvent> = {}) => ({ ...over }) as unknown as PointerEvent;
+
+  it("falls back to the event itself when getCoalescedEvents is missing", () => {
+    const e = ev(); // no getCoalescedEvents method (iOS 17 Safari)
+    expect(coalescedEvents(e)).toEqual([e]);
+  });
+
+  it("returns the coalesced list when the API is present", () => {
+    const a = ev();
+    const b = ev();
+    const e = ev({ getCoalescedEvents: () => [a, b] });
+    expect(coalescedEvents(e)).toEqual([a, b]);
+  });
+
+  it("falls back to the event when the coalesced list is empty", () => {
+    const e = ev({ getCoalescedEvents: () => [] });
+    expect(coalescedEvents(e)).toEqual([e]);
   });
 });
