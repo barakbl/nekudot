@@ -582,17 +582,28 @@ void pixelLog.init();
 
 // ---- new art / delete canvas / load artwork ------------------------------------
 
-// Shared by Delete canvas + New art: clear every brush's state, reset the
-// connecting style + routing to the defaults, and wipe the pixel log.
-const resetArtState = () => {
+// New / cleared canvas: clear CONTENT only - every brush's remembered point cloud
+// + the pixel log - and reset routing to the safe default (the canvas's maps are
+// fresh, so point at the selected map). The connection art style + dials are
+// tools, not content, so they PERSIST across a new canvas like brush / size /
+// opacity / colour. Used by New art + Delete canvas.
+const clearArtContent = () => {
   for (const b of Object.values(brushes)) {
     b.clear();
-    b.resetArtStyle(DEFAULT_ART_STYLE); // default look, persisted (overwrites saved dials)
-    b.applyRoutingPreset("classic"); // standard routing: selected map, mode "both"
+    b.applyRoutingPreset("classic"); // routing follows the canvas
   }
+  void pixelLog.clear();
+  renderActiveBrush();
+};
+
+// Content clear PLUS reverting the connecting look to defaults. Used only by the
+// guided onboarding starts (mandala / blank), where a known default look is the
+// intent - NOT by New art / Delete canvas, which keep the user's tools.
+const resetArtState = () => {
+  clearArtContent();
+  for (const b of Object.values(brushes)) b.resetArtStyle(DEFAULT_ART_STYLE);
   currentArtStyle = DEFAULT_ART_STYLE;
   store.set("app.artStyle", currentArtStyle);
-  void pixelLog.clear();
   renderActiveBrush();
 };
 
@@ -658,7 +669,7 @@ const sizePicker = createSizePicker({
       onConfirm: () => {
         layerManager.reset(size);
         applyNewCanvasSize(size);
-        resetArtState();
+        clearArtContent(); // new canvas clears content; keeps connection tools
         store.set(CANVAS_SIZE_KEY, size);
         void history.clear();
         pushUndo("New art");
@@ -892,7 +903,7 @@ const menu = createMenu(
           destructive: true,
           onConfirm: () => {
             layerManager.reset(layerManager.currentSize);
-            resetArtState();
+            clearArtContent(); // delete canvas clears content; keeps connection tools
             pushUndo("Delete canvas");
           },
         });
