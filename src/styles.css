@@ -1448,6 +1448,27 @@ body {
   background: #d9534f;
   color: #fff;
 }
+/* Diagnostics: Copy / Download buttons under the toggle. */
+.appset-diag-actions {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+.appset-diag-btn {
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-stronger);
+  background: var(--pill-bg);
+  color: var(--text-body);
+  white-space: nowrap;
+}
+.appset-diag-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
 .appset-seg-ic {
   font-size: 13px;
   line-height: 1;

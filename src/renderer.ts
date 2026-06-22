@@ -131,6 +131,48 @@ export class CanvasRenderer implements IRenderer {
     if (init.eraseMode) this.ctx.globalCompositeOperation = "destination-out";
   }
 
+  // Diagnostic only (App settings -> Diagnostics): report this canvas's state +
+  // a pixel readback at the given CSS-space point, so a field log can show
+  // whether a stroke actually deposited pixels (regionMaxAlpha > 0) and whether
+  // the canvas is sized / composited sanely. Never throws into the draw path.
+  debugProbe(x: number, y: number): Record<string, unknown> {
+    const cv = this.ctx.canvas;
+    const status: Record<string, unknown> = {
+      canvas: `${cv.width}x${cv.height}`,
+      comp: this.ctx.globalCompositeOperation,
+      globalAlpha: this.ctx.globalAlpha,
+    };
+    if ("style" in cv) {
+      const h = cv as HTMLCanvasElement;
+      status.css = `${h.clientWidth}x${h.clientHeight}`;
+      status.styleOpacity = h.style.opacity || "(unset)";
+    }
+    try {
+      const t = this.ctx.getTransform();
+      status.transform = [t.a, t.b, t.c, t.d, t.e, t.f]
+        .map((n) => Math.round(n * 100) / 100)
+        .join(",");
+      // Map the CSS-space point through the (dpr-scaled) transform to device px.
+      const dx = Math.max(0, Math.min(cv.width - 1, Math.round(t.a * x + t.c * y + t.e)));
+      const dy = Math.max(0, Math.min(cv.height - 1, Math.round(t.b * x + t.d * y + t.f)));
+      status.deviceAt = `${dx},${dy}`;
+      status.pixel = Array.from(this.ctx.getImageData(dx, dy, 1, 1).data).join(",");
+      // Peak alpha in a small box around the point: > 0 means pixels landed here.
+      const r = 8;
+      const x0 = Math.max(0, dx - r);
+      const y0 = Math.max(0, dy - r);
+      const w = Math.min(2 * r, cv.width - x0);
+      const hgt = Math.min(2 * r, cv.height - y0);
+      const region = this.ctx.getImageData(x0, y0, Math.max(1, w), Math.max(1, hgt)).data;
+      let maxA = 0;
+      for (let i = 3; i < region.length; i += 4) if (region[i] > maxA) maxA = region[i];
+      status.regionMaxAlpha = maxA;
+    } catch (e) {
+      status.readback = "error: " + String(e);
+    }
+    return status;
+  }
+
   // ---- scoped style helpers --------------------------------------------------
 
   // Apply a per-call LineStyle on top of the context's persistent stroke state.

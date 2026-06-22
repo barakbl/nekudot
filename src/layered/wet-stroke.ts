@@ -1,6 +1,7 @@
 import { CanvasRenderer } from "../renderer";
 import type { IRenderer, RendererInit } from "../renderer";
 import type { CanvasSize } from "../canvas-size";
+import { dlog, diagnosticOverride } from "../diagnostics";
 
 // Per-stroke "wet" buffer for continuous strokes. While a partly-transparent
 // line is in progress, the stroke targets this opaque off-buffer (shown live
@@ -30,7 +31,17 @@ export class WetStrokeBuffer {
   begin(size: CanvasSize, init: RendererInit, zIndex: number): void {
     this.active = false;
     const alpha = init.globalAlpha ?? 1;
-    if (init.eraseMode || alpha <= 0 || alpha >= 1) return;
+    // Diagnostic "try a fix": draw faint strokes straight onto the layer instead
+    // of the live overlay canvas. If that makes lines visible, the overlay's
+    // compositing was the problem (a likely old-iPad cause).
+    if (diagnosticOverride("disableWetOverlay")) {
+      dlog("wet", "bypassed (diagnostic)", { alpha });
+      return;
+    }
+    if (init.eraseMode || alpha <= 0 || alpha >= 1) {
+      dlog("wet", "skip", { alpha, erase: !!init.eraseMode });
+      return;
+    }
     if (!this.canvas) {
       const c = document.createElement("canvas");
       c.style.position = "absolute";
@@ -48,7 +59,10 @@ export class WetStrokeBuffer {
     c.style.zIndex = String(zIndex); // sit on the active layer
     c.style.opacity = String(alpha); // live preview at the stroke's own opacity
     const ctx = c.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      dlog("wet", "no-context", { dims: `${c.width}x${c.height}` });
+      return;
+    }
     // Resizing the canvas reset its context; rebuild a renderer that mirrors the
     // active stroke style but paints opaque (opacity is applied once on commit).
     this.renderer = new CanvasRenderer(ctx, {
@@ -59,6 +73,14 @@ export class WetStrokeBuffer {
     });
     this.alpha = alpha;
     this.active = true;
+    dlog("wet", "engaged", {
+      alpha,
+      dims: `${c.width}x${c.height}`,
+      zIndex,
+      // The live preview shows via this overlay canvas's CSS opacity; if it
+      // doesn't composite on an old GPU the stroke is invisible until commit.
+      cssOpacity: c.style.opacity,
+    });
   }
 
   // Commit the buffered stroke: composite the opaque buffer onto `layer` at

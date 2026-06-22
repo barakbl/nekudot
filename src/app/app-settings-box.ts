@@ -2,6 +2,8 @@ import { makeCloseButton } from "../settings-panel";
 import { makeDraggable } from "../drag";
 import { makeToggle } from "../toggle";
 import { attachHelp } from "../help";
+import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
+import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
 
 export type AppSettingsBox = { el: HTMLElement; toggle: () => void };
@@ -21,6 +23,8 @@ export function createAppSettingsBox(opts: {
   onTogglePen: (on: boolean) => void;
   pixelLog: boolean;
   onTogglePixelLog: (on: boolean) => void;
+  diagnostics: boolean;
+  onToggleDiagnostics: (on: boolean) => void;
   // Wipe all local data and reload to a fresh app (opens its own confirm modal).
   onResetToDefault: () => void;
 }): AppSettingsBox {
@@ -85,6 +89,45 @@ export function createAppSettingsBox(opts: {
   const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
   const pixelLog = makeToggle(opts.pixelLog, opts.onTogglePixelLog);
+  const diagnostics = makeToggle(opts.diagnostics, opts.onToggleDiagnostics);
+
+  // Copy / download the captured diagnostics so they can be shared.
+  const flash = (btn: HTMLButtonElement, msg: string) => {
+    const orig = btn.textContent;
+    btn.textContent = msg;
+    window.setTimeout(() => (btn.textContent = orig), 1500);
+  };
+  const downloadLogs = () =>
+    triggerDownload(
+      new Blob([diagnosticsText()], { type: "text/plain" }),
+      "nekudot-diagnostics.txt",
+    );
+  const diagActions = document.createElement("div");
+  diagActions.className = "appset-diag-actions";
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "appset-diag-btn";
+  copyBtn.textContent = "Copy logs";
+  copyBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const write = navigator.clipboard?.writeText(diagnosticsText());
+    if (write) write.then(() => flash(copyBtn, "Copied!"), () => downloadLogs());
+    else downloadLogs(); // no clipboard API (e.g. insecure context) -> file
+  });
+  const downloadBtn = document.createElement("button");
+  downloadBtn.type = "button";
+  downloadBtn.className = "appset-diag-btn";
+  downloadBtn.textContent = "Download";
+  downloadBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    downloadLogs();
+  });
+  diagActions.append(copyBtn, downloadBtn);
+
+  // "Try a fix" toggle: bypass the live wet-stroke overlay canvas.
+  const bypassWet = makeToggle(diagnosticOverride("disableWetOverlay"), (on) =>
+    setDiagnosticOverride("disableWetOverlay", on),
+  );
 
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
@@ -123,6 +166,18 @@ export function createAppSettingsBox(opts: {
       "Pixel log",
       pixelLog.el,
       "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
+    ),
+    sub("Diagnostics"),
+    row(
+      "Diagnostic logging",
+      diagnostics.el,
+      "Captures brush, stroke, render and error events into a log you can copy or download to share for troubleshooting. Off by default; nothing is sent anywhere automatically.",
+    ),
+    diagActions,
+    row(
+      "Bypass wet layer",
+      bypassWet.el,
+      "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
     ),
     sub("Reset"),
     row(

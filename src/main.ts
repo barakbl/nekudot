@@ -47,6 +47,7 @@ import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
+import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
@@ -335,6 +336,11 @@ let penEnabled = store.get<boolean>("app.penEnabled") ?? true;
 // future features and otherwise just grows storage (see pixel-log.ts).
 let pixelLogEnabled = store.get<boolean>("app.pixelLog") ?? false;
 pixelLog.setEnabled(pixelLogEnabled);
+
+// Opt-in field diagnostics (App settings -> Diagnostics). Enabled early so it
+// captures startup errors + an environment snapshot on a reload where it's on.
+let diagnosticsEnabled = store.get<boolean>("app.diag") ?? false;
+setDiagnostics(diagnosticsEnabled);
 
 // Registry groups → navbar combo option groups, flagging Custom rows (which get
 // a delete ×). Rebuilt whenever the custom set changes.
@@ -717,6 +723,27 @@ const appSettingsBox = createAppSettingsBox({
     store.set("app.pixelLog", on);
     pixelLog.setEnabled(on);
   },
+  diagnostics: diagnosticsEnabled,
+  onToggleDiagnostics: (on) => {
+    diagnosticsEnabled = on;
+    store.set("app.diag", on);
+    setDiagnostics(on);
+    if (on) {
+      // A one-shot snapshot of the current drawing state for context.
+      const bg = layerManager.getBackground();
+      dlog("app", "state", {
+        brush: brush.name(),
+        opacity: store.get<number>("app.opacity") ?? 1,
+        size: store.get<number>("app.size"),
+        main: store.get<string>("app.color.main"),
+        secondary: store.get<string>("app.color.secondary"),
+        theme: store.get<string>("app.theme") ?? "auto",
+        penEnabled,
+        background: bg.transparent ? "transparent" : bg.color,
+        canvas: `${layerManager.currentSize.width}x${layerManager.currentSize.height}`,
+      });
+    }
+  },
   onResetToDefault: () => {
     showTypedConfirm({
       title: "Reset to default?",
@@ -766,6 +793,7 @@ const selectBrush = (key: string) => {
   // the navbar Connecting combo's visibility + value for this brush.
   renderActiveBrush();
   store.set("app.brush.selected", key);
+  dlog("brush", "select", { key, opacity: op, erases: brush.erases() });
 };
 
 // Late-bound: the Shortcuts panel is built from the shortcuts array, which

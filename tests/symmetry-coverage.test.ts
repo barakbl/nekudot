@@ -30,6 +30,9 @@ const NON_GEOMETRY = new Set([
   // LayerManager, not the brush/symmetry proxy) - a placement, not a mark.
   "drawImageRect",
   "toBlob",
+  // Diagnostic-only pixel/canvas readback (App settings -> Diagnostics); reads,
+  // never draws, so nothing to mirror.
+  "debugProbe",
   // Internal helpers (TS-private, but still on the prototype).
   "applyLineStyle",
   "styled",
