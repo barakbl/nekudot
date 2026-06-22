@@ -51,6 +51,7 @@ import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
+import { opacityStorageKey, recalledOpacity } from "./app/opacity-store";
 import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
@@ -376,6 +377,15 @@ const presets = createPresetsController({
 // One settings window with Brush + Connecting tabs (the Connecting tab shows
 // only for brushes that connect). The Reset button reverts the active brush +
 // its art style to defaults.
+// Remembered stroke opacity, scoped per (brush, art-style) for connecting brushes
+// and per brush otherwise (see opacity-store.ts). `app.opacity` stays the live
+// applied value (the renderer + symmetry proxy read it); these just persist +
+// recall the per-context value so switching brush/style no longer clobbers it.
+const opacityKey = () =>
+  opacityStorageKey(brush.name(), brush.supportsConnecting(), currentArtStyle);
+const recallOpacity = () =>
+  recalledOpacity(store.get<number>(opacityKey()), brush.getSelectOpacity());
+
 const settingsPanel = createSettingsPanel({
   showPen: () => penEnabled,
   brushControls: {
@@ -396,7 +406,8 @@ const settingsPanel = createSettingsPanel({
       step: 0.05,
       onChange: (a) => {
         layerManager.setGlobalAlpha(a);
-        store.set("app.opacity", a);
+        store.set("app.opacity", a); // live applied value
+        store.set(opacityKey(), a); // remembered per (brush, art-style)
       },
     },
   },
@@ -411,7 +422,8 @@ const settingsPanel = createSettingsPanel({
     // as a fresh brush selection (getSelectOpacity ?? 1).
     layerManager.setLineWidth(DEFAULT_BRUSH_SIZE);
     store.set("app.size", DEFAULT_BRUSH_SIZE);
-    const op = brush.getSelectOpacity() ?? 1;
+    store.set(opacityKey(), undefined); // forget the remembered opacity for this context
+    const op = recallOpacity(); // -> the style's default (strokeAlpha) or 1
     layerManager.setGlobalAlpha(op);
     store.set("app.opacity", op);
     renderActiveBrush();
@@ -455,8 +467,12 @@ const refreshSettingsColors = () => {
 // at load we keep the saved value (which already equals the last style's).
 const applyBrushStrokeOpacity = (force: boolean) => {
   if (!force && store.get<number>("app.opacity") !== undefined) return;
-  const op = brush.getSelectOpacity();
-  if (op === undefined) return;
+  // Recall this (brush, style)'s remembered opacity, falling back to the style's
+  // preferred opacity. No-op for brushes with neither (non-connecting on a fresh
+  // store), so a plain mouse stroke stays fully opaque.
+  if (store.get<number>(opacityKey()) === undefined && brush.getSelectOpacity() === undefined)
+    return;
+  const op = recallOpacity();
   layerManager.setGlobalAlpha(op);
   store.set("app.opacity", op);
   settingsPanel.render(brush); // reflect the new value in the Opacity slider
@@ -783,10 +799,10 @@ const selectBrush = (key: string) => {
   layerManager.setEraseMode(brush.erases());
   // Let the brush apply its art style, then push its stroke opacity to the nav.
   brush.onSelect();
-  // Brushes that don't pin an opacity paint fully opaque. The `?? 1` also resets
-  // the slider after a style like Shading drove it to 0 — otherwise the next
-  // brush would inherit 0 and paint nothing.
-  const op = brush.getSelectOpacity() ?? 1;
+  // Recall the opacity this brush/style was last left at (remembered per context),
+  // else the style's preferred opacity, else fully opaque - so switching brushes
+  // no longer wipes a manual opacity, and Shading still starts at 0 by default.
+  const op = recallOpacity();
   layerManager.setGlobalAlpha(op);
   store.set("app.opacity", op);
   // renderActiveBrush re-renders both boxes (reading the live opacity) and syncs
