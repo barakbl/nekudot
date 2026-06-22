@@ -167,6 +167,7 @@ export function createAppSettingsBox(opts: {
       pixelLog.el,
       "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
     ),
+    sub("Diagnostics"),
     row(
       "Diagnostic logging",
       diagnostics.el,
@@ -176,7 +177,7 @@ export function createAppSettingsBox(opts: {
     row(
       "Bypass wet layer",
       bypassWet.el,
-      "Try-a-fix: draw faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem (a likely cause on older iPads).",
+      "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
     ),
     sub("Reset"),
     row(
