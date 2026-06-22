@@ -28,7 +28,7 @@ import {
   categoryName,
   normalizeCategory,
 } from "./categories";
-import { gradientCatalog } from "./gradients/catalog";
+import { gradientCatalog, type CatalogItem } from "./gradients/catalog";
 import { hexToOklch, oklchToHex } from "./oklch";
 import { hexToHsv, hsvToHex } from "./hsv";
 import { parseGpl, toGpl } from "./gpl";
@@ -1041,6 +1041,25 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   });
   panel.appendChild(importModal);
 
+  // One tappable row in the import list (a swatch preview + name → add it).
+  function makeImportRow(item: CatalogItem): HTMLElement {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "palette-import-item";
+    const bar = document.createElement("span");
+    bar.className = "palette-import-preview";
+    bar.style.background = gradientCss(item.palette.colors);
+    const name = document.createElement("span");
+    name.className = "palette-import-name";
+    name.textContent = item.palette.name;
+    row.append(bar, name);
+    row.addEventListener("click", () => {
+      addPalette({ ...item.palette }, `Added "${item.palette.name}".`);
+      closeImportModal();
+    });
+    return row;
+  }
+
   function openImportModal(): void {
     importList.replaceChildren();
     // Only palettes not already in the list. Deleting one (persisted in the
@@ -1055,25 +1074,43 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
         "Every bundled palette is in your list. Upload a .gpl, or delete a palette to make it available here again.";
       importList.appendChild(note);
     }
+    // Group available palettes by category into collapsible sections, all closed
+    // on open; clicking a category header reveals its palettes.
+    const byCat = new Map<string, CatalogItem[]>();
     for (const item of available) {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "palette-import-item";
-      const bar = document.createElement("span");
-      bar.className = "palette-import-preview";
-      bar.style.background = gradientCss(item.palette.colors);
-      const name = document.createElement("span");
-      name.className = "palette-import-name";
-      name.textContent = item.palette.name;
-      const mood = document.createElement("span");
-      mood.className = "palette-mood-tag";
-      mood.textContent = categoryName(normalizeCategory(item.palette.category));
-      row.append(bar, name, mood);
-      row.addEventListener("click", () => {
-        addPalette({ ...item.palette }, `Added "${item.palette.name}".`);
-        closeImportModal();
+      const c = normalizeCategory(item.palette.category);
+      const arr = byCat.get(c) ?? [];
+      arr.push(item);
+      byCat.set(c, arr);
+    }
+    for (const cat of allCategories()) {
+      const group = byCat.get(cat.id);
+      if (!group || !group.length) continue;
+      const section = document.createElement("div");
+      section.className = "palette-import-group";
+      const header = document.createElement("button");
+      header.type = "button";
+      header.className = "palette-import-group-head";
+      header.setAttribute("aria-expanded", "false");
+      const chevron = document.createElement("span");
+      chevron.className = "palette-import-chevron";
+      chevron.textContent = "▸";
+      const label = document.createElement("span");
+      label.textContent = `${cat.name} (${group.length})`;
+      header.append(chevron, label);
+      const body = document.createElement("div");
+      body.className = "palette-import-group-body";
+      body.style.display = "none"; // collapsed by default
+      for (const item of group) body.appendChild(makeImportRow(item));
+      header.addEventListener("click", () => {
+        const open = body.style.display === "none";
+        body.style.display = open ? "" : "none";
+        header.setAttribute("aria-expanded", String(open));
+        chevron.textContent = open ? "▾" : "▸";
+        reposition();
       });
-      importList.appendChild(row);
+      section.append(header, body);
+      importList.appendChild(section);
     }
     importModal.style.display = "";
     reposition();
