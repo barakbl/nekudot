@@ -15,6 +15,17 @@ import {
   type ConnectingFlat,
 } from "./connecting-types";
 
+// Settings-tab glyphs: a paintbrush for the Brush tab, a spider-web for the Web
+// (connection) tab. Small inline SVGs in the shared stroke style.
+const BRUSH_TAB_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M9.06 11.9 17.13 3.84a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08"/>' +
+  '<path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z"/></svg>';
+const WEB_TAB_ICON =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="1.6"/><path d="M12 3 V21 M3 12 H21 M6 6 L18 18 M18 6 L6 18"/>' +
+  '<path d="M12 6.5 A5.5 5.5 0 0 1 17.5 12 M12 6.5 A5.5 5.5 0 0 0 6.5 12"/></svg>';
+
 // A row's value changed: forward to the brush so it persists (art-style dials
 // per style, everything else per key). Threaded down to every input handler.
 type PersistFn = (s: BrushSetting, value: unknown) => void;
@@ -208,19 +219,23 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   let lastBrush: BrushBase | null = null;
   const tabBar = document.createElement("div");
   tabBar.className = "settings-tabs";
-  const mkTab = (label: string, tab: SettingsTab) => {
+  const mkTab = (label: string, tab: SettingsTab, icon: string) => {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "settings-tab";
-    b.textContent = label;
+    const ic = document.createElement("span");
+    ic.className = "settings-tab-icon";
+    ic.innerHTML = icon; // trusted constant SVG
+    b.append(ic, document.createTextNode(label));
     b.addEventListener("click", () => {
       activeTab = tab;
       if (lastBrush) render(lastBrush);
     });
     return b;
   };
-  const brushTab = mkTab("Brush", "brush");
-  const connTab = mkTab("Connecting", "connecting");
+  // The connection tab keeps its internal id "connecting"; it's labelled "Web".
+  const brushTab = mkTab("Brush", "brush", BRUSH_TAB_ICON);
+  const connTab = mkTab("Web", "connecting", WEB_TAB_ICON);
   tabBar.append(brushTab, connTab);
   panel.appendChild(tabBar);
 

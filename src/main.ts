@@ -1146,7 +1146,7 @@ attachToHeading(
 );
 attachToHeading(
   settingsPanel.el,
-  "Settings for the selected brush. The Brush tab has size, opacity and brush-specific options; the Connecting tab (for brushes that weave a web) has routing and the art-style dials. Reset reverts both to defaults.",
+  "Settings for the selected brush. The Brush tab has size, opacity and brush-specific options; the Web tab (for brushes that weave a web) has routing and the art-style dials. Reset reverts both to defaults.",
 );
 attachToHeading(
   symmetryBox.el,
