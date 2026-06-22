@@ -2,7 +2,7 @@ import { makeCloseButton } from "../settings-panel";
 import { makeDraggable } from "../drag";
 import { makeToggle } from "../toggle";
 import { attachHelp } from "../help";
-import { diagnosticsText } from "../diagnostics";
+import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
 import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
 
@@ -124,6 +124,11 @@ export function createAppSettingsBox(opts: {
   });
   diagActions.append(copyBtn, downloadBtn);
 
+  // "Try a fix" toggle: bypass the live wet-stroke overlay canvas.
+  const bypassWet = makeToggle(diagnosticOverride("disableWetOverlay"), (on) =>
+    setDiagnosticOverride("disableWetOverlay", on),
+  );
+
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
   resetBtn.className = "appset-reset-btn";
@@ -168,6 +173,11 @@ export function createAppSettingsBox(opts: {
       "Captures brush, stroke, render and error events into a log you can copy or download to share for troubleshooting. Off by default; nothing is sent anywhere automatically.",
     ),
     diagActions,
+    row(
+      "Bypass wet layer",
+      bypassWet.el,
+      "Try-a-fix: draw faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem (a likely cause on older iPads).",
+    ),
     sub("Reset"),
     row(
       "Erase all data",

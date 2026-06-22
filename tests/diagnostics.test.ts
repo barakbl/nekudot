@@ -6,6 +6,8 @@ import {
   clearDiagnostics,
   diagnosticsCount,
   diagnosticsText,
+  setDiagnosticOverride,
+  diagnosticOverride,
 } from "../src/diagnostics";
 
 // Reset the singleton between tests.
@@ -40,6 +42,14 @@ describe("diagnostics", () => {
     expect(text).toContain("[stroke] begin");
     expect(text).toContain('"alpha":0.3');
     expect(text).toContain('"brush":"Round"');
+  });
+
+  it("tracks try-a-fix overrides independently of logging", () => {
+    expect(diagnosticOverride("disableWetOverlay")).toBe(false);
+    setDiagnosticOverride("disableWetOverlay", true);
+    expect(diagnosticOverride("disableWetOverlay")).toBe(true);
+    setDiagnosticOverride("disableWetOverlay", false);
+    expect(diagnosticOverride("disableWetOverlay")).toBe(false);
   });
 
   it("stops capturing after being disabled again", () => {

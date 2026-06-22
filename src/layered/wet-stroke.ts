@@ -1,7 +1,7 @@
 import { CanvasRenderer } from "../renderer";
 import type { IRenderer, RendererInit } from "../renderer";
 import type { CanvasSize } from "../canvas-size";
-import { dlog } from "../diagnostics";
+import { dlog, diagnosticOverride } from "../diagnostics";
 
 // Per-stroke "wet" buffer for continuous strokes. While a partly-transparent
 // line is in progress, the stroke targets this opaque off-buffer (shown live
@@ -31,6 +31,13 @@ export class WetStrokeBuffer {
   begin(size: CanvasSize, init: RendererInit, zIndex: number): void {
     this.active = false;
     const alpha = init.globalAlpha ?? 1;
+    // Diagnostic "try a fix": draw faint strokes straight onto the layer instead
+    // of the live overlay canvas. If that makes lines visible, the overlay's
+    // compositing was the problem (a likely old-iPad cause).
+    if (diagnosticOverride("disableWetOverlay")) {
+      dlog("wet", "bypassed (diagnostic)", { alpha });
+      return;
+    }
     if (init.eraseMode || alpha <= 0 || alpha >= 1) {
       dlog("wet", "skip", { alpha, erase: !!init.eraseMode });
       return;

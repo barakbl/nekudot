@@ -38,6 +38,18 @@ export function clearDiagnostics(): void {
   entries.length = 0;
 }
 
+// "Try a fix" overrides: live, non-persisted switches the render path consults to
+// bypass a suspected cause (so a user can eyeball which one restores visible
+// strokes). Independent of whether logging is on.
+const overrides: Record<string, boolean> = {};
+export function setDiagnosticOverride(key: string, on: boolean): void {
+  overrides[key] = on;
+  dlog("override", key, { on });
+}
+export function diagnosticOverride(key: string): boolean {
+  return overrides[key] === true;
+}
+
 export function diagnosticsCount(): number {
   return entries.length;
 }
@@ -112,8 +124,10 @@ function envSnapshot(): Record<string, unknown> {
     pointerEvents: "PointerEvent" in w,
     eyeDropper: "EyeDropper" in w,
     // A "BLANK" readback means the canvas exceeded the GPU's max backing area -
-    // a classic old-iPad cause of invisible drawing.
-    canvasProbe: probeCanvas(Math.round(w.innerWidth * dpr), Math.round(w.innerHeight * dpr)),
+    // a classic old-iPad cause of invisible drawing. Probe a small canvas too:
+    // small "ok" + full "BLANK" pins the bug to the canvas size / GPU limit.
+    canvasProbeFull: probeCanvas(Math.round(w.innerWidth * dpr), Math.round(w.innerHeight * dpr)),
+    canvasProbeSmall: probeCanvas(256, 256),
   };
 }
 
