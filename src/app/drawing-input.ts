@@ -10,6 +10,17 @@ import { dlog, isDiagnostics } from "../diagnostics";
 // continuous lines (see LayerManager.beginStroke) so a faint stroke
 // composites at one uniform alpha, and reads the pen sample (pressure/tilt)
 // off every pointer event — coalesced sub-samples each carry their own.
+
+// PointerEvent.getCoalescedEvents() only shipped in Safari 18; on older Safari
+// (e.g. iOS 17) the method is undefined and calling it throws - which aborted
+// every pointermove and left strokes invisible. Feature-detect it and fall back
+// to the event itself (the same fallback already used for an empty list).
+export function coalescedEvents(e: PointerEvent): PointerEvent[] {
+  if (typeof e.getCoalescedEvents !== "function") return [e];
+  const evs = e.getCoalescedEvents();
+  return evs.length ? evs : [e];
+}
+
 export function bindDrawingInput(opts: {
   stage: HTMLElement;
   viewport: Viewport; // maps screen (client) coords -> canvas coords (pan/zoom/rotate)
@@ -119,8 +130,7 @@ export function bindDrawingInput(opts: {
     if (e.pointerId !== drawingId) return;
     ensureStarted(); // the first movement confirms a deferred touch stroke
     const brush = opts.brush();
-    const evs = e.getCoalescedEvents();
-    const list = evs.length ? evs : [e];
+    const list = coalescedEvents(e);
     // Connecting brushes weave the web once per frame (the last coalesced sample),
     // matching Harmony's per-move model. Feeding every coalesced sub-sample to the
     // web made it build up ~quadratically with the pointer's report rate (fast
