@@ -1021,6 +1021,10 @@ body {
 }
 .settings-tab {
   flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   padding: 5px 8px;
   background: transparent;
   border: none;
@@ -1029,6 +1033,10 @@ body {
   font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
+}
+.settings-tab-icon {
+  display: inline-flex;
+  flex: none;
 }
 .settings-tab:hover {
   color: var(--text-primary);
