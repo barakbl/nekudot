@@ -63,7 +63,18 @@ export type PalettePanelOpts = {
   // Called whenever the set of gradient-enabled palettes changes (a Gradient
   // toggle), so consumers (e.g. the connection Color dial) can refresh.
   onGradientsChanged?: () => void;
+  // Whether "Smooth gradients" is on - when true, preview bars interpolate in
+  // OKLCH (matching the connection blend) instead of the classic sRGB blend.
+  smoothGradients?: () => boolean;
 };
+
+// Whether the browser can interpolate gradients in OKLCH (Safari 16.2+, Chrome
+// 111+, …). Older engines treat "in oklch" as invalid and drop the whole
+// gradient, so we feature-detect and fall back to the plain sRGB blend.
+const SUPPORTS_OKLCH_GRADIENT =
+  typeof CSS !== "undefined" &&
+  typeof CSS.supports === "function" &&
+  CSS.supports("background", "linear-gradient(in oklch, red, blue)");
 
 type Tab = "palette" | "picker";
 type PickerMode = "oklch" | "hsb";
@@ -667,7 +678,10 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   }
   function gradientCss(colors: string[]): string {
     if (colors.length === 1) return colors[0];
-    return `linear-gradient(to right, ${colors.join(", ")})`;
+    // Interpolate in OKLCH when Smooth gradients is on (and supported), so the
+    // preview matches how the connection actually blends; else classic sRGB.
+    const space = opts.smoothGradients?.() && SUPPORTS_OKLCH_GRADIENT ? "in oklch " : "";
+    return `linear-gradient(${space}to right, ${colors.join(", ")})`;
   }
   // The "Gradient" on/off row shown under a palette's swatches, with a live bar.
   function makeGradRow(p: Palette): HTMLElement {
