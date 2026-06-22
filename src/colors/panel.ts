@@ -21,7 +21,13 @@ import {
   pushRecent,
   type Palette,
 } from "./palette";
-import { ALL_MOODS, allMoods, DEFAULT_MOOD, moodName, normalizeMood } from "./moods";
+import {
+  ALL_CATEGORIES,
+  allCategories,
+  DEFAULT_CATEGORY,
+  categoryName,
+  normalizeCategory,
+} from "./categories";
 import { gradientCatalog } from "./gradients/catalog";
 import { hexToOklch, oklchToHex } from "./oklch";
 import { hexToHsv, hsvToHex } from "./hsv";
@@ -62,7 +68,7 @@ export type PalettePanelOpts = {
 type Tab = "palette" | "picker";
 type PickerMode = "oklch" | "hsb";
 const TAB_KEY = "nekudot.colors.tab";
-const MOOD_KEY = "nekudot.colors.mood"; // selected mood id, or ALL_MOODS
+const MOOD_KEY = "nekudot.colors.mood"; // selected mood id, or ALL_CATEGORIES
 
 const trashIcon =
   '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -106,7 +112,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   let recent: string[] = [];
   let lastUsedId: string | null = null; // palette last picked from (pinned top)
   let activeTab: Tab = loadTab();
-  let activeMood: string = loadMood(); // selected mood filter (ALL_MOODS = show all)
+  let activeMood: string = loadMood(); // selected mood filter (ALL_CATEGORIES = show all)
   // List "Edit" mode (off by default for a clean pick view): reveals the New /
   // Import actions + per-palette edit/export/delete + gradient toggles. Distinct
   // from the focused single-palette editor (enterEdit/editView).
@@ -173,7 +179,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   // "?" hints (shown in help mode, toggled by the ? key) explain each action.
   attachHelp(
     newPaletteBtn,
-    "Build your own palette: name it, choose a mood, then add swatches and pick " +
+    "Build your own palette: name it, choose a category, then add swatches and pick " +
       "each colour. It's saved here, ready to edit or use as a gradient.",
   );
   attachHelp(
@@ -187,14 +193,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   moodRow.className = "palette-mood-row";
   const moodLabel = document.createElement("label");
   moodLabel.className = "palette-mood-label";
-  moodLabel.textContent = "Mood";
+  moodLabel.textContent = "Category";
   const moodSelect = document.createElement("select");
   moodSelect.className = "palette-mood-select";
   const allOpt = document.createElement("option");
-  allOpt.value = ALL_MOODS;
-  allOpt.textContent = "All moods";
+  allOpt.value = ALL_CATEGORIES;
+  allOpt.textContent = "All categories";
   moodSelect.appendChild(allOpt);
-  for (const m of allMoods()) {
+  for (const m of allCategories()) {
     const o = document.createElement("option");
     o.value = m.id;
     o.textContent = m.name;
@@ -286,17 +292,17 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   editMoodRow.className = "palette-mood-row palette-edit-mood";
   const editMoodLabel = document.createElement("span");
   editMoodLabel.className = "palette-mood-label";
-  editMoodLabel.textContent = "Mood";
+  editMoodLabel.textContent = "Category";
   const editMoodSelect = document.createElement("select");
   editMoodSelect.className = "palette-mood-select";
-  for (const m of allMoods()) {
+  for (const m of allCategories()) {
     const o = document.createElement("option");
     o.value = m.id;
     o.textContent = m.name;
     editMoodSelect.appendChild(o);
   }
   editMoodSelect.addEventListener("change", () => {
-    if (editDraft) editDraft.mood = editMoodSelect.value;
+    if (editDraft) editDraft.category = editMoodSelect.value;
   });
   editMoodRow.append(editMoodLabel, editMoodSelect);
   const editGrid = document.createElement("div");
@@ -374,9 +380,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   function loadMood(): string {
     try {
       const v = localStorage.getItem(MOOD_KEY);
-      return v && (v === ALL_MOODS || normalizeMood(v) === v) ? v : ALL_MOODS;
+      return v && (v === ALL_CATEGORIES || normalizeCategory(v) === v) ? v : ALL_CATEGORIES;
     } catch {
-      return ALL_MOODS;
+      return ALL_CATEGORIES;
     }
   }
   function saveMood(mood: string): void {
@@ -687,10 +693,10 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   function enterEdit(p: Palette | null): void {
     editDraft = p
       ? { ...p, colors: [...p.colors] }
-      : { id: makeId(), name: "New palette", colors: [], gradient: false, mood: DEFAULT_MOOD };
+      : { id: makeId(), name: "New palette", colors: [], gradient: false, category: DEFAULT_CATEGORY };
     editSelected = editDraft.colors.length ? 0 : -1;
     editNameInput.value = editDraft.name;
-    editMoodSelect.value = normalizeMood(editDraft.mood);
+    editMoodSelect.value = normalizeCategory(editDraft.category);
     // Draft gradient toggle (committed on Save, so it doesn't touch `custom` yet).
     const gradRow = document.createElement("div");
     gradRow.className = "palette-grad-row";
@@ -855,7 +861,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     return p;
   }
   function paletteMatchesMood(p: Palette): boolean {
-    return activeMood === ALL_MOODS || normalizeMood(p.mood) === activeMood;
+    return activeMood === ALL_CATEGORIES || normalizeCategory(p.category) === activeMood;
   }
 
   // The palette list, filtered by the active mood (ALL shows everything). Each
@@ -876,7 +882,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     const visible = orderedCustom().filter(paletteMatchesMood);
     if (visible.length === 0) {
       customWrap.appendChild(
-        emptyNote(`No "${moodName(activeMood)}" palettes. Switch mood or create one.`),
+        emptyNote(`No "${categoryName(activeMood)}" palettes. Switch category or create one.`),
       );
       return;
     }
@@ -886,7 +892,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       // Mood tag (helps tell palettes apart when viewing "All moods").
       const moodTag = document.createElement("span");
       moodTag.className = "palette-mood-tag";
-      moodTag.textContent = moodName(normalizeMood(p.mood));
+      moodTag.textContent = categoryName(normalizeCategory(p.category));
       head.appendChild(moodTag);
       // A subtle "Last used" tag (only worth showing when there's more than one).
       if (custom.length > 1 && p.id === lastUsedId) {
@@ -978,8 +984,8 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     // Only touch the mood filter if it would otherwise hide the result - drop to
     // "All moods" so the palette is visible, without overriding a deliberate filter
     // when it already matches.
-    if (activeMood !== ALL_MOODS && normalizeMood(p.mood) !== activeMood) {
-      activeMood = ALL_MOODS;
+    if (activeMood !== ALL_CATEGORIES && normalizeCategory(p.category) !== activeMood) {
+      activeMood = ALL_CATEGORIES;
       moodSelect.value = activeMood;
       saveMood(activeMood);
     }
@@ -1003,7 +1009,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       setStatus("Couldn't read that .gpl file.");
       return;
     }
-    pal.mood = DEFAULT_MOOD;
+    pal.category = DEFAULT_CATEGORY;
     closeImportModal();
     addPalette(pal, `Imported "${pal.name}" (${pal.colors.length} colours).`);
   });
@@ -1061,7 +1067,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       name.textContent = item.palette.name;
       const mood = document.createElement("span");
       mood.className = "palette-mood-tag";
-      mood.textContent = moodName(normalizeMood(item.palette.mood));
+      mood.textContent = categoryName(normalizeCategory(item.palette.category));
       row.append(bar, name, mood);
       row.addEventListener("click", () => {
         addPalette({ ...item.palette }, `Added "${item.palette.name}".`);

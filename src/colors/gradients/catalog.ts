@@ -1,5 +1,5 @@
 // The bundled gradient/palette catalog: the .gpl files in this folder plus their
-// metadata in settings.json (mood, whether to seed on onboarding, whether they're
+// metadata in settings.json (category, whether to seed on onboarding, whether they're
 // gradient sources). Replaces the old hard-coded sunset/ocean/neon/fire arrays -
 // the panel seeds these on first run and lists them in the Import modal.
 //
@@ -8,7 +8,7 @@
 import { z } from "zod";
 import rawSettings from "./settings.json";
 import { parseGpl } from "../gpl";
-import { normalizeMood } from "../moods";
+import { normalizeCategory } from "../categories";
 import type { Palette } from "../palette";
 
 const FILES = import.meta.glob("./*.gpl", {
@@ -19,7 +19,7 @@ const FILES = import.meta.glob("./*.gpl", {
 
 const EntrySchema = z.object({
   file: z.string().min(1),
-  mood: z.string(),
+  category: z.string(),
   onboarding: z.boolean().default(false),
   gradient: z.boolean().default(true),
   // Optional explicit palette id; defaults to "conn:<basename>" (keeps the old
@@ -30,7 +30,7 @@ const EntrySchema = z.object({
 export type CatalogItem = {
   id: string;
   onboarding: boolean;
-  palette: Palette; // ready to store: id + name (from the .gpl) + mood + gradient
+  palette: Palette; // ready to store: id + name (from the .gpl) + category + gradient
 };
 
 function basename(file: string): string {
@@ -59,7 +59,7 @@ function buildCatalog(): CatalogItem[] {
     out.push({
       id,
       onboarding: e.onboarding,
-      palette: { ...pal, id, mood: normalizeMood(e.mood), gradient: e.gradient },
+      palette: { ...pal, id, category: normalizeCategory(e.category), gradient: e.gradient },
     });
   }
   return out;

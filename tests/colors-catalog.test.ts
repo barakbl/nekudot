@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { gradientCatalog, onboardingPalettes } from "../src/colors/gradients/catalog";
-import { moodById } from "../src/colors/moods";
+import { categoryById } from "../src/colors/categories";
 
 // The catalog is settings.json + the bundled .gpl files, parsed into palettes.
 describe("gradient catalog", () => {
@@ -11,14 +11,16 @@ describe("gradient catalog", () => {
     for (const i of items) {
       expect(i.id).toBeTruthy();
       expect(i.palette.colors.length).toBeGreaterThan(0);
-      expect(moodById(i.palette.mood ?? "")).toBeDefined(); // a valid mood id
+      expect(categoryById(i.palette.category ?? "")).toBeDefined(); // a valid category id
     }
   });
 
-  it("ships at least one palette for every mood (incl. Cool/Earthy/Pastel)", () => {
-    const moods = new Set(items.map((i) => i.palette.mood));
-    for (const m of ["CALM", "HOT", "COOL", "VIBRANT", "EARTHY", "PASTEL", "GENERAL"]) {
-      expect(moods.has(m)).toBe(true);
+  it("ships at least one palette for every category (incl. Animals/Fruits)", () => {
+    const cats = new Set(items.map((i) => i.palette.category));
+    for (const c of [
+      "CALM", "HOT", "COOL", "VIBRANT", "EARTHY", "PASTEL", "ANIMALS", "FRUITS", "GENERAL",
+    ]) {
+      expect(cats.has(c)).toBe(true);
     }
   });
 

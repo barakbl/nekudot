@@ -11,9 +11,9 @@ export type Palette = {
   id: string; // stable id (storage key / dedupe); see makeId()
   name: string; // display name (the "name behind the scenes")
   colors: string[]; // "#rrggbb", deduped + capped at MAX_SWATCHES
-  // Mood tag (a moods.ts id like "CALM"); the panel filters by it. Absent =>
-  // treated as the default mood (GENERAL).
-  mood?: string;
+  // Category tag (a categories.ts id like "CALM"); the panel filters by it.
+  // Absent => treated as the default category (GENERAL).
+  category?: string;
   // Marks the palette as usable as a gradient elsewhere in the app (e.g. the
   // connection Color dial). Seeded gradients default it on; the user toggles it.
   gradient?: boolean;
