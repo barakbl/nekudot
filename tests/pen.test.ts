@@ -81,6 +81,15 @@ describe("readPenSample", () => {
     expect(readPenSample({ pointerType: "pen", pressure: 0.42 }).hasTilt).toBe(false);
   });
 
+  it("falls back to a neutral pressure when a pen reports 0 (unsupported)", () => {
+    // iPad/Safari + Apple Pencil can deliver pen events with no pressure (0);
+    // taken literally that would crush stroke size to the ~15% floor.
+    expect(readPenSample({ pointerType: "pen", pressure: 0 }).pressure).toBe(0.5);
+    expect(readPenSample({ pointerType: "pen", pressure: NaN }).pressure).toBe(0.5);
+    // A real reading is still honoured (not overridden).
+    expect(readPenSample({ pointerType: "pen", pressure: 0.3 }).pressure).toBeCloseTo(0.3);
+  });
+
   it("derives tilt + azimuth from tiltX/tiltY", () => {
     // Leaning 60° toward +x: azimuth 0, tilt 60/90 of the way to flat.
     const s = readPenSample({ pointerType: "pen", pressure: 1, tiltX: 60, tiltY: 0 });

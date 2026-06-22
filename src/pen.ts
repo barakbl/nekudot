@@ -56,7 +56,12 @@ export function readPenSample(e: PenEventLike): PenSample {
   }
   return {
     isPen: true,
-    pressure: clamp01(e.pressure),
+    // Some iPad + Apple Pencil setups in Safari deliver pen events with no
+    // pressure data (a constant 0). Taken literally that pins the pressure-driven
+    // size factor to its floor (~15%), so strokes look invisibly thin. Treat a 0
+    // (or NaN) as "no reading" and fall back to a neutral mid pressure - real
+    // pressure is still honoured when the device reports it.
+    pressure: e.pressure > 0 ? clamp01(e.pressure) : 0.5,
     tilt,
     azimuth,
     hasTilt: tilt > MIN_TILT_FOR_DIRECTION,
