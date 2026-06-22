@@ -40,6 +40,7 @@ export function bindDrawingInput(opts: {
   // DEFERRED (see pointerdown) until the stroke is confirmed, so the move / end
   // / commit paths lay it lazily and a camera gesture can drop it untouched.
   let started = false;
+  let beginPoint: { x: number; y: number } | null = null; // for the diagnostics probe
   let pending: { x: number; y: number; pen: ReturnType<typeof sampleOf> } | null =
     null;
 
@@ -51,6 +52,7 @@ export function bindDrawingInput(opts: {
   ) => {
     const brush = opts.brush();
     started = true;
+    beginPoint = { x: p.x, y: p.y };
     // Freeze the symmetry transforms for this stroke (Tile anchored to the start,
     // Radial/Mirror centred on the canvas) before any mark is drawn.
     symmetry.beginStroke(p.x, p.y, layerManager.currentSize);
@@ -147,6 +149,15 @@ export function bindDrawingInput(opts: {
     // Commit the buffered line onto the active layer (one uniform-alpha composite)
     // before previews/persist read the layer. (Matches the start latch.)
     if (buffered) layerManager.endStroke();
+    // Diagnostics: read back the committed layer at the stroke's start point.
+    // regionMaxAlpha > 0 means pixels DID land (so an invisible stroke is a
+    // display/compositing problem, not a draw failure); 0 means nothing drew.
+    if (isDiagnostics() && beginPoint) {
+      const r = layerManager.active.renderer as {
+        debugProbe?: (x: number, y: number) => Record<string, unknown>;
+      };
+      if (r.debugProbe) dlog("canvas", "post-stroke", r.debugProbe(beginPoint.x, beginPoint.y));
+    }
     buffered = false;
     started = false;
     opts.onStrokeEnd(brush);
