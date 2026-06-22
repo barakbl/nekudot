@@ -645,7 +645,7 @@ export class ConnectionBase {
       this.num("spread", "Spread", 0, 40, 1, this.connectSpread),
       this.num("alpha", "Opacity", 0, 1, 0.05, this.styleValue("alpha")),
       this.num("density", "Density", 0, 100, 1, this.connectDensity),
-      this.num("radius", "Reach", 5, 200, 1, this.searchRadius),
+      this.num("radius", "Reach", 5, 1000, 1, this.searchRadius),
       this.num("links", "Links", 0, 20, 1, this.connectMaxLinks),
       this.num("sampleSpacing", "Stipple", 0, 20, 1, this.connectSampleSpacing),
       this.num("fade", "Fade", 0, 1, 0.05, this.connectAlphaFade),
