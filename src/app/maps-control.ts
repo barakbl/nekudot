@@ -10,8 +10,12 @@ export function createMapsControl(
   layerManager: LayerManager,
   highlightMap: (index: number) => void,
   pushUndo: (description: string) => void,
+  getHighlightColor: () => string,
+  onPickHighlightColor: (anchor: HTMLElement) => void,
 ): MapsControl {
   return {
+    getHighlightColor,
+    onPickHighlightColor,
     getInfo: () => {
       const activeIdx = layerManager.selectedNeighborsMapIdx;
       return {

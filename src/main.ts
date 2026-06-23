@@ -259,8 +259,16 @@ const symmetryOverlay = new Overlay(stage, dpr, 9998, initialCanvasSize, {
   hidden: true,
 });
 
-// Top-most flash of a neighbors map's dots, asked for by the Maps box/pill.
-const highlightNeighborsMap = createMapHighlighter(stage, layerManager, dpr);
+// Top-most highlight of a neighbors map's dots, asked for by the Maps box/pill:
+// a one-shot Flash, plus a persistent "hot map" pin (active map's dots held
+// visible while drawing). Restore the pinned state and keep it re-rendered as the
+// active map / its points change (camera moves need no refresh - it rides the
+// transformed stage).
+const mapHighlighter = createMapHighlighter(stage, layerManager, dpr);
+const storedHighlightColor = store.get<string>("app.maps.highlightColor");
+if (storedHighlightColor) mapHighlighter.setColor(storedHighlightColor);
+if (store.get<boolean>("app.maps.pinHighlight")) mapHighlighter.setPinned(true);
+layerManager.subscribe(() => mapHighlighter.refresh());
 
 // ---- symmetry ------------------------------------------------------------------
 
@@ -298,6 +306,7 @@ const applyNewCanvasSize = (size: CanvasSize) => {
   invisibleOverlay.resize(size);
   symmetryOverlay.resize(size);
   updateSymmetryOverlay();
+  mapHighlighter.refresh(); // re-fit the pinned highlight to the new canvas
   viewport.reset();
 };
 
@@ -547,7 +556,25 @@ registerWindow(symmetryBox.el);
 // The memory-maps editor, opened from the navbar Maps pill. Holds all the
 // per-map controls; the pill shows the active map's live point count + a
 // flash button (the name lives in its tooltips).
-const mapsControl = createMapsControl(layerManager, highlightNeighborsMap, pushUndo);
+const mapsControl = createMapsControl(
+  layerManager,
+  mapHighlighter.flash,
+  pushUndo,
+  () => mapHighlighter.getColor(),
+  // Open the colour picker by the swatch; recolour the dots, persist, and update
+  // the box's swatch. palettePanel/mapsBox exist by the time this runs (on click).
+  (anchor) =>
+    palettePanel.open({
+      title: "Highlight color",
+      anchor,
+      getColor: () => mapHighlighter.getColor(),
+      onPick: (hex) => {
+        mapHighlighter.setColor(hex);
+        store.set("app.maps.highlightColor", hex);
+        mapsBox.render();
+      },
+    }),
+);
 // The routing "Connection" group lives in the Maps box now; build it for the
 // current brush (re-read on each render, so it tracks the active brush + maps).
 const mapsBox = createMapsBox(mapsControl, (rerender) =>
@@ -987,8 +1014,16 @@ const menu = createMenu(
       const active = maps.find((m) => m.active);
       return { name: active?.name ?? "Map", dots: active?.dots ?? 0 };
     },
-    onFlashActive: () => highlightNeighborsMap(layerManager.selectedNeighborsMapIdx),
     onOpen: () => showMaps(),
+    pinned: () => mapHighlighter.isPinned(),
+    onToggleHot: () => {
+      const on = !mapHighlighter.isPinned();
+      mapHighlighter.setPinned(on);
+      store.set("app.maps.pinHighlight", on);
+      // Flash once as it turns on, so you immediately see where the dots are.
+      if (on) mapHighlighter.flash(layerManager.selectedNeighborsMapIdx);
+      menu.refreshMapsPill();
+    },
     subscribe: (fn) => layerManager.subscribe(fn),
   },
   {
@@ -1205,11 +1240,12 @@ const drawingInput = bindDrawingInput({
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
-    // A stroke may have added points to the active map; refresh the maps box
-    // and the navbar pill's point count (strokes add pixels directly without
-    // an emit, so neither would otherwise update).
+    // A stroke may have added points to the active map; refresh the maps box,
+    // the navbar pill's point count, and the pinned "hot map" dots (strokes add
+    // pixels directly without an emit, so none would otherwise update).
     mapsBox.render();
     menu.refreshMapsPill();
+    mapHighlighter.refresh();
     // One capture serves both undo and persistence — the pushed row is the
     // persisted paint, so this is the only blob-encode pass per stroke.
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);

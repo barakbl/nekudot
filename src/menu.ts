@@ -72,13 +72,14 @@ export type ConnectingControl = {
   onExport?: () => void; // export (↑) on the Custom group header
 };
 
-// The navbar Maps quick-access: a small pill showing the active map's live
-// point count plus a Flash button. Clicking the count opens the full Maps box
-// (see maps-box.ts); the map's name lives in the tooltips.
+// The navbar Maps quick-access: a small pill showing the active map's live point
+// count plus a single "hot map" toggle. Clicking the count opens the full Maps
+// box (see maps-box.ts); the map's name lives in the tooltips.
 export type MapsPillControl = {
   getActiveInfo: () => { name: string; dots: number }; // active map, read live
-  onFlashActive: () => void; // flash button → flash the active map's dots
   onOpen: () => void; // click the count → open/toggle the Maps box
+  pinned: () => boolean; // whether the persistent "hot map" highlight is on
+  onToggleHot: () => void; // the button → toggle the hot map (flashes as it turns on)
   subscribe: (fn: () => void) => () => void; // refresh when maps change
 };
 
@@ -369,7 +370,10 @@ function makeMapsPill(control: MapsPillControl): {
     control.onOpen();
   });
 
-  // Flash button — the target glyph (matches the per-map flash in the box).
+  // Hot-map toggle — the target glyph, lit (.is-on) while pinned. One click turns
+  // the active map's "hot map" on (flashing once as it does, so you see where the
+  // dots are, then they stay visible while drawing); clicking again turns it off.
+  // (The Maps box keeps a separate one-shot flash per map.)
   const flash = document.createElement("button");
   flash.type = "button";
   flash.className = "icon-btn maps-pill-flash";
@@ -381,14 +385,19 @@ function makeMapsPill(control: MapsPillControl): {
     "</svg>";
   flash.addEventListener("click", (e) => {
     e.stopPropagation();
-    control.onFlashActive();
+    control.onToggleHot();
   });
 
   const refresh = () => {
     const { name, dots } = control.getActiveInfo();
     label.textContent = `${dots} ${dots === 1 ? "pt" : "pts"}`;
     open.title = `Open Memory Maps — active: ${name}`;
-    flash.title = `Flash ${name} on canvas`;
+    const isPinned = control.pinned();
+    flash.classList.toggle("is-on", isPinned);
+    flash.setAttribute("aria-pressed", String(isPinned));
+    flash.title = isPinned
+      ? `Hot map on — ${name} stays visible while drawing (click to turn off)`
+      : `Show ${name} on canvas and keep it visible while drawing (hot map)`;
   };
   control.subscribe(refresh);
   refresh();

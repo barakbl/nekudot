@@ -1,48 +1,79 @@
 import type { LayerManager } from "../layered/manager";
 
-const HIGHLIGHT_COLOR = "#22d3ee"; // cyan accent — reads on light + dark
+const DEFAULT_COLOR = "#22d3ee"; // cyan accent — reads on light + dark
 const DURATION = 2500;
 
-// Transient highlight overlay (top-most): flashes a neighbors map's pixels
-// over the canvas for a couple of seconds — thicker, glowing dots that pulse,
-// then fade. The canvas is created once and sized on demand to the live
-// canvas; starting a new flash cancels the one in flight.
+export type MapHighlighter = {
+  // One-shot pulse of a map's dots (the navbar Flash button + per-map flash).
+  flash: (index: number) => void;
+  // Persistent "hot map": keep the ACTIVE map's dots quietly visible while you
+  // draw, so you can see what the brush will connect to. setPinned toggles it;
+  // refresh re-renders it (active map switched, points added by a stroke, canvas
+  // resized). Camera pan/zoom/rotate needs no refresh - the overlay is a child of
+  // the transformed stage, so it moves with the canvas.
+  setPinned: (on: boolean) => void;
+  isPinned: () => boolean;
+  refresh: () => void;
+  // Dot colour, shared by the flash and the pinned highlight (set from the Maps
+  // box). Changing it recolours the pinned dots immediately.
+  getColor: () => string;
+  setColor: (hex: string) => void;
+};
+
+// Two top-most, click-through overlay canvases over the live canvas: a transient
+// flash (thicker glowing dots that pulse then fade) and a persistent pin (subtle
+// static dots). The flash sits above the pin so a flash still reads when pinned.
 export function createMapHighlighter(
   stage: HTMLElement,
   layerManager: LayerManager,
   dpr: number,
-): (index: number) => void {
-  const overlay = document.createElement("canvas");
-  overlay.style.position = "absolute";
-  overlay.style.left = "0";
-  overlay.style.top = "0";
-  overlay.style.pointerEvents = "none";
-  overlay.style.zIndex = "10000";
-  stage.appendChild(overlay);
+): MapHighlighter {
+  const makeOverlay = (z: number): HTMLCanvasElement => {
+    const c = document.createElement("canvas");
+    c.style.position = "absolute";
+    c.style.left = "0";
+    c.style.top = "0";
+    c.style.pointerEvents = "none";
+    c.style.zIndex = String(z);
+    stage.appendChild(c);
+    return c;
+  };
+  // Match a canvas to the live canvas size; only reallocate when it actually
+  // changes (setting width/height clears the bitmap).
+  const ensureSize = (c: HTMLCanvasElement): void => {
+    const size = layerManager.currentSize;
+    const w = Math.round(size.width * dpr);
+    const h = Math.round(size.height * dpr);
+    if (c.width !== w || c.height !== h) {
+      c.width = w;
+      c.height = h;
+      c.style.width = `${size.width}px`;
+      c.style.height = `${size.height}px`;
+    }
+  };
 
+  let color = DEFAULT_COLOR; // shared by flash + pin
+
+  // --- one-shot flash --------------------------------------------------------
+  const flashOverlay = makeOverlay(10000);
   let token = 0; // bump to cancel any in-flight flash
-
-  return (index: number) => {
+  const flash = (index: number): void => {
     const nm = layerManager.allNeighborsMaps[index];
-    const ctx = overlay.getContext("2d");
+    const ctx = flashOverlay.getContext("2d");
     if (!nm || !ctx) return;
     const pts = nm.finder.allPixels();
-    const size = layerManager.currentSize;
-    overlay.width = Math.round(size.width * dpr);
-    overlay.height = Math.round(size.height * dpr);
-    overlay.style.width = `${size.width}px`;
-    overlay.style.height = `${size.height}px`;
+    ensureSize(flashOverlay);
 
     // Pre-render the glowing dots once at full strength; the loop only flickers
     // overall opacity (cheap even for thousands of points).
     const off = document.createElement("canvas");
-    off.width = overlay.width;
-    off.height = overlay.height;
+    off.width = flashOverlay.width;
+    off.height = flashOverlay.height;
     const octx = off.getContext("2d");
     if (octx) {
       octx.scale(dpr, dpr);
-      octx.fillStyle = HIGHLIGHT_COLOR;
-      octx.shadowColor = HIGHLIGHT_COLOR;
+      octx.fillStyle = color;
+      octx.shadowColor = color;
       octx.shadowBlur = 6;
       for (const p of pts) {
         octx.beginPath();
@@ -53,7 +84,7 @@ export function createMapHighlighter(
 
     const flashToken = ++token;
     const start = performance.now();
-    const clear = () => ctx.clearRect(0, 0, overlay.width, overlay.height);
+    const clear = () => ctx.clearRect(0, 0, flashOverlay.width, flashOverlay.height);
     const frame = (now: number) => {
       if (flashToken !== token) return; // a newer flash took over
       const t = (now - start) / DURATION;
@@ -70,5 +101,45 @@ export function createMapHighlighter(
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
+  };
+
+  // --- persistent pin (subtle static dots of the active map) -----------------
+  const pinOverlay = makeOverlay(9999); // just below the flash
+  let pinned = false;
+  const renderPinned = (): void => {
+    const ctx = pinOverlay.getContext("2d");
+    if (!ctx) return;
+    ensureSize(pinOverlay);
+    ctx.clearRect(0, 0, pinOverlay.width, pinOverlay.height);
+    if (!pinned) return;
+    const nm = layerManager.allNeighborsMaps[layerManager.selectedNeighborsMapIdx];
+    if (!nm) return;
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.4; // quietly present, not distracting
+    for (const p of nm.finder.allPixels()) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  return {
+    flash,
+    isPinned: () => pinned,
+    setPinned: (on: boolean) => {
+      pinned = on;
+      renderPinned();
+    },
+    refresh: () => {
+      if (pinned) renderPinned();
+    },
+    getColor: () => color,
+    setColor: (hex: string) => {
+      color = hex;
+      renderPinned(); // recolour the pinned dots now (flash picks it up next time)
+    },
   };
 }

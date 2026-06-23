@@ -15,6 +15,10 @@ export type MapsControl = {
   onRenameMap: (index: number, name: string) => void; // inline rename in the list
   onSelectMap: (index: number) => void; // make a listed map the active one
   onDeleteMap: (index: number) => void; // delete a map (the app confirms first)
+  // Highlight dot colour (shared by flash + the pinned "hot map"). The swatch
+  // shows getHighlightColor; clicking it opens the colour picker by the anchor.
+  getHighlightColor: () => string;
+  onPickHighlightColor: (anchor: HTMLElement) => void;
   // Re-render the list when maps change (add/select/rename/delete, undo/redo).
   subscribe: (fn: () => void) => () => void;
 };
@@ -89,10 +93,29 @@ export function createMapsBox(
   routingSlot.className = "maps-routing";
   panel.appendChild(routingSlot);
 
+  // Highlight colour: a swatch that opens the colour picker; recolours both the
+  // flash and the pinned "hot map" dots. Its fill is refreshed in render().
+  const colorRow = document.createElement("div");
+  colorRow.className = "maps-color-row";
+  const colorLabel = document.createElement("span");
+  colorLabel.className = "maps-color-label";
+  colorLabel.textContent = "Highlight color";
+  const colorSwatch = document.createElement("button");
+  colorSwatch.type = "button";
+  colorSwatch.className = "maps-color-swatch";
+  colorSwatch.title = "Choose the colour for flashed + pinned map dots";
+  colorSwatch.addEventListener("click", (e) => {
+    e.stopPropagation();
+    control.onPickHighlightColor(colorSwatch);
+  });
+  colorRow.append(colorLabel, colorSwatch);
+  panel.appendChild(colorRow);
+
   const render = () => {
     routingSlot.replaceChildren();
     const routing = renderRouting?.(render);
     if (routing) routingSlot.appendChild(routing);
+    colorSwatch.style.background = control.getHighlightColor();
     const { maps } = control.getInfo();
     countEl.textContent = plural(maps.length, "map");
     listEl.replaceChildren();
