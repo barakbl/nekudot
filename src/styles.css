@@ -1423,6 +1423,16 @@ body {
   font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--text-muted);
 }
+.appset-link {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.appset-link:hover {
+  text-decoration: underline;
+}
 .appset-seg {
   display: flex;
   gap: 4px;

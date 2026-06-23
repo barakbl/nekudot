@@ -50,13 +50,17 @@ jobs:
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
         run: npm ci
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
-        name: Rebuild the deployed app for the release
+        name: Rebuild the deployed app + draft the Updates entry for the release
         run: |
           bash build.sh
-          if ! git diff --quiet -- docs/app/index.html; then
+          # Drop a hidden draft stub for the new version so the release isn't
+          # missed on the Updates page (it stays hidden until rewritten in an
+          # artist-friendly voice with draft: false).
+          node scripts/build-updates.mjs --sync
+          git add docs/app/index.html docs/updates.html docs/updates
+          if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add docs/app/index.html
-            git commit -m "chore: rebuild deployed app for release"
+            git commit -m "chore: rebuild deployed app + draft updates entry for release"
             git push
           fi

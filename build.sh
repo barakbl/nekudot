@@ -67,3 +67,8 @@ NODE
 
 echo "✔ done"
 ls -lh "$OUT_DIR/app/index.html" | awk '{printf "  %-6s %s\n", $5, $NF}'
+
+# Render the artist-facing Updates page from docs/updates/*.md (deterministic, so
+# the committed docs/updates.html stays in sync - CI checks it like the app).
+echo "▶ rendering Updates page…"
+node "$ROOT/scripts/build-updates.mjs"
