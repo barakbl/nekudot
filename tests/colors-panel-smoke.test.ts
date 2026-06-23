@@ -54,7 +54,7 @@ const clickEditToggle = (el: HTMLElement) =>
   el.querySelector<HTMLElement>(".palette-edit-toggle")!.click();
 const clickImport = (el: HTMLElement) =>
   [...el.querySelectorAll<HTMLElement>(".palette-footer .palette-action-btn")]
-    .find((b) => b.textContent?.trim() === "Import")!
+    .find((b) => b.textContent?.trim() === "Import/Export")!
     .click();
 
 beforeEach(async () => {

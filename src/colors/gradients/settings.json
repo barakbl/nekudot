@@ -1,28 +1,41 @@
 [
-  { "file": "app-colors.gpl", "id": "app", "mood": "GENERAL", "onboarding": true, "gradient": true },
-  { "file": "ocean.gpl", "mood": "CALM", "onboarding": true, "gradient": true },
-  { "file": "sunset.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
-  { "file": "fire.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
-  { "file": "neon.gpl", "mood": "VIBRANT", "onboarding": true, "gradient": true },
+  { "file": "app-colors.gpl", "id": "app", "category": "GENERAL", "onboarding": true, "gradient": true },
+  { "file": "ocean.gpl", "category": "CALM", "onboarding": true, "gradient": true },
+  { "file": "sunset.gpl", "category": "HOT", "onboarding": true, "gradient": true },
+  { "file": "fire.gpl", "category": "HOT", "onboarding": true, "gradient": true },
+  { "file": "neon.gpl", "category": "VIBRANT", "onboarding": true, "gradient": true },
 
-  { "file": "arctic.gpl", "mood": "COOL", "onboarding": false, "gradient": true },
-  { "file": "forest.gpl", "mood": "COOL", "onboarding": false, "gradient": true },
-  { "file": "mint.gpl", "mood": "COOL", "onboarding": true, "gradient": true },
-  { "file": "glacier.gpl", "mood": "COOL", "onboarding": true, "gradient": true },
+  { "file": "arctic.gpl", "category": "COOL", "onboarding": false, "gradient": true },
+  { "file": "forest.gpl", "category": "COOL", "onboarding": false, "gradient": true },
+  { "file": "mint.gpl", "category": "COOL", "onboarding": true, "gradient": true },
+  { "file": "glacier.gpl", "category": "COOL", "onboarding": true, "gradient": true },
 
-  { "file": "terracotta.gpl", "mood": "EARTHY", "onboarding": true, "gradient": true },
-  { "file": "autumn.gpl", "mood": "EARTHY", "onboarding": false, "gradient": true },
-  { "file": "desert-sand.gpl", "mood": "EARTHY", "onboarding": false, "gradient": true },
+  { "file": "terracotta.gpl", "category": "EARTHY", "onboarding": true, "gradient": true },
+  { "file": "autumn.gpl", "category": "EARTHY", "onboarding": false, "gradient": true },
+  { "file": "desert-sand.gpl", "category": "EARTHY", "onboarding": false, "gradient": true },
 
-  { "file": "sorbet.gpl", "mood": "PASTEL", "onboarding": true, "gradient": true },
-  { "file": "macaron.gpl", "mood": "PASTEL", "onboarding": true, "gradient": true },
+  { "file": "sorbet.gpl", "category": "PASTEL", "onboarding": true, "gradient": true },
+  { "file": "macaron.gpl", "category": "PASTEL", "onboarding": true, "gradient": true },
 
-  { "file": "lavender.gpl", "mood": "CALM", "onboarding": true, "gradient": true },
-  { "file": "magma.gpl", "mood": "HOT", "onboarding": true, "gradient": true },
-  { "file": "pop.gpl", "mood": "VIBRANT", "onboarding": true, "gradient": true },
-  { "file": "grayscale.gpl", "mood": "GENERAL", "onboarding": true, "gradient": true },
+  { "file": "lavender.gpl", "category": "CALM", "onboarding": true, "gradient": true },
+  { "file": "magma.gpl", "category": "HOT", "onboarding": true, "gradient": true },
+  { "file": "pop.gpl", "category": "VIBRANT", "onboarding": true, "gradient": true },
+  { "file": "grayscale.gpl", "category": "GENERAL", "onboarding": true, "gradient": true },
 
-  { "file": "copic_classic.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false },
-  { "file": "copic_sketch.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false },
-  { "file": "copic_ciao.gpl", "mood": "GENERAL", "onboarding": false, "gradient": false }
+  { "file": "cat-tabby.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "cat-ginger.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "giraffe.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "fox.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "tiger.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "labrador.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+  { "file": "husky.gpl", "category": "ANIMALS", "onboarding": false, "gradient": true },
+
+  { "file": "pineapple.gpl", "category": "FRUITS", "onboarding": false, "gradient": true },
+  { "file": "peach.gpl", "category": "FRUITS", "onboarding": false, "gradient": true },
+  { "file": "mango.gpl", "category": "FRUITS", "onboarding": false, "gradient": true },
+  { "file": "apricot.gpl", "category": "FRUITS", "onboarding": false, "gradient": true },
+
+  { "file": "copic_classic.gpl", "category": "GENERAL", "onboarding": false, "gradient": false },
+  { "file": "copic_sketch.gpl", "category": "GENERAL", "onboarding": false, "gradient": false },
+  { "file": "copic_ciao.gpl", "category": "GENERAL", "onboarding": false, "gradient": false }
 ]

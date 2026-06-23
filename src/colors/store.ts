@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { IndexedDbStore } from "../store/indexeddb";
 import { clampColors, MAX_RECENT, type Palette } from "./palette";
-import { normalizeMood } from "./moods";
+import { normalizeCategory } from "./categories";
 import { onboardingPalettes } from "./gradients/catalog";
 
 // User palettes + the recents stack, persisted in their own IndexedDB so they
@@ -22,7 +22,8 @@ const PaletteSchema = z.object({
   id: z.string().min(1),
   name: z.string(),
   colors: z.array(z.string()), // individual colours validated by clampColors
-  mood: z.string().optional(),
+  category: z.string().optional(),
+  mood: z.string().optional(), // legacy: pre-rename field, read as a fallback
   gradient: z.boolean().optional(),
 });
 
@@ -31,7 +32,7 @@ function rowToPalette(r: z.infer<typeof PaletteSchema>): Palette {
     id: r.id,
     name: r.name,
     colors: clampColors(r.colors),
-    mood: normalizeMood(r.mood),
+    category: normalizeCategory(r.category ?? r.mood), // fall back to legacy "mood"
     gradient: r.gradient ?? false,
   };
 }
@@ -53,7 +54,7 @@ async function writePalettes(palettes: readonly Palette[]): Promise<void> {
     id: p.id,
     name: p.name,
     colors: p.colors,
-    mood: normalizeMood(p.mood),
+    category: normalizeCategory(p.category),
     gradient: !!p.gradient,
   }));
   await db.put(CUSTOM_KEY, rows);

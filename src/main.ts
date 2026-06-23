@@ -865,7 +865,10 @@ const refreshConnectionGradients = () => {
   });
 };
 
-const palettePanel = createPalettePanel({ onGradientsChanged: refreshConnectionGradients });
+const palettePanel = createPalettePanel({
+  onGradientsChanged: refreshConnectionGradients,
+  smoothGradients: () => smoothGradients,
+});
 document.body.appendChild(palettePanel.el);
 refreshConnectionGradients();
 

@@ -6,6 +6,7 @@ import {
   loadGradientPalettes,
   saveCustomPalettes,
 } from "../src/colors/store";
+import { IndexedDbStore } from "../src/store/indexeddb";
 
 // fake-indexeddb persists across tests in a file; clearColorsStore wipes the
 // keys + resets the one-time seed guard so each test starts fresh.
@@ -13,17 +14,26 @@ beforeEach(async () => {
   await clearColorsStore();
 });
 
-describe("palette store: gradient flag, mood, and seeding", () => {
-  it("round-trips the gradient flag + mood on palettes", async () => {
+describe("palette store: gradient flag, category, and seeding", () => {
+  it("round-trips the gradient flag + category on palettes", async () => {
     await saveCustomPalettes([
-      { id: "p1", name: "A", colors: ["#ff0000"], gradient: true, mood: "CALM" },
+      { id: "p1", name: "A", colors: ["#ff0000"], gradient: true, category: "CALM" },
       { id: "p2", name: "B", colors: ["#00ff00"], gradient: false },
     ]);
     const loaded = await loadCustomPalettes();
     expect(loaded.find((p) => p.id === "p1")?.gradient).toBe(true);
-    expect(loaded.find((p) => p.id === "p1")?.mood).toBe("CALM");
+    expect(loaded.find((p) => p.id === "p1")?.category).toBe("CALM");
     expect(loaded.find((p) => p.id === "p2")?.gradient).toBe(false);
-    expect(loaded.find((p) => p.id === "p2")?.mood).toBe("GENERAL"); // default
+    expect(loaded.find((p) => p.id === "p2")?.category).toBe("GENERAL"); // default
+  });
+
+  it("reads the legacy `mood` field as `category` (back-compat)", async () => {
+    // A palette stored before the rename has a `mood` field, not `category`.
+    // Write the raw row directly (saveCustomPalettes would strip the unknown key).
+    const db = new IndexedDbStore("nekudot-colors", "palettes");
+    await db.put("custom", [{ id: "legacy", name: "Old", colors: ["#ff0000"], mood: "HOT" }]);
+    const loaded = await loadCustomPalettes();
+    expect(loaded.find((p) => p.id === "legacy")?.category).toBe("HOT");
   });
 
   it("seeds the bundled onboarding gradients once (idempotent)", async () => {
