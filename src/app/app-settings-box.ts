@@ -153,7 +153,7 @@ export function createAppSettingsBox(opts: {
     row(
       "Smooth gradients",
       smoothGrad.el,
-      "Blend gradients in OKLCH for perceptually even, vivid transitions (no muddy or grey midpoints). Off uses the classic linear-RGB blend.",
+      "Blend gradients in OKLCH for perceptually even, vivid transitions (no muddy or grey midpoints). Off uses the classic sRGB blend.",
     ),
     sub("Input"),
     row(

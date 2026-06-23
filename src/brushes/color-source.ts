@@ -1,5 +1,7 @@
 import type { Store } from "../store/base";
-import { mixOklch } from "../colors/oklch";
+import { parseHex, toHex, blend, paletteHex, type GradientSpace } from "../colors/gradient";
+// Re-exported so existing importers (and tests) still get mixHex from here.
+export { mixHex } from "../colors/gradient";
 
 // Shared bits for the "color source" selects - the connecting Color dial and
 // the Squares/Circles Fill dropdown. Both choose between the toolbar's two
@@ -38,26 +40,8 @@ const noneSwatch =
   '<path d="M3.5 12.5 L12.5 3.5" stroke="rgba(150,150,150,0.9)" stroke-width="1.4"/></svg>';
 
 // --- colour maths (shared by the gradient/rainbow connection colour source) ---
-
-function parseHex(hex: string): [number, number, number] {
-  let h = (HEX.test(hex) ? hex : PRIMARY_DEFAULT).slice(1);
-  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  const n = parseInt(h.slice(0, 6), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-function toHex(r: number, g: number, b: number): string {
-  const part = (v: number) =>
-    Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
-  return `#${part(r)}${part(g)}${part(b)}`;
-}
-
-// Linear blend between two hex colours; t clamped to 0..1.
-export function mixHex(a: string, b: string, t: number): string {
-  const [ar, ag, ab] = parseHex(a);
-  const [br, bg, bb] = parseHex(b);
-  const k = Math.max(0, Math.min(1, t));
-  return toHex(ar + (br - ar) * k, ag + (bg - ag) * k, ab + (bb - ab) * k);
-}
+// parseHex / toHex / mixHex live in colors/gradient (shared with the palette
+// previews); the HSL helpers below stay here.
 
 // HSL (h in degrees, s/l 0..1) -> hex.
 function hslToHex(deg: number, s: number, l: number): string {
@@ -108,17 +92,6 @@ export function complementHex(hex: string): string {
   return hslToHex(h + 180, s, l);
 }
 
-// Position t (0..1) along a multi-stop palette, CYCLIC (wraps last->first) so it
-// has no seam when driven around the circle by the line angle. Blends in the
-// configured space (OKLCH by default - perceptually smooth midpoints).
-function paletteHex(stops: readonly string[], t: number): string {
-  const n = stops.length;
-  if (n === 1) return stops[0];
-  const x = (((t % 1) + 1) % 1) * n;
-  const i = Math.floor(x) % n;
-  return blend(stops[i], stops[(i + 1) % n], x - Math.floor(x));
-}
-
 // --- gradient sources from the colour palette mechanism ---------------------
 // The multi-stop palettes the connection Color dial offers are the palettes the
 // user has activated as gradients, fed in from the palette store via
@@ -136,27 +109,24 @@ export function setGradientPalettes(list: readonly GradientPalette[]): void {
 }
 
 // How gradients blend between stops: "oklch" (perceptual, smooth - the default)
-// or "srgb" (the classic linear-RGB blend). App-level setting, wired from
+// or "srgb" (the classic gamma-sRGB blend). App-level setting, wired from
 // main.ts. Switching rebuilds the ramps.
-type GradientSpace = "oklch" | "srgb";
 let gradientSpace: GradientSpace = "oklch";
 export function setGradientSpace(space: GradientSpace): void {
   if (space === gradientSpace) return;
   gradientSpace = space;
   rebuildGradientLut();
 }
-function blend(a: string, b: string, t: number): string {
-  return gradientSpace === "oklch" ? mixOklch(a, b, t) : mixHex(a, b, t);
-}
 
 // Precomputed gradient ramp per palette id, so the connection draw hot path is a
 // table lookup rather than a per-line blend (256 steps reads as smooth). Rebuilt
-// whenever the activated palette set or the blend space changes.
+// whenever the activated palette set or the blend space changes. The ramp is
+// CYCLIC (wraps last->first) so there's no seam as the line angle drives t round.
 const LUT_N = 256;
 let gradientLut: Record<string, string[]> = {};
 function buildLut(colors: readonly string[]): string[] {
   const lut = new Array<string>(LUT_N);
-  for (let k = 0; k < LUT_N; k++) lut[k] = paletteHex(colors, k / LUT_N);
+  for (let k = 0; k < LUT_N; k++) lut[k] = paletteHex(colors, k / LUT_N, gradientSpace, true);
   return lut;
 }
 function rebuildGradientLut(): void {
@@ -210,11 +180,11 @@ export function connectionLineColor(
     case "secondary":
       return secondary;
     case "gradient":
-      return blend(primary, secondary, t);
+      return blend(primary, secondary, t, gradientSpace);
     case "rainbow":
       return hueHex(t * 360);
     case "complement":
-      return paletteHex([primary, complementHex(primary)], t);
+      return paletteHex([primary, complementHex(primary)], t, gradientSpace);
     default: {
       // Palette gradients read from the precomputed OKLCH ramp.
       const lut = gradientLut[normalizeColorSource(source)];
@@ -236,15 +206,6 @@ function sampledStops(sample: (t: number) => string, n = 10): string {
   return out;
 }
 
-// Non-cyclic blend through a multi-stop palette (left -> right preview).
-function blendStops(stops: readonly string[], t: number): string {
-  const n = stops.length;
-  if (n === 1) return stops[0];
-  const x = Math.max(0, Math.min(1, t)) * (n - 1);
-  const i = Math.min(n - 2, Math.floor(x));
-  return blend(stops[i], stops[i + 1], x - i);
-}
-
 function svgGradient(id: string, stops: string): string {
   return (
     '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
@@ -257,7 +218,8 @@ function svgGradient(id: string, stops: string): string {
 // id per call avoids clashes when the icon is rendered more than once.
 function paletteSwatch(stops: readonly string[]): string {
   const id = "csp" + Math.random().toString(36).slice(2, 8);
-  return svgGradient(id, sampledStops((t) => blendStops(stops, t)));
+  // Left -> right preview: sample the palette non-cyclically (exact end stops).
+  return svgGradient(id, sampledStops((t) => paletteHex(stops, t, gradientSpace, false)));
 }
 
 // A two-stop gradient swatch (live Primary -> Secondary), in the active blend space.
@@ -265,7 +227,7 @@ function gradientSwatch(a: string, b: string): string {
   const id = "csg" + Math.random().toString(36).slice(2, 8);
   const A = HEX.test(a) ? a : PRIMARY_DEFAULT;
   const B = HEX.test(b) ? b : SECONDARY_DEFAULT;
-  return svgGradient(id, sampledStops((t) => blend(A, B, t), 8));
+  return svgGradient(id, sampledStops((t) => blend(A, B, t, gradientSpace), 8));
 }
 
 const rainbowSwatch =

@@ -44,4 +44,37 @@ describe("palette OKLCH JSON export/import", () => {
     expect(palettesFromOklchJson("not json")).toEqual([]);
     expect(palettesFromOklchJson(JSON.stringify({ nope: 1 }))).toEqual([]);
   });
+
+  it("rejects non-finite colour components (no #NaNNaNNaN)", () => {
+    for (const bad of [NaN, Infinity, -Infinity, "0.5"]) {
+      const json = JSON.stringify({
+        version: 1,
+        palettes: [{ name: "X", colors: [{ l: bad, c: 0.1, h: 30 }] }],
+      });
+      expect(palettesFromOklchJson(json)).toEqual([]);
+    }
+  });
+
+  it("rejects oversized payloads, arrays and strings", () => {
+    // Over the input-size guard.
+    expect(palettesFromOklchJson(" ".repeat(8 * 1024 * 1024 + 1))).toEqual([]);
+    // Too many palettes / colours / over-long name -> whole file rejected.
+    const many = (n: number) => Array.from({ length: n }, () => ({ l: 0.5, c: 0.1, h: 30 }));
+    expect(
+      palettesFromOklchJson(
+        JSON.stringify({ version: 1, palettes: [{ name: "X", colors: many(4097) }] }),
+      ),
+    ).toEqual([]);
+    expect(
+      palettesFromOklchJson(
+        JSON.stringify({ version: 1, palettes: [{ name: "x".repeat(201), colors: many(1) }] }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not pollute Object.prototype via __proto__ keys", () => {
+    const json = `{"version":1,"palettes":[{"name":"X","colors":[{"l":0.5,"c":0.1,"h":30}],"__proto__":{"polluted":true}}]}`;
+    palettesFromOklchJson(json);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
 });

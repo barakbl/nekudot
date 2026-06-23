@@ -29,7 +29,8 @@ import {
   normalizeCategory,
 } from "./categories";
 import { gradientCatalog, type CatalogItem } from "./gradients/catalog";
-import { palettesToOklchJson, palettesFromOklchJson } from "./palette-json";
+import { palettesToOklchJson, palettesFromOklchJson, MAX_BACKUP_BYTES } from "./palette-json";
+import { gradientCss as gradientCssFor, type GradientSpace } from "./gradient";
 import { hexToOklch, oklchToHex } from "./oklch";
 import { hexToHsv, hsvToHex } from "./hsv";
 import { parseGpl, toGpl } from "./gpl";
@@ -69,13 +70,6 @@ export type PalettePanelOpts = {
   smoothGradients?: () => boolean;
 };
 
-// Whether the browser can interpolate gradients in OKLCH (Safari 16.2+, Chrome
-// 111+, …). Older engines treat "in oklch" as invalid and drop the whole
-// gradient, so we feature-detect and fall back to the plain sRGB blend.
-const SUPPORTS_OKLCH_GRADIENT =
-  typeof CSS !== "undefined" &&
-  typeof CSS.supports === "function" &&
-  CSS.supports("background", "linear-gradient(in oklch, red, blue)");
 
 type Tab = "palette" | "picker";
 type PickerMode = "oklch" | "hsb";
@@ -186,10 +180,8 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const customFooter = document.createElement("div");
   customFooter.className = "palette-footer";
   const newPaletteBtn = makeActionBtn("+ New palette", () => enterEdit(null));
-  const importBtn = makeActionBtn("Import", () => openImportModal(), importIcon);
-  const exportJsonBtn = makeActionBtn("Export JSON", () => openExportModal(), exportIcon);
-  const importJsonBtn = makeActionBtn("Import JSON", () => jsonFileInput.click(), importIcon);
-  customFooter.append(newPaletteBtn, importBtn, exportJsonBtn, importJsonBtn);
+  const importBtn = makeActionBtn("Import/Export", () => openImportModal(), importIcon);
+  customFooter.append(newPaletteBtn, importBtn);
   // "?" hints (shown in help mode, toggled by the ? key) explain each action.
   attachHelp(
     newPaletteBtn,
@@ -198,8 +190,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   );
   attachHelp(
     importBtn,
-    "Add a palette: pick one of the bundled gradients, or upload a GIMP palette " +
-      "(.gpl) - the plain-text format GIMP, Krita, Inkscape and Aseprite export.",
+    "Import or export palettes: add one of the bundled gradients, or import a GIMP " +
+      "palette (.gpl) - the plain-text format GIMP, Krita, Inkscape and Aseprite " +
+      "export. The same modal exports or restores all your palettes as a JSON backup.",
   );
 
   // Mood filter combo (under the actions). Default "All moods" shows everything.
@@ -679,12 +672,12 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     renderCustom();
     saveCustom();
   }
+  // Preview a palette as a left->right gradient, pre-blended in JS with the SAME
+  // maths the connection art uses (colors/gradient), so the swatch matches the
+  // rendered result - in either space, on every browser.
   function gradientCss(colors: string[]): string {
-    if (colors.length === 1) return colors[0];
-    // Interpolate in OKLCH when Smooth gradients is on (and supported), so the
-    // preview matches how the connection actually blends; else classic sRGB.
-    const space = opts.smoothGradients?.() && SUPPORTS_OKLCH_GRADIENT ? "in oklch " : "";
-    return `linear-gradient(${space}to right, ${colors.join(", ")})`;
+    const space: GradientSpace = opts.smoothGradients?.() ? "oklch" : "srgb";
+    return gradientCssFor(colors, space);
   }
   // The "Gradient" on/off row shown under a palette's swatches, with a live bar.
   function makeGradRow(p: Palette): HTMLElement {
@@ -1032,9 +1025,11 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   });
   panel.appendChild(fileInput);
 
-  // --- Import modal: the bundled gradient catalog + an upload button ----------
+  // --- Import modal: the bundled gradient catalog + the file actions ----------
   // A child of `panel` so the popover's outside-click dismiss treats clicks in it
   // as "inside" (it stays open). Its own backdrop click / close button dismiss it.
+  // The foot holds two groups: a single-palette upload (.gpl), and a JSON
+  // backup/restore pair that exports or replaces the whole collection.
   const importModal = document.createElement("div");
   importModal.className = "palette-import-overlay";
   importModal.style.display = "none";
@@ -1043,14 +1038,38 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const importHead = document.createElement("div");
   importHead.className = "palette-import-head";
   const importTitle = document.createElement("h4");
-  importTitle.textContent = "Add a palette";
+  importTitle.textContent = "Import / Export palettes";
   importHead.append(importTitle, makeCloseButton(() => closeImportModal()));
   const importList = document.createElement("div");
   importList.className = "palette-import-list";
   const importFootEl = document.createElement("div");
   importFootEl.className = "palette-import-foot";
-  const uploadBtn = makeActionBtn("Upload .gpl file", () => fileInput.click(), importIcon);
-  importFootEl.appendChild(uploadBtn);
+  const uploadBtn = makeActionBtn("Import .gpl file", () => fileInput.click(), importIcon);
+  // Backup/restore the entire collection as one OKLCH JSON file. Export opens the
+  // checkbox picker (so we close this modal first); import swaps in the file.
+  const backupLabel = document.createElement("div");
+  backupLabel.className = "palette-import-backup-label";
+  backupLabel.textContent = "Multiple palettes (OKLCH - recommended format)";
+  const backupRow = document.createElement("div");
+  backupRow.className = "palette-import-backup";
+  const exportJsonBtn = makeActionBtn(
+    "Export JSON",
+    () => {
+      closeImportModal();
+      openExportModal();
+    },
+    exportIcon,
+  );
+  const importJsonBtn = makeActionBtn(
+    "Import JSON",
+    () => {
+      closeImportModal();
+      jsonFileInput.click();
+    },
+    importIcon,
+  );
+  backupRow.append(exportJsonBtn, importJsonBtn);
+  importFootEl.append(uploadBtn, backupLabel, backupRow);
   importCard.append(importHead, importList, importFootEl);
   importModal.appendChild(importCard);
   importModal.addEventListener("click", (e) => {
@@ -1067,6 +1086,12 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     const file = jsonFileInput.files?.[0];
     jsonFileInput.value = "";
     if (!file) return;
+    // Reject an implausibly large file before reading it into memory; the parser
+    // re-checks the text length and validates the shape with zod.
+    if (file.size > MAX_BACKUP_BYTES) {
+      setStatus("That file is too large to be a palette backup.");
+      return;
+    }
     const incoming = palettesFromOklchJson(await file.text());
     if (!incoming.length) {
       setStatus("Couldn't read that palette file.");
@@ -1094,13 +1119,26 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const exportTitle = document.createElement("h4");
   exportTitle.textContent = "Export palettes";
   exportHead.append(exportTitle, makeCloseButton(() => closeExportModal()));
+  // A tools row above the list: a Select all / Deselect all toggle whose label
+  // reflects the current state and flips every checkbox when clicked.
+  const exportTools = document.createElement("div");
+  exportTools.className = "palette-export-tools";
+  const selectAllBtn = document.createElement("button");
+  selectAllBtn.type = "button";
+  selectAllBtn.className = "palette-link";
+  selectAllBtn.addEventListener("click", () => {
+    const target = !allChecked(); // all on -> clear; otherwise select every one
+    for (const cb of exportChecks.values()) cb.checked = target;
+    refreshSelectAll();
+  });
+  exportTools.appendChild(selectAllBtn);
   const exportList = document.createElement("div");
   exportList.className = "palette-import-list";
   const exportFootEl = document.createElement("div");
   exportFootEl.className = "palette-import-foot";
   const exportBtn = makeActionBtn("Export selected", () => doExport(), exportIcon);
   exportFootEl.appendChild(exportBtn);
-  exportCard.append(exportHead, exportList, exportFootEl);
+  exportCard.append(exportHead, exportTools, exportList, exportFootEl);
   exportModal.appendChild(exportCard);
   exportModal.addEventListener("click", (e) => {
     if (e.target === exportModal) closeExportModal();
@@ -1108,9 +1146,17 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   panel.appendChild(exportModal);
 
   const exportChecks = new Map<string, HTMLInputElement>(); // palette id -> checkbox
+  // True when every palette is ticked - drives the toggle's label + behaviour.
+  function allChecked(): boolean {
+    return custom.length > 0 && custom.every((p) => exportChecks.get(p.id)?.checked);
+  }
+  function refreshSelectAll(): void {
+    selectAllBtn.textContent = allChecked() ? "Deselect all" : "Select all";
+  }
   function openExportModal(): void {
     exportList.replaceChildren();
     exportChecks.clear();
+    exportTools.style.display = custom.length ? "" : "none";
     if (custom.length === 0) {
       const note = document.createElement("p");
       note.className = "palette-empty";
@@ -1123,6 +1169,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       const cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = true; // select all by default
+      cb.addEventListener("change", refreshSelectAll);
       exportChecks.set(p.id, cb);
       const bar = document.createElement("span");
       bar.className = "palette-import-preview";
@@ -1133,6 +1180,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       row.append(cb, bar, name);
       exportList.appendChild(row);
     }
+    refreshSelectAll();
     exportModal.style.display = "";
     reposition();
   }

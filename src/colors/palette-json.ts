@@ -8,18 +8,33 @@ import { normalizeCategory } from "./categories";
 // app's blend space. Round to keep it compact + readable. Pure + framework-free
 // so it's trivially unit-testable; the panel handles the file IO around it.
 
-const OklchSchema = z.object({ l: z.number(), c: z.number(), h: z.number() });
+// Hard caps so an imported (possibly hostile or corrupt) file can't exhaust
+// memory or wedge the UI. They sit far above any real backup: the app caps a
+// palette at MAX_SWATCHES (120) colours and never ships thousands of palettes,
+// so a genuine export is never rejected - only pathological input is.
+// Shared by the panel as a pre-read file.size cap (bytes ≈ chars for JSON text).
+export const MAX_BACKUP_BYTES = 8 * 1024 * 1024; // ~8 MB; real backups are < 1 MB
+const MAX_PALETTES = 2000;
+const MAX_COLORS_PER_PALETTE = 4096; // >> MAX_SWATCHES; clampColors trims to 120
+const MAX_NAME_LEN = 200;
+const MAX_ID_LEN = 200;
+const MAX_CATEGORY_LEN = 64;
+
+// l/c/h must be finite (z.number() already rejects NaN; .finite() rejects ±∞) so
+// no colour can become "#NaNNaNNaN"; oklchToHex clamps the ranges themselves.
+const num = z.number().finite();
+const OklchSchema = z.object({ l: num, c: num, h: num });
 const PaletteJsonSchema = z.object({
-  id: z.string().optional(),
-  name: z.string(),
-  category: z.string().optional(),
+  id: z.string().max(MAX_ID_LEN).optional(),
+  name: z.string().max(MAX_NAME_LEN),
+  category: z.string().max(MAX_CATEGORY_LEN).optional(),
   gradient: z.boolean().optional(),
-  colors: z.array(OklchSchema),
+  colors: z.array(OklchSchema).max(MAX_COLORS_PER_PALETTE),
 });
 const FileSchema = z.object({
   version: z.number(),
   format: z.literal("oklch").optional(),
-  palettes: z.array(PaletteJsonSchema),
+  palettes: z.array(PaletteJsonSchema).max(MAX_PALETTES),
 });
 
 const round = (n: number, p = 1000) => Math.round(n * p) / p;
@@ -46,6 +61,8 @@ export function palettesToOklchJson(palettes: readonly Palette[]): string {
 // skip-on-error. Colours convert OKLCH -> hex; ids are kept (for merge-by-id) or
 // generated when absent.
 export function palettesFromOklchJson(text: string): Palette[] {
+  // Bail before parsing if the payload is implausibly large (cheap DoS guard).
+  if (typeof text !== "string" || text.length > MAX_BACKUP_BYTES) return [];
   let data: unknown;
   try {
     data = JSON.parse(text);
