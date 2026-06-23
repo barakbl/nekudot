@@ -46,10 +46,15 @@ if (!/<script\b[^>]*\bsrc="[^"]*\/assets\/[^"]*\.js"/.test(html)) {
 
 const read = (url) => fs.readFileSync(path.join(dist, url.replace(/^\//, "")), "utf8");
 
-// <script ... src="/assets/x.js"></script>  ->  inline module script
+// <script ... src="/assets/x.js"></script>  ->  inline module script.
+// External scripts (e.g. the analytics tag loaded from a CDN) are left as-is -
+// only our own built bundle is inlined.
 html = html.replace(
   /<script\b[^>]*\bsrc="([^"]+)"[^>]*><\/script>/g,
-  (_m, src) => `<script type="module">${read(src).replace(/<\/script>/gi, "<\\/script>")}</script>`,
+  (m, src) =>
+    /^(https?:)?\/\//.test(src)
+      ? m
+      : `<script type="module">${read(src).replace(/<\/script>/gi, "<\\/script>")}</script>`,
 );
 
 // <link rel="stylesheet" href="/assets/x.css">  ->  inline <style>
