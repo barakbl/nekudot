@@ -9,3 +9,6 @@ build
 # Scratch planning notes (local only)
 book-plan
 plan-download
+
+# brush-preview live-smoke screenshot (regenerated on each run)
+tests/smoke/brush-preview-live.png
