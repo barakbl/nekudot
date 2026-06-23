@@ -353,6 +353,43 @@ em { color: var(--gold-soft); font-style: italic; }
 .meta-grid dd { margin: 0; color: var(--paper); font-weight: 500; overflow-wrap: anywhere; }
 .meta-grid dd a { color: var(--blue); }
 
+/* Updates page - one card per release, newest first. Generated from
+   docs/updates/*.md by scripts/build-updates.mjs. */
+.updates-list { max-width: 760px; margin: 8px 0 0; display: flex; flex-direction: column; gap: 22px; }
+.update {
+  padding: 26px 26px 28px; border-radius: 16px;
+  background: var(--panel); border: 1px solid var(--line-soft);
+}
+.update-meta {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint);
+}
+.update-ver {
+  font-family: var(--body); font-weight: 600; letter-spacing: 0.02em;
+  color: var(--gold-soft); background: rgba(231, 179, 75, 0.12);
+  padding: 2px 8px; border-radius: 999px;
+}
+.update-title {
+  font-family: var(--display); font-weight: 500;
+  font-size: clamp(22px, 3.2vw, 30px); line-height: 1.15; letter-spacing: -0.02em;
+  color: var(--paper); margin: 0 0 12px;
+  font-variation-settings: "SOFT" 50, "opsz" 70;
+}
+.update-body p { margin: 0 0 14px; color: var(--text); line-height: 1.65; }
+.update-body code { font-size: 0.92em; background: var(--ink); padding: 1px 5px; border-radius: 5px; color: var(--paper); }
+.update-highlights { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.update-highlights li {
+  position: relative; padding-left: 22px; color: var(--text); line-height: 1.5;
+}
+.update-highlights li::before {
+  content: ""; position: absolute; left: 4px; top: 0.62em;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--blue);
+}
+.update-shot {
+  display: block; width: 100%; height: auto; margin-top: 18px;
+  border-radius: 12px; border: 1px solid var(--line-soft);
+}
+
 .signature {
   font-family: var(--display); font-style: italic; font-size: 26px; color: var(--paper);
   font-variation-settings: "SOFT" 90, "WONK" 1, "opsz" 40; margin-top: 6px;

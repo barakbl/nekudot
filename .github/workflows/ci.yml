@@ -51,3 +51,14 @@ jobs:
             exit 1
           fi
           echo "Deployed app is in sync with source."
+
+      # build.sh also renders the Updates page from docs/updates/*.md, so it must
+      # likewise be committed up to date.
+      - name: Verify docs/updates.html is up to date
+        run: |
+          if ! git diff --quiet -- docs/updates.html; then
+            echo "::error::docs/updates.html is stale. Run 'npm run build:updates' and commit it."
+            git --no-pager diff --stat -- docs/updates.html
+            exit 1
+          fi
+          echo "Updates page is in sync with source."

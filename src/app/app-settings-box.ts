@@ -147,6 +147,14 @@ export function createAppSettingsBox(opts: {
   version.textContent =
     "v" + (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev");
 
+  // "What's new" - the artist-facing Updates page on the site (new tab).
+  const whatsNew = document.createElement("a");
+  whatsNew.className = "appset-link";
+  whatsNew.href = "/updates.html";
+  whatsNew.target = "_blank";
+  whatsNew.rel = "noopener";
+  whatsNew.textContent = "What's new →";
+
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -187,6 +195,7 @@ export function createAppSettingsBox(opts: {
     ),
     sub("About"),
     row("Version", version),
+    row("What's new", whatsNew, "See the latest updates, told for artists - opens the website."),
   );
 
   const toggle = () => {
