@@ -33,13 +33,7 @@ import { registerWindow, showWindow } from "./window-stack";
 import { createPalettePanel } from "./colors/panel";
 import { clearColorsStore, loadGradientPalettes } from "./colors/store";
 import { setGradientPalettes, setGradientSpace } from "./brushes/color-source";
-import {
-  fullScreenSize,
-  squareOfScreen,
-  type CanvasSize,
-} from "./canvas-size";
-import { Overlay } from "./app/overlay";
-import { createMapHighlighter } from "./app/map-highlight";
+import { fullScreenSize, squareOfScreen } from "./canvas-size";
 import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
@@ -56,6 +50,7 @@ import { bindDurability } from "./app/durability";
 import { createStage } from "./app/stage";
 import { createExportActions, applyTheme } from "./app/export-actions";
 import { bindCameraInput } from "./app/camera-input";
+import { createDrawingCore } from "./app/drawing-core";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -164,70 +159,37 @@ const recordClip = () =>
     container: viewportEl,
   });
 
-// ---- overlays ----------------------------------------------------------------
+// ---- overlays + symmetry ----------------------------------------------------
 
-// Transient overlay above all layer canvases — used by InvisibleBrush to
-// briefly glow each newly-added pixel without leaving a permanent mark. The
-// brush only ever talks to an IRenderer; the Overlay owns the canvas wiring.
-const invisibleOverlay = new Overlay(stage, dpr, 9999, initialCanvasSize);
-
-// Static overlay (one z-index below the invisible glow) that shows the symmetry
-// guide lines (tile lattice / radial spokes / mirror line) while a symmetry mode
-// is active. Visual help, not paint.
-const symmetryOverlay = new Overlay(stage, dpr, 9998, initialCanvasSize, {
-  hidden: true,
-});
-
-// Top-most highlight of a neighbors map's dots, asked for by the Maps box/pill:
-// a one-shot Flash, plus a persistent "hot map" pin (active map's dots held
-// visible while drawing). Restore the pinned state and keep it re-rendered as the
-// active map / its points change (camera moves need no refresh - it rides the
-// transformed stage).
-const mapHighlighter = createMapHighlighter(stage, layerManager, dpr);
-const storedHighlightColor = store.get<string>("app.maps.highlightColor");
-if (storedHighlightColor) mapHighlighter.setColor(storedHighlightColor);
-if (store.get<boolean>("app.maps.pinHighlight")) mapHighlighter.setPinned(true);
-layerManager.subscribe(() => mapHighlighter.refresh());
-
-// ---- symmetry ------------------------------------------------------------------
-
-// Symmetry (Tile / Radial / Mirror): a proxy around the LayerManager mirrors every mark
-// and deposited point at the active mode's transforms, so any brush works under
-// symmetry. When the mode is None it forwards untouched.
+// Symmetry (Tile / Radial / Mirror): the controller owns the active mode + guide
+// settings; the proxy (below) mirrors every mark and deposited point at the
+// active mode's transforms, so any brush works under symmetry. Constructed
+// before the overlays, which read the controller to draw their guides.
 const symmetry = new SymmetryController(store);
+
+// On-stage overlays (the invisible-brush glow, the symmetry guides, the map-dot
+// highlight), the symmetry-guide wiring, and the new-canvas resize/reframe.
+const { invisibleOverlay, mapHighlighter, applyNewCanvasSize } = createDrawingCore(
+  {
+    stage,
+    dpr,
+    initialCanvasSize,
+    layerManager,
+    store,
+    symmetry,
+    viewport,
+  },
+);
+
+// The symmetry proxy wraps the LayerManager as the brushes' host (mode None
+// forwards untouched). Kept in main so it's constructed right before the brush
+// loop that consumes it.
 const symmetryProxy = makeSymmetryProxy(
   layerManager,
   () => symmetry.transforms(),
   () => store.get<number>("app.opacity") ?? 1,
   () => symmetry.mirrorsPoints(),
 );
-
-// Symmetry guide overlay: the tile lattice, radial spokes or mirror line, shown
-// whenever a symmetry mode is active. Brush-independent — driven by the controller.
-const updateSymmetryOverlay = () => {
-  if (symmetry.active()) {
-    symmetryOverlay.setVisible(true);
-    symmetry.drawGuides(symmetryOverlay.renderer, symmetryOverlay.size);
-  } else {
-    symmetryOverlay.setVisible(false);
-    symmetryOverlay.renderer.clear();
-  }
-};
-symmetry.subscribe(updateSymmetryOverlay);
-updateSymmetryOverlay();
-
-// A new canvas was opened (New art / mandala / blank / Load artwork): resize the
-// overlays to match, and re-frame the camera. Without the reframe the camera
-// stays laid out for the *previous* canvas size, so the new canvas lands
-// off-centre or partly off-screen until you hit "Reset view" - exactly what the
-// camera-reset button does, just done automatically here.
-const applyNewCanvasSize = (size: CanvasSize) => {
-  invisibleOverlay.resize(size);
-  symmetryOverlay.resize(size);
-  updateSymmetryOverlay();
-  mapHighlighter.refresh(); // re-fit the pinned highlight to the new canvas
-  viewport.reset();
-};
 
 // ---- brushes --------------------------------------------------------------------
 
