@@ -16,6 +16,8 @@
     "smoke:viewport": "node tests/smoke/viewport-live.mjs",
     "smoke:open": "node tests/smoke/canvas-open-live.mjs",
     "smoke:paste": "node tests/smoke/image-paste-live.mjs",
+    "smoke:theme": "node tests/smoke/theme-live.mjs",
+    "smoke:export": "node tests/smoke/export-share-live.mjs",
     "render-presets": "node tests/smoke/render-presets.mjs",
     "smoke-render": "node tests/smoke/all-render.mjs",
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"
