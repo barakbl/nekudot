@@ -94,6 +94,13 @@ nearby points - is **Ricardo Cabello's (mrdoob)**, from his
 independent reimplementation of that idea in TypeScript; the concept and the
 original Harmony code are his, and full credit for the inspiration goes to him.
 
+## Contributing
+
+Contributions from developers and artists are both welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to set up, branch and open a pull
+request, and please read our [Code of Conduct](CODE_OF_CONDUCT.md) - by taking
+part you agree to follow it.
+
 ## License
 
 Copyright (C) 2026 Barak Bloch
