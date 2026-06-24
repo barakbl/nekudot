@@ -54,7 +54,6 @@ async function main() {
     await shot("live-00-initial.png");
 
     await realClick(".canvas-menu-btn");
-    const open1 = await E(`!!document.querySelector('.canvas-menu-popover.open')`);
     const info1 = await E(`(() => {
       const pop = document.querySelector('.canvas-menu-popover');
       const head = pop && pop.querySelector('.canvas-menu-current');

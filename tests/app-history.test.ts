@@ -26,7 +26,10 @@ function makeCanvasStub(): HTMLCanvasElement {
     { canvas } as Record<string, unknown>,
     {
       get: (t, p) => (p in t ? t[p as string] : () => {}),
-      set: (t, p, v) => ((t[p as string] = v), true),
+      set: (t, p, v) => {
+        t[p as string] = v;
+        return true;
+      },
     },
   );
   canvas.getContext = () => ctx;

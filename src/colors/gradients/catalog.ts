@@ -43,7 +43,8 @@ function basename(file: string): string {
 // modal and seeding both call this repeatedly).
 let cache: CatalogItem[] | null = null;
 export function gradientCatalog(): CatalogItem[] {
-  return (cache ??= buildCatalog());
+  cache ??= buildCatalog();
+  return cache;
 }
 function buildCatalog(): CatalogItem[] {
   const out: CatalogItem[] = [];

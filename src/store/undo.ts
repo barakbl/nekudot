@@ -71,7 +71,9 @@ export class UndoStore<S> {
       return null;
     }
     const stack = rows as S[];
-    stack.forEach((snap, i) => this.ids.set(snap, meta.rowIds[i]));
+    stack.forEach((snap, i) => {
+      this.ids.set(snap, meta.rowIds[i]);
+    });
     this.nextId = Math.max(-1, ...meta.rowIds) + 1;
     return { stack, pointer: meta.pointer };
   }

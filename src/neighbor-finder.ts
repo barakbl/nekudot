@@ -1,4 +1,4 @@
-import { quadtree, Quadtree } from "d3-quadtree";
+import { quadtree, type Quadtree } from "d3-quadtree";
 
 export type Pixel = { id: number; x: number; y: number };
 
@@ -107,15 +107,16 @@ class QuadtreeFinder extends NeighborFinderBase {
     this.tree.visit((node, nx0, ny0, nx1, ny1) => {
       if (nx0 > x1 || ny0 > y1 || nx1 < x0 || ny1 < y0) return true;
       if (!node.length) {
-        let leaf: any = node;
-        do {
+        // d3-quadtree chains co-located points through `.next`; walk that list.
+        // biome-ignore lint/suspicious/noExplicitAny: leaf node has no narrowed public type (.data/.next)
+        for (let leaf: any = node; leaf; leaf = leaf.next) {
           const p = leaf.data as Pixel;
           if (p.id !== px.id) {
             const dx = p.x - px.x;
             const dy = p.y - px.y;
             if (dx * dx + dy * dy <= r2) found.push(p);
           }
-        } while ((leaf = leaf.next));
+        }
       }
       return false;
     });

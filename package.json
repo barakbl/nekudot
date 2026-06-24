@@ -9,6 +9,8 @@
     "build:app": "bash build.sh",
     "build:updates": "node scripts/build-updates.mjs",
     "preview": "vite preview",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
     "test": "vitest",
     "smoke": "node tests/smoke/smoke.mjs",
     "smoke:viewport": "node tests/smoke/viewport-live.mjs",
@@ -19,6 +21,7 @@
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.1",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.10.6",
     "typescript": "^5.6.0",

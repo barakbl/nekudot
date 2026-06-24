@@ -1,7 +1,7 @@
 import type { IRenderer } from "../renderer";
 import type { CanvasSize } from "../canvas-size";
 import { type Transform, IDENTITY } from "./transforms";
-import { SymmetryTool, type GuideStyle, type SymSetting, type ToolContext } from "./tool";
+import type { SymmetryTool, GuideStyle, SymSetting, ToolContext } from "./tool";
 import { SYMMETRY_TOOL_DEFS, type SymmetryToolDef } from "./registry";
 
 // "none" plus any registered tool name (radial / mirror / …). A plain string -

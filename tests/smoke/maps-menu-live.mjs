@@ -49,7 +49,6 @@ async function main() {
     const openBox = () => E(`document.querySelector('.toolbar .maps-pill-open').click()`);
     const boxOpen = () => E(`(() => { const b=document.querySelector('.maps-box'); return !!b && b.style.display!=='none'; })()`);
     const pillName = () => E(`document.querySelector('.toolbar .maps-pill-label')?.textContent||''`);
-    const readCount = () => E(`document.querySelector('.maps-box .maps-menu-count')?.textContent||''`);
     const readRows = () => E(`[...document.querySelectorAll('.maps-box .maps-menu-row')].map(r=>({ name:r.querySelector('.maps-menu-name')?.textContent||'', dots:(()=>{const n=parseInt(r.querySelector('.maps-menu-dots')?.textContent||'',10);return isNaN(n)?-1:n;})(), active:r.classList.contains('active'), tag:!!r.querySelector('.maps-menu-tag'), select:!!r.querySelector('.maps-menu-select'), del:!!r.querySelector('.maps-menu-delete') })) `);
     const clickSelect = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-select'); if(!b) return false; b.click(); return true; })()`);
     const clickDelete = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-delete'); if(!b) return false; b.click(); return true; })()`);

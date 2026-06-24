@@ -1,4 +1,4 @@
-import { SymmetryTool } from "./tool";
+import type { SymmetryTool } from "./tool";
 import index from "./symmetry.json";
 
 // Each tool .ts names its menu glyph (icon) and how to construct itself (create).

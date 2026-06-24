@@ -42,7 +42,7 @@ const find = (b: BrushBase, key: string): BrushSetting => {
   if (!s) throw new Error(`no setting "${key}"`);
   return s;
 };
-const valueOf = (b: BrushBase, key: string) => find(b, key).value;
+const settingValue = (b: BrushBase, key: string) => find(b, key).value;
 
 // Simulate the panel: change a setting and persist it the way makeRow does.
 const change = (b: BrushBase, key: string, v: unknown) => {
@@ -65,7 +65,7 @@ describe("brush settings persistence", () => {
     const b = newRound(store);
     const setsBefore = store.sets;
     b.restore();
-    expect(valueOf(b, "strokeDash")).toBe("dashed");
+    expect(settingValue(b, "strokeDash")).toBe("dashed");
     expect(store.sets).toBe(setsBefore); // restore reads, never writes back
   });
 
@@ -75,7 +75,7 @@ describe("brush settings persistence", () => {
     expect(store.data.get("brush.Round.penPressureAlpha")).toBe(true);
     const b = newRound(store);
     b.restore();
-    expect(valueOf(b, "penPressureAlpha")).toBe(true);
+    expect(settingValue(b, "penPressureAlpha")).toBe(true);
   });
 
   it("stores art-style dials under a per-style key (the whole flat), not per dial", () => {
@@ -89,15 +89,15 @@ describe("brush settings persistence", () => {
   });
 
   it("restores per-style dials via selectArtStyle, not via restore()", () => {
-    const def = valueOf(newRound(store), "density"); // shaded's default
+    const def = settingValue(newRound(store), "density"); // shaded's default
     const a = newRound(store);
     change(a, "density", 7);
 
     const b = newRound(store);
     b.restore(); // brush-own only — style dials are NOT touched here
-    expect(valueOf(b, "density")).toBe(def);
+    expect(settingValue(b, "density")).toBe(def);
     b.selectArtStyle("shaded"); // now the saved dials load
-    expect(valueOf(b, "density")).toBe(7);
+    expect(settingValue(b, "density")).toBe(7);
   });
 
   it("remembers each style's dials independently", () => {
@@ -105,60 +105,60 @@ describe("brush settings persistence", () => {
     a.selectArtStyle("shaded");
     change(a, "density", 7);
     a.selectArtStyle("web");
-    const webDefault = valueOf(a, "density");
+    const webDefault = settingValue(a, "density");
     change(a, "density", webDefault === 9 ? 11 : 9); // anything but its default
-    const webCustom = valueOf(a, "density");
+    const webCustom = settingValue(a, "density");
 
     const b = newRound(store);
     b.selectArtStyle("web");
-    expect(valueOf(b, "density")).toBe(webCustom);
+    expect(settingValue(b, "density")).toBe(webCustom);
     b.selectArtStyle("shaded");
-    expect(valueOf(b, "density")).toBe(7); // shaded's own value, not web's
+    expect(settingValue(b, "density")).toBe(7); // shaded's own value, not web's
   });
 
   it("resetArtStyle overwrites saved dials with the preset defaults", () => {
-    const def = valueOf(newRound(store), "density");
+    const def = settingValue(newRound(store), "density");
     const a = newRound(store);
     change(a, "density", 7);
     a.resetArtStyle("shaded");
-    expect(valueOf(a, "density")).toBe(def);
+    expect(settingValue(a, "density")).toBe(def);
 
     const b = newRound(store);
     b.selectArtStyle("shaded");
-    expect(valueOf(b, "density")).toBe(def); // the custom 7 is gone
+    expect(settingValue(b, "density")).toBe(def); // the custom 7 is gone
   });
 
   it("switching styles preserves routing (copied), independent of per-style dials", () => {
     const a = newRound(store);
     change(a, "connecting_mode", "stroke");
     a.selectArtStyle("web");
-    expect(valueOf(a, "connecting_mode")).toBe("stroke");
+    expect(settingValue(a, "connecting_mode")).toBe("stroke");
   });
 
   it("resetSettings reverts brush-own params and art-style dials to defaults", () => {
     const a = newRound(store);
     a.restore(); // captures the brush-own defaults
-    const dashDefault = valueOf(a, "strokeDash");
-    const densityDefault = valueOf(a, "density");
+    const dashDefault = settingValue(a, "strokeDash");
+    const densityDefault = settingValue(a, "density");
     change(a, "strokeDash", "dotted");
     change(a, "density", 3);
     change(a, "connecting_mode", "stroke"); // routing — should be PRESERVED
     a.resetSettings();
-    expect(valueOf(a, "strokeDash")).toBe(dashDefault);
-    expect(valueOf(a, "density")).toBe(densityDefault);
-    expect(valueOf(a, "connecting_mode")).toBe("stroke"); // routing kept
+    expect(settingValue(a, "strokeDash")).toBe(dashDefault);
+    expect(settingValue(a, "density")).toBe(densityDefault);
+    expect(settingValue(a, "connecting_mode")).toBe("stroke"); // routing kept
   });
 
   it("reset persists — a reloaded brush is default too", () => {
     const a = newRound(store);
     a.restore();
-    const densityDefault = valueOf(a, "density");
+    const densityDefault = settingValue(a, "density");
     change(a, "density", 3);
     a.resetSettings();
 
     const b = newRound(store);
     b.restore();
     b.selectArtStyle("shaded");
-    expect(valueOf(b, "density")).toBe(densityDefault);
+    expect(settingValue(b, "density")).toBe(densityDefault);
   });
 });
