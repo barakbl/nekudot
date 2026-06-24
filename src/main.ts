@@ -55,6 +55,7 @@ import { registerHelpHints } from "./app/help-hints";
 import { bindDurability } from "./app/durability";
 import { createStage } from "./app/stage";
 import { createExportActions, applyTheme } from "./app/export-actions";
+import { bindCameraInput } from "./app/camera-input";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -143,49 +144,7 @@ const viewport = new Viewport({
   onChange: () => onViewportChange(),
 });
 viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
-// Issue #3: shrinking the window can leave the canvas bigger than the viewport
-// and unreachable - fit it back in (no-op while it still fits).
-window.addEventListener("resize", () => viewport.onResize());
-// Desktop wheel: Cmd/Ctrl + wheel zooms about the cursor; a plain wheel /
-// two-finger trackpad scroll pans (the page itself never scrolls).
-viewportEl.addEventListener(
-  "wheel",
-  (e) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      viewport.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
-    } else {
-      viewport.panBy(-e.deltaX, -e.deltaY);
-    }
-  },
-  { passive: false },
-);
-// Desktop pan: middle-mouse drag. Reaches here by bubbling up from the stage,
-// whose draw handler ignores any button other than 0, so it never draws.
-let panning = false;
-let panX = 0;
-let panY = 0;
-viewportEl.addEventListener("pointerdown", (e) => {
-  if (e.button !== 1) return;
-  e.preventDefault();
-  panning = true;
-  panX = e.clientX;
-  panY = e.clientY;
-  viewportEl.setPointerCapture(e.pointerId);
-});
-viewportEl.addEventListener("pointermove", (e) => {
-  if (!panning) return;
-  viewport.panBy(e.clientX - panX, e.clientY - panY);
-  panX = e.clientX;
-  panY = e.clientY;
-});
-const endPan = (e: PointerEvent) => {
-  if (!panning) return;
-  panning = false;
-  viewportEl.releasePointerCapture(e.pointerId);
-};
-viewportEl.addEventListener("pointerup", endPan);
-viewportEl.addEventListener("pointercancel", endPan);
+bindCameraInput({ viewportEl, viewport });
 
 // "transparent" sentinel when the background is off, so previews/flatten skip
 // the fill. Also the background to flatten against for export/share (the
