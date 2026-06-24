@@ -8,7 +8,7 @@ import { SymmetryController, type SymmetryMode } from "./symmetry/controller";
 import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
 import { SYMMETRY_MODES } from "./symmetry/menu-section";
-import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
+import { createMenu, type MenuEntry, type MenuGroup } from "./menu";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
@@ -25,7 +25,6 @@ import { LayerManager } from "./layered/manager";
 import { createLayersBox } from "./layered/box";
 import { createMapsBox } from "./layered/maps-box";
 import { createSizePicker } from "./layered/size-picker";
-import { exportArt, shareArt } from "./export";
 import { saveArtwork } from "./save-artwork";
 import { pixelLog } from "./pixel-log";
 import type { UndoSnapshot } from "./undo";
@@ -55,6 +54,7 @@ import { buildAppShortcuts } from "./app/app-shortcuts";
 import { registerHelpHints } from "./app/help-hints";
 import { bindDurability } from "./app/durability";
 import { createStage } from "./app/stage";
+import { createExportActions, applyTheme } from "./app/export-actions";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -717,31 +717,15 @@ document.body.appendChild(sizePicker.el);
 
 // ---- export / share / theme -------------------------------------------------------
 
-const exportImageFn = () => {
-  exportArt(layerManager, {
-    backgroundColor: exportBackground(),
-    prefix: "art",
-  });
-};
-
-const shareImageFn = async () => {
-  const res = await shareArt(layerManager, {
-    backgroundColor: exportBackground(),
-    prefix: "nekudot",
-  });
-  if (res === "downloaded")
-    showChip("Image saved + caption copied — attach it to share");
-  else if (res === "empty") showChip("Nothing to share yet");
-};
-
-const applyTheme = (theme: Theme) => {
-  if (theme === "auto") delete document.documentElement.dataset.theme;
-  else document.documentElement.dataset.theme = theme;
-};
+const { exportImage, shareImage } = createExportActions({
+  layerManager,
+  exportBackground,
+  showChip,
+});
 
 const canvasMenuOptions = {
-  onShareImage: shareImageFn,
-  onExportImage: exportImageFn,
+  onShareImage: shareImage,
+  onExportImage: exportImage,
   onRecordClip: recordClip,
   onSaveArtwork: () => {
     saveArtwork(layerManager).catch((err) => {
