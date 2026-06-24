@@ -12,3 +12,6 @@ plan-download
 
 # brush-preview live-smoke screenshot (regenerated on each run)
 tests/smoke/brush-preview-live.png
+
+# layers reorder live-smoke screenshot (regenerated on each run)
+tests/smoke/layers-reorder-live.png

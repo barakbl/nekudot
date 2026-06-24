@@ -105,47 +105,111 @@ export function createLayersBox(
     for (const fn of refreshers) fn();
   };
 
-  // ---- drag to reorder ------------------------------------------------------
-  // Pointer-based, started only from a row's grip. We reorder the .layer-block
-  // elements live for feedback, then on drop read the resulting order and hand
-  // it to the manager (which renumbers indices/z-index + keeps the markers on
-  // their layers). The panel renders top → bottom in descending z-order, so the
-  // array order (bottom → top) is the reversed DOM order.
-  let dragging: HTMLElement | null = null;
+  // ---- drag to reorder (smooth, transform-based) ----------------------------
+  // Started only from a row's grip. The grabbed block lifts and tracks the
+  // pointer (transform); the other blocks slide to open a gap (CSS-transitioned
+  // transform). The DOM isn't reordered mid-drag - on drop we compute the new
+  // order once and hand it to the manager (which renumbers indices/z-index +
+  // keeps the markers on their layers). The panel renders top→bottom in
+  // descending z-order, so the array order (bottom→top) is the reversed order.
+  type DragState = {
+    block: HTMLElement;
+    startY: number;
+    listTop: number; // list's viewport top at grab, to stay correct if it scrolls mid-drag
+    blocks: HTMLElement[]; // all .layer-block, original DOM order (top→bottom)
+    centers: number[]; // each block's original viewport centre Y (aligned to blocks)
+    src: number; // index of the grabbed block
+    shift: number; // px the displaced rows move (grabbed block's outer height)
+    ins: number; // current insertion index among the OTHER blocks
+  };
+  let drag: DragState | null = null;
+
+  // Slide every other row up/down by `shift` to open the gap at the insertion
+  // point: a row crosses the grabbed one exactly when it changes side of it.
+  const applyShifts = () => {
+    if (!drag) return;
+    let j = 0;
+    for (let i = 0; i < drag.blocks.length; i++) {
+      if (i === drag.src) continue;
+      const wasAbove = i < drag.src;
+      const nowAbove = j < drag.ins;
+      const t = wasAbove === nowAbove ? 0 : wasAbove ? drag.shift : -drag.shift;
+      drag.blocks[i].style.transform = t ? `translateY(${t}px)` : "";
+      j++;
+    }
+  };
 
   const onDragMove = (e: PointerEvent) => {
-    if (!dragging) return;
-    const after = getDragAfterElement(list, e.clientY);
-    const bg = list.querySelector(".layer-row-background");
-    if (after) list.insertBefore(dragging, after);
-    else if (bg) list.insertBefore(dragging, bg);
-    else list.appendChild(dragging);
+    if (!drag) return;
+    // Correct for any scroll of the panel since the grab (rows + pointer both
+    // measured against the list's current top), so the drop stays accurate.
+    const scrolled = list.getBoundingClientRect().top - drag.listTop;
+    const dy = e.clientY - drag.startY - scrolled;
+    drag.block.style.transform = `translateY(${dy}px)`; // grabbed row follows the pointer
+    const center = drag.centers[drag.src] + dy;
+    let ins = 0;
+    for (let i = 0; i < drag.blocks.length; i++) {
+      if (i !== drag.src && drag.centers[i] < center) ins++;
+    }
+    if (ins !== drag.ins) {
+      drag.ins = ins;
+      applyShifts();
+    }
   };
 
-  const onDragEnd = () => {
+  // Tear down the drag. commit=false (pointercancel) aborts without reordering.
+  const endDrag = (commit: boolean) => {
     window.removeEventListener("pointermove", onDragMove);
-    if (!dragging) return;
-    dragging.classList.remove("dragging");
-    dragging = null;
-    const ids = [...list.querySelectorAll<HTMLElement>(".layer-block")]
-      .map((b) => b.dataset.layerId)
-      .filter((id): id is string => !!id)
-      .reverse(); // DOM top→bottom (desc z) → array bottom→top (asc index)
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("pointercancel", onPointerCancel);
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    list.classList.remove("layers-reordering");
+    d.block.classList.remove("dragging");
+    for (const b of d.blocks) b.style.transform = "";
+    // If the list was rebuilt mid-drag (a manager change re-rendered the rows),
+    // our snapshot is stale - just resync to the live DOM.
+    if (!commit || !d.block.isConnected) {
+      render();
+      return;
+    }
+    // New top→bottom order: the other blocks with the grabbed one inserted.
+    const ids = d.blocks.filter((_, i) => i !== d.src).map((b) => b.dataset.layerId);
+    ids.splice(d.ins, 0, d.block.dataset.layerId);
+    const bottomToTop = ids.filter((id): id is string => !!id).reverse();
     // reorderByIds emits → render() rebuilds; on a no-op restore the clean DOM.
-    if (manager.reorderByIds(ids)) onCommit("Reorder layers");
+    if (manager.reorderByIds(bottomToTop)) onCommit("Reorder layers");
     else render();
   };
+  const onPointerUp = () => endDrag(true);
+  const onPointerCancel = () => endDrag(false);
 
   list.addEventListener("pointerdown", (e) => {
     const grip = (e.target as HTMLElement).closest(".layer-grip");
     if (!grip || grip.classList.contains("disabled")) return;
     const block = grip.closest<HTMLElement>(".layer-block");
-    if (!block || manager.all.length <= 1) return;
+    if (!block || drag || manager.all.length <= 1) return;
     e.preventDefault();
-    dragging = block;
+    const blocks = [...list.querySelectorAll<HTMLElement>(".layer-block")];
+    const rects = blocks.map((b) => b.getBoundingClientRect());
+    const src = blocks.indexOf(block);
+    const gap = rects.length > 1 ? Math.max(0, rects[1].top - rects[0].bottom) : 0;
+    drag = {
+      block,
+      startY: e.clientY,
+      listTop: list.getBoundingClientRect().top,
+      blocks,
+      centers: rects.map((r) => r.top + r.height / 2),
+      src,
+      shift: rects[src].height + gap,
+      ins: src, // starts in place: there are exactly `src` rows above it
+    };
     block.classList.add("dragging");
+    list.classList.add("layers-reordering");
     window.addEventListener("pointermove", onDragMove);
-    window.addEventListener("pointerup", onDragEnd, { once: true });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerCancel);
   });
 
   manager.subscribe(render);
@@ -156,28 +220,6 @@ export function createLayersBox(
   };
 
   return { el: panel, toggle, render, refreshPreviews };
-}
-
-// The .layer-block the dragged row should be inserted before, given the pointer
-// Y — the first row whose vertical midpoint is below the pointer (null = past the
-// last, i.e. drop at the bottom).
-function getDragAfterElement(
-  list: HTMLElement,
-  y: number,
-): HTMLElement | null {
-  const blocks = [
-    ...list.querySelectorAll<HTMLElement>(".layer-block:not(.dragging)"),
-  ];
-  let closest: { offset: number; el: HTMLElement | null } = {
-    offset: -Infinity,
-    el: null,
-  };
-  for (const el of blocks) {
-    const box = el.getBoundingClientRect();
-    const offset = y - (box.top + box.height / 2);
-    if (offset < 0 && offset > closest.offset) closest = { offset, el };
-  }
-  return closest.el;
 }
 
 function makeRow(
