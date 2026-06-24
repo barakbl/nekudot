@@ -1,0 +1,31 @@
+name: 🎨 Artist feedback or idea
+description: Tell us how it feels to draw with Nekudot, or suggest a brush, style or little touch. No tech needed.
+title: "[Artist]: "
+labels: ["artist feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We'd love to hear from you. There are no wrong answers here - share whatever's on your mind. 💜
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What's on your mind?
+      description: How does drawing feel? What delighted you, what got in the way, or what would you love to see?
+      placeholder: I loved ... / It felt awkward when ... / It would be magical if ...
+    validations:
+      required: true
+  - type: textarea
+    id: art
+    attributes:
+      label: Show us (optional)
+      description: Drag in a drawing or screenshot if you'd like - we always love seeing what people make.
+    validations:
+      required: false
+  - type: input
+    id: links
+    attributes:
+      label: Where can we find your art? (optional)
+      description: A link to your gallery or socials, if you'd like a shout-out.
+    validations:
+      required: false

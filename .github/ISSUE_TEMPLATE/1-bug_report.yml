@@ -1,0 +1,87 @@
+name: 🐛 Bug report
+description: Something isn't working the way it should? Let us know so we can fix it.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug - it really helps. 🙏
+        Fill in what you can; even a partial report is useful.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you start
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: I tried refreshing the page (the app updates automatically on reload).
+          required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected to happen instead.
+      placeholder: When I ..., I expected ..., but instead ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make it happen?
+      placeholder: |
+        1. Open the canvas
+        2. Select the ... brush
+        3. Draw ...
+        4. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: "Find it in App settings → About → Version (e.g. v0.9.0)."
+      placeholder: v0.9.0
+    validations:
+      required: false
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device
+      options:
+        - Desktop / laptop
+        - Tablet (iPad, etc.)
+        - Phone
+        - Other
+    validations:
+      required: false
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      multiple: true
+      options:
+        - Chrome
+        - Safari
+        - Firefox
+        - Edge
+        - Other (mention it below)
+    validations:
+      required: false
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: macOS 15, Windows 11, iPadOS 17, ...
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, recordings or a .nekudot file
+      description: |
+        Drag and drop anything that helps - a screenshot, a screen recording, or the saved `.nekudot` file.
+        If you can, turn on **App settings → Diagnostics**, reproduce the bug, then **Copy logs** and paste them here. Any browser console errors are gold.
+    validations:
+      required: false

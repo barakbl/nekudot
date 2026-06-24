@@ -1,0 +1,24 @@
+name: 📖 Documentation issue
+description: Something in the usage book or docs is wrong, missing or unclear.
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping the docs get better.
+  - type: input
+    id: where
+    attributes:
+      label: Which page or section?
+      description: A link or the page name.
+      placeholder: https://nekudot.app/book/connections.html
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong or missing?
+      description: What confused you, or what would make it clearer?
+    validations:
+      required: true
