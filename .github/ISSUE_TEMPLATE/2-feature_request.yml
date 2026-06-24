@@ -1,5 +1,5 @@
 name: 💡 Feature request
-description: Suggest a new feature or an improvement.
+description: Suggest a specific feature or improvement you'd like built.
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
@@ -7,6 +7,8 @@ body:
     attributes:
       value: |
         Thanks for sharing an idea! 🎨 Suggestions from artists and developers alike shape Nekudot.
+
+        Best for a **specific** request to track. For a loose idea to chew on first, try [Discussions](https://github.com/barakbl/nekudot/discussions); to tell us how it *feels* to draw, use **🎨 Artist feedback**.
   - type: checkboxes
     id: checks
     attributes:

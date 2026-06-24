@@ -1,5 +1,5 @@
 name: 🎨 Artist feedback or idea
-description: Tell us how it feels to draw with Nekudot, or suggest a brush, style or little touch. No tech needed.
+description: Tell us how it feels to draw with Nekudot - what you loved, what got in the way, or a loose wish. No tech needed.
 title: "[Artist]: "
 labels: ["artist feedback"]
 body:
@@ -7,6 +7,8 @@ body:
     attributes:
       value: |
         We'd love to hear from you. There are no wrong answers here - share whatever's on your mind. 💜
+
+        This one's for impressions and loose wishes. Have a **specific** feature in mind? The **💡 Feature request** template fits better. Just want to show your art? Pop it in [Discussions](https://github.com/barakbl/nekudot/discussions).
   - type: textarea
     id: feedback
     attributes:

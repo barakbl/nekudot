@@ -2,9 +2,9 @@
 # template; the links below cover the cases a template shouldn't.
 blank_issues_enabled: false
 contact_links:
-  - name: 💬 Questions, ideas & sharing art (Discussions)
+  - name: 💬 Questions, brainstorming & show-and-tell (Discussions)
     url: https://github.com/barakbl/nekudot/discussions
-    about: Chat with the community, ask open-ended questions, and show what you made.
+    about: Ask questions, kick around early ideas, and share what you made. For a specific request you want tracked, use Feature request below.
   - name: 🔒 Report a security issue privately
     url: mailto:barak.bloch@gmail.com
     about: Please email security concerns instead of opening a public issue.
