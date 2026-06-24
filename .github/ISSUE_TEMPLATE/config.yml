@@ -1,0 +1,13 @@
+# The issue chooser screen. Blank issues are off so everything starts from a
+# template; the links below cover the cases a template shouldn't.
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions, ideas & sharing art (Discussions)
+    url: https://github.com/barakbl/nekudot/discussions
+    about: Chat with the community, ask open-ended questions, and show what you made.
+  - name: 🔒 Report a security issue privately
+    url: mailto:barak.bloch@gmail.com
+    about: Please email security concerns instead of opening a public issue.
+  - name: 📖 Usage book & website
+    url: https://nekudot.app/book/
+    about: How every brush, layer and map works - many answers live here.
