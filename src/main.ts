@@ -27,7 +27,6 @@ import { createMapsBox } from "./layered/maps-box";
 import { createSizePicker } from "./layered/size-picker";
 import { saveArtwork } from "./save-artwork";
 import { pixelLog } from "./pixel-log";
-import type { UndoSnapshot } from "./undo";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./window-stack";
 import { createPalettePanel } from "./colors/panel";
@@ -51,6 +50,7 @@ import { createStage } from "./app/stage";
 import { createExportActions, applyTheme } from "./app/export-actions";
 import { bindCameraInput } from "./app/camera-input";
 import { createDrawingCore } from "./app/drawing-core";
+import { createUndoWiring } from "./app/undo-wiring";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -436,33 +436,16 @@ layerManager.subscribe(() => {
 
 // ---- undo + paint persistence ---------------------------------------------------
 
+// AppHistory (the undo stack + paint snapshot) stays here, with its
+// init/clear/subscribe below; createUndoWiring owns the thin action wrappers.
+// layersBox is read lazily - it's created just below this block.
 const history = new AppHistory(layerManager, MAX_UNDO);
-const pushUndo = (description: string) => void history.push(description);
-
-const activeLayerName = (): string =>
-  layerManager.all[layerManager.activeIdx]?.config.name ?? "active layer";
-
-// No persist here: the undo/redo that triggered this already saved the new
-// pointer, and the pointer row is what boot restores from.
-const applyUndoSnapshot = async (snap: UndoSnapshot) => {
-  layerManager.applyConfig(snap.config);
-  await layerManager.applyPaintData(snap.paint);
-  applyStageBackground();
-  layersBox.refreshPreviews();
-};
-
-// Undo/redo go through the history queue (behind any in-flight stroke pushes,
-// serialized with each other); the chip shows once the restore completed.
-const doUndo = () => {
-  void history.undo(applyUndoSnapshot).then((action) => {
-    if (action) showChip(`Undo: ${action}`);
-  });
-};
-const doRedo = () => {
-  void history.redo(applyUndoSnapshot).then((action) => {
-    if (action) showChip(`Redo: ${action}`);
-  });
-};
+const { pushUndo, activeLayerName, doUndo, doRedo } = createUndoWiring({
+  history,
+  layerManager,
+  applyStageBackground,
+  getLayersBox: () => layersBox,
+});
 
 // ---- boxes: layers / symmetry / maps ----------------------------------------------
 
