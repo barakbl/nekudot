@@ -106,6 +106,9 @@ async function main() {
     await S("Runtime.enable");
     await S("DOM.enable");
     await S("Page.setDownloadBehavior", { behavior: "allow", downloadPath: dlDir });
+    // Treat as already onboarded so the Start page doesn't cover the canvas (the
+    // draw at 360,280 needs to land on the canvas, not the onboarding overlay).
+    await S("Page.addScriptToEvaluateOnNewDocument", { source: "try { localStorage.setItem('app.onboarded', 'true'); } catch (e) {}" });
     await S("Page.navigate", { url: `http://localhost:${PORT}/` });
     if (!(await waitFor(async () => {
       const r = await S("Runtime.evaluate", { expression: "!!document.querySelector('.toolbar')", returnByValue: true });
@@ -185,8 +188,12 @@ async function main() {
     try { ws?.close(); } catch {}
     browser.kill("SIGKILL");
     preview.kill("SIGKILL");
-    rmSync(dlDir, { recursive: true, force: true });
-    rmSync(profile, { recursive: true, force: true });
+    // Best-effort temp cleanup: Chrome may still be releasing the profile dir
+    // just after SIGKILL (ENOTEMPTY), so retry and never let a cleanup hiccup
+    // fail an otherwise-passing run.
+    for (const dir of [dlDir, profile]) {
+      try { rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch {}
+    }
   }
 
   const failed = results.filter((r) => !r.ok);
