@@ -38,7 +38,7 @@ jobs:
       # release PR branch so CI's staleness check passes and the shipped app
       # shows the new version. (Needs RELEASE_TOKEN so this push triggers CI.)
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
