@@ -21,7 +21,7 @@
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.10.6",
-    "typescript": "^5.6.0",
+    "typescript": "^6.0.3",
     "vite": "^6.0.0",
     "vitest": "^4.1.6"
   },
