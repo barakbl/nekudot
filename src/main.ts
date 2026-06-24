@@ -12,6 +12,7 @@ import { createMenu, type MenuEntry, type MenuGroup, type Theme } from "./menu";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
+import { createBrushPreview } from "./brush-preview";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
 import { saveCustomPresets } from "./brushes/connections/custom-store";
 import { resetToDefault as runReset } from "./app/reset";
@@ -347,6 +348,38 @@ let penEnabled = store.get<boolean>("app.penEnabled") ?? true;
 let pixelLogEnabled = store.get<boolean>("app.pixelLog") ?? false;
 pixelLog.setEnabled(pixelLogEnabled);
 
+// Brush settings preview: a big window (Preview button in the settings panel)
+// with a Playground tab (draw freely) and a Preview tab that replays a scripted
+// stroke whenever a setting changes. Both run a THROWAWAY brush of the current
+// type, configured from the store (restore + selectArtStyle) so they mirror the
+// live brush at its real Size / Opacity / colour, without touching the artwork.
+const brushPreview = createBrushPreview({
+  makeBrush: (host) => {
+    const def = BRUSH_DEFS.find((d) => d.name === brush.name());
+    if (!def) return null;
+    const b = def.create({ host, store, getInvisibleOverlay: () => host });
+    b.restore();
+    if (b.supportsConnecting()) {
+      b.selectArtStyle(currentArtStyle);
+      // The preview ignores map routing (map-only / map+stroke): always weave to
+      // both the stroke and the (single) cloud so the web always shows.
+      b.applyRoutingPreset("classic");
+    }
+    return b;
+  },
+  size: () => store.get<number>("app.size") ?? initialSize,
+  alpha: () => store.get<number>("app.opacity") ?? initialAlpha,
+  color: () => store.get<string>("app.color.main") ?? initialMainColor,
+  background: () => {
+    const bg = layerManager.getBackground();
+    return bg.transparent ? "#ffffff" : bg.color;
+  },
+  dpr,
+  store,
+  registerWindow,
+  showWindow,
+});
+
 // Opt-in field diagnostics (App settings -> Diagnostics). Enabled early so it
 // captures startup errors + an environment snapshot on a reload where it's on.
 let diagnosticsEnabled = store.get<boolean>("app.diag") ?? false;
@@ -397,6 +430,8 @@ const recallOpacity = () =>
 
 const settingsPanel = createSettingsPanel({
   showPen: () => penEnabled,
+  onOpenPreview: () => brushPreview.open(),
+  onSettingChange: (change) => brushPreview.onSettingChanged(change),
   brushControls: {
     size: {
       get: () => store.get<number>("app.size") ?? initialSize,
@@ -406,6 +441,11 @@ const settingsPanel = createSettingsPanel({
       onChange: (size) => {
         layerManager.setLineWidth(size);
         store.set("app.size", size);
+        brushPreview.onSettingChanged({
+          label: "Size",
+          value: String(size),
+          help: "How thick the brush's own line is.",
+        });
       },
     },
     opacity: {
@@ -417,6 +457,11 @@ const settingsPanel = createSettingsPanel({
         layerManager.setGlobalAlpha(a);
         store.set("app.opacity", a); // live applied value
         store.set(opacityKey(), a); // remembered per (brush, art-style)
+        brushPreview.onSettingChanged({
+          label: "Opacity",
+          value: String(a),
+          help: "How see-through the stroke is - low values let many overlapping lines build into soft shading.",
+        });
       },
     },
   },
@@ -436,6 +481,11 @@ const settingsPanel = createSettingsPanel({
     layerManager.setGlobalAlpha(op);
     store.set("app.opacity", op);
     renderActiveBrush();
+    brushPreview.onSettingChanged({
+      label: "Reset",
+      value: "Brush & web to defaults",
+      help: "Both the brush settings and the connection art style were returned to their defaults.",
+    });
   },
 });
 document.body.appendChild(settingsPanel.el);

@@ -176,7 +176,20 @@ export type SettingsPanelOpts = {
   // Whether the Pen section is shown (the More-menu "Pen pressure" toggle).
   // Defaults to shown; gates only the Brush tab (Pen is a brush setting).
   showPen?: () => boolean;
+  // Open the brush-preview window (the Preview button in the header).
+  onOpenPreview?: () => void;
+  // Notified after any setting on the panel changes - the preview names it (with
+  // the same help text) and replays if its window is open.
+  onSettingChange?: (change: { label: string; value: string; help?: string }) => void;
 };
+
+// Human value of a changed setting for the preview's info box ("On", "6", "Curve").
+function settingValueText(s: BrushSetting, v: unknown): string {
+  if (s.kind === "boolean") return v ? "On" : "Off";
+  if (s.kind === "range" && Array.isArray(v)) return `${v[0]}–${v[1]}`;
+  if (s.kind === "select") return s.optionLabels?.[String(v)] ?? String(v);
+  return String(v);
+}
 
 export function createSettingsPanel(opts: SettingsPanelOpts): {
   el: HTMLElement;
@@ -193,6 +206,19 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   header.appendChild(title);
   const headerActions = document.createElement("div");
   headerActions.className = "panel-header-actions";
+  if (opts.onOpenPreview) {
+    const preview = document.createElement("button");
+    preview.type = "button";
+    preview.className = "panel-preview-btn";
+    preview.title = "Preview this brush's settings";
+    preview.setAttribute("aria-label", "Preview brush");
+    preview.innerHTML =
+      '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M1.6 12 C4 6.4 8 4 12 4 C16 4 20 6.4 22.4 12 C20 17.6 16 20 12 20 C8 20 4 17.6 1.6 12 Z"/>' +
+      '<circle cx="12" cy="12" r="3.2"/></svg>';
+    preview.addEventListener("click", () => opts.onOpenPreview?.());
+    headerActions.appendChild(preview);
+  }
   if (opts.onReset) {
     const reset = document.createElement("button");
     reset.type = "button";
@@ -259,7 +285,14 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
     connTab.classList.toggle("active", activeTab === "connecting");
 
     content.replaceChildren();
-    const persist: PersistFn = (s, v) => brush.persistSetting(s, v);
+    const persist: PersistFn = (s, v) => {
+      brush.persistSetting(s, v);
+      opts.onSettingChange?.({
+        label: s.label,
+        value: settingValueText(s, v),
+        help: SETTING_HELP[s.key],
+      });
+    };
     if (activeTab === "connecting") renderConnectingTab(brush, persist);
     else renderBrushTab(brush, persist);
   };
@@ -348,6 +381,10 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
               { get: () => webCustomizeOpen, set: (v) => (webCustomizeOpen = v) },
               () => render(brush),
               persist,
+              // Report the picked Light/Normal/Heavy as the change, not the raw
+              // dials it set, so the preview names the selection (with its help).
+              (name) =>
+                opts.onSettingChange?.({ label: "Web weight", value: name, help: WEB_WEIGHT_HELP }),
             ),
           );
         }
@@ -500,6 +537,7 @@ function buildWebWeightGroup(
   customize: { get: () => boolean; set: (v: boolean) => void },
   rerender: () => void,
   persist: PersistFn,
+  onSelect?: (name: string) => void,
 ): HTMLElement {
   const box = document.createElement("div");
   box.className = "settings-group settings-group-webweight";
@@ -522,6 +560,7 @@ function buildWebWeightGroup(
     if (presetMatches(flat, current)) btn.classList.add("active");
     btn.addEventListener("click", () => {
       applyPreset(items, flat, persist);
+      onSelect?.(name);
       rerender();
     });
     row.appendChild(btn);
