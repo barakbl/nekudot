@@ -212,7 +212,11 @@ for (const b of Object.values(brushes)) {
 const storedBrushKey = store.get<string>("app.brush.selected");
 const initialBrushKey: string =
   storedBrushKey && storedBrushKey in brushes ? storedBrushKey : "Round";
-let brush: BrushBase = brushes[initialBrushKey];
+// Live "active tool" state. The first field of an app-state container that the
+// scattered top-level `let`s are migrating onto, so the many panels reading the
+// active brush share one source of truth. selectBrush is the only writer.
+type AppState = { brush: BrushBase };
+const appState: AppState = { brush: brushes[initialBrushKey] };
 
 // The connection art style is chosen from the navbar Connecting combo and
 // persisted; Round applies it on select (see RoundBrush.onSelect).
@@ -235,7 +239,7 @@ pixelLog.setEnabled(pixelLogEnabled);
 // live brush at its real Size / Opacity / colour, without touching the artwork.
 const brushPreview = createBrushPreview({
   makeBrush: (host) => {
-    const def = BRUSH_DEFS.find((d) => d.name === brush.name());
+    const def = BRUSH_DEFS.find((d) => d.name === appState.brush.name());
     if (!def) return null;
     const b = def.create({ host, store, getInvisibleOverlay: () => host });
     b.restore();
@@ -283,7 +287,7 @@ const connectingComboGroups = () =>
 // The host accessors read lazily, so the controller can be wired into panels
 // and the navbar that are built below.
 const presets = createPresetsController({
-  activeConnection: () => brush.activeConnection(),
+  activeConnection: () => appState.brush.activeConnection(),
   currentStyle: () => currentArtStyle,
   applyStyle: (name) => setArtStyle(name),
   defaultStyle: () => DEFAULT_ART_STYLE,
@@ -304,9 +308,9 @@ const presets = createPresetsController({
 // applied value (the renderer + symmetry proxy read it); these just persist +
 // recall the per-context value so switching brush/style no longer clobbers it.
 const opacityKey = () =>
-  opacityStorageKey(brush.name(), brush.supportsConnecting(), currentArtStyle);
+  opacityStorageKey(appState.brush.name(), appState.brush.supportsConnecting(), currentArtStyle);
 const recallOpacity = () =>
-  recalledOpacity(store.get<number>(opacityKey()), brush.getSelectOpacity());
+  recalledOpacity(store.get<number>(opacityKey()), appState.brush.getSelectOpacity());
 
 const settingsPanel = createSettingsPanel({
   showPen: () => penEnabled,
@@ -350,7 +354,7 @@ const settingsPanel = createSettingsPanel({
   activeCustomName: () =>
     presets.isCustom(currentArtStyle) ? currentArtStyle : null,
   onReset: () => {
-    brush.resetSettings(); // brush params + art-style dials
+    appState.brush.resetSettings(); // brush params + art-style dials
     // Size + opacity are app-global (not part of getSettings), so reset them
     // here: Size to the default, opacity to the brush's preferred value — same
     // as a fresh brush selection (getSelectOpacity ?? 1).
@@ -387,9 +391,9 @@ const showConnecting = () => {
 // combo's visibility + value. `menu` is defined below; this only runs after it
 // exists.
 const renderActiveBrush = () => {
-  settingsPanel.render(brush);
+  settingsPanel.render(appState.brush);
   mapsBox.render(); // the routing "Connection" group tracks the active brush
-  const supports = brush.supportsConnecting();
+  const supports = appState.brush.supportsConnecting();
   menu.setConnectingVisible(supports);
   if (supports) menu.setConnectingValue(currentArtStyle);
 };
@@ -397,7 +401,7 @@ const renderActiveBrush = () => {
 // Re-render the open settings window so the Primary/Secondary swatches in the
 // Color / Fill selects track the toolbar colours as they change.
 const refreshSettingsColors = () => {
-  if (settingsPanel.el.style.display !== "none") settingsPanel.render(brush);
+  if (settingsPanel.el.style.display !== "none") settingsPanel.render(appState.brush);
 };
 
 // Push the active brush's preferred stroke opacity (per connection style — see
@@ -409,12 +413,12 @@ const applyBrushStrokeOpacity = (force: boolean) => {
   // Recall this (brush, style)'s remembered opacity, falling back to the style's
   // preferred opacity. No-op for brushes with neither (non-connecting on a fresh
   // store), so a plain mouse stroke stays fully opaque.
-  if (store.get<number>(opacityKey()) === undefined && brush.getSelectOpacity() === undefined)
+  if (store.get<number>(opacityKey()) === undefined && appState.brush.getSelectOpacity() === undefined)
     return;
   const op = recallOpacity();
   layerManager.setGlobalAlpha(op);
   store.set("app.opacity", op);
-  settingsPanel.render(brush); // reflect the new value in the Opacity slider
+  settingsPanel.render(appState.brush); // reflect the new value in the Opacity slider
 };
 
 // Pick an art style from the combo: apply it to the active brush, match its
@@ -422,16 +426,16 @@ const applyBrushStrokeOpacity = (force: boolean) => {
 const setArtStyle = (name: string) => {
   currentArtStyle = name;
   store.set("app.artStyle", name);
-  brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
+  appState.brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
   applyBrushStrokeOpacity(true);
-  settingsPanel.render(brush);
+  settingsPanel.render(appState.brush);
   menu.setConnectingValue(name);
 };
 
 // Keep the connecting "Connect to" / "Map" dropdowns in sync when layers or
 // neighbors maps are renamed/added/removed. Only re-render while visible.
 layerManager.subscribe(() => {
-  if (settingsPanel.el.style.display !== "none") settingsPanel.render(brush);
+  if (settingsPanel.el.style.display !== "none") settingsPanel.render(appState.brush);
 });
 
 // ---- undo + paint persistence ---------------------------------------------------
@@ -491,7 +495,7 @@ const mapsControl = createMapsControl(
 // The routing "Connection" group lives in the Maps box now; build it for the
 // current brush (re-read on each render, so it tracks the active brush + maps).
 const mapsBox = createMapsBox(mapsControl, (rerender) =>
-  buildRoutingControls(brush, rerender),
+  buildRoutingControls(appState.brush, rerender),
 );
 document.body.appendChild(mapsBox.el);
 registerWindow(mapsBox.el);
@@ -666,7 +670,7 @@ const appSettingsBox = createAppSettingsBox({
   onTogglePen: (on) => {
     penEnabled = on;
     store.set("app.penEnabled", on);
-    settingsPanel.render(brush); // show/hide the Pen section live
+    settingsPanel.render(appState.brush); // show/hide the Pen section live
   },
   pixelLog: pixelLogEnabled,
   onTogglePixelLog: (on) => {
@@ -683,7 +687,7 @@ const appSettingsBox = createAppSettingsBox({
       // A one-shot snapshot of the current drawing state for context.
       const bg = layerManager.getBackground();
       dlog("app", "state", {
-        brush: brush.name(),
+        brush: appState.brush.name(),
         opacity: store.get<number>("app.opacity") ?? 1,
         size: store.get<number>("app.size"),
         main: store.get<string>("app.color.main"),
@@ -728,12 +732,12 @@ const showAppSettings = () => showWindow(appSettingsBox.el);
 // ---- brush selection + navbar -----------------------------------------------------
 
 const selectBrush = (key: string) => {
-  brush = brushes[key];
+  appState.brush = brushes[key];
   menu.setBrushValue(key);
   // The Eraser paints in erase mode; every other brush draws normally.
-  layerManager.setEraseMode(brush.erases());
+  layerManager.setEraseMode(appState.brush.erases());
   // Let the brush apply its art style, then push its stroke opacity to the nav.
-  brush.onSelect();
+  appState.brush.onSelect();
   // Recall the opacity this brush/style was last left at (remembered per context),
   // else the style's preferred opacity, else fully opaque - so switching brushes
   // no longer wipes a manual opacity, and Shading still starts at 0 by default.
@@ -744,7 +748,7 @@ const selectBrush = (key: string) => {
   // the navbar Connecting combo's visibility + value for this brush.
   renderActiveBrush();
   store.set("app.brush.selected", key);
-  dlog("brush", "select", { key, opacity: op, erases: brush.erases() });
+  dlog("brush", "select", { key, opacity: op, erases: appState.brush.erases() });
 };
 
 // Late-bound: the Shortcuts panel is built from the shortcuts array, which
@@ -954,8 +958,8 @@ brushes["Round"]?.selectArtStyle(
 // brush is assigned directly, not through selectBrush, so do it here. Round is
 // already handled above with the custom-preset-safe guard, so skip its (unguarded)
 // onSelect to avoid touching a custom style that hasn't loaded yet.
-if (brush !== brushes["Round"]) brush.onSelect();
-layerManager.setEraseMode(brush.erases());
+if (appState.brush !== brushes["Round"]) appState.brush.onSelect();
+layerManager.setEraseMode(appState.brush.erases());
 applyBrushStrokeOpacity(false);
 renderActiveBrush();
 
@@ -1024,7 +1028,7 @@ const onboarding = createOnboarding({
       onChange: (on) => {
         penEnabled = on;
         store.set("app.penEnabled", on);
-        settingsPanel.render(brush); // show/hide the Pen section live
+        settingsPanel.render(appState.brush); // show/hide the Pen section live
       },
     },
   },
@@ -1115,7 +1119,7 @@ let touchGestures: { active: () => boolean } | null = null;
 const drawingInput = bindDrawingInput({
   stage,
   viewport,
-  brush: () => brush,
+  brush: () => appState.brush,
   symmetry,
   layerManager,
   penEnabled: () => penEnabled,
