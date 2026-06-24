@@ -29,7 +29,6 @@ import { exportArt, shareArt } from "./export";
 import { saveArtwork } from "./save-artwork";
 import { pixelLog } from "./pixel-log";
 import type { UndoSnapshot } from "./undo";
-import { attachHelp } from "./help";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./window-stack";
 import { createPalettePanel } from "./colors/panel";
@@ -55,6 +54,8 @@ import { bindDrawingInput } from "./app/drawing-input";
 import { opacityStorageKey, recalledOpacity } from "./app/opacity-store";
 import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
+import { registerHelpHints } from "./app/help-hints";
+import { bindDurability } from "./app/durability";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -1251,26 +1252,12 @@ bindShortcuts(shortcuts);
 
 // ---- help hints (press ? to toggle visibility) ---------------------------------------
 
-const attachToHeading = (panel: HTMLElement, text: string) => {
-  const h = panel.querySelector("h3");
-  if (h instanceof HTMLElement) attachHelp(h, text);
-};
-attachToHeading(
-  layersBox.el,
-  "Drawing layers. Each layer holds its own canvas plus its connections sub-layers; the active layer is the target for strokes and connection drawings.",
-);
-attachToHeading(
-  settingsPanel.el,
-  "Settings for the selected brush. The Brush tab has size, opacity and brush-specific options; the Web tab (for brushes that weave a web) has routing and the art-style dials. Reset reverts both to defaults.",
-);
-attachToHeading(
-  symmetryBox.el,
-  "Repeat every stroke with symmetry: Tile repeats your marks across a lattice, Radial mirrors them around the centre (kaleidoscope), Mirror reflects across one line. Works with any brush.",
-);
-attachToHeading(
-  mapsBox.el,
-  "Memory maps remember sets of points so the Round brush can connect to them. Pick the active map (drawn into now), flash any map to see its dots on the canvas, or rename/add/delete maps.",
-);
+registerHelpHints({
+  layersBox: layersBox.el,
+  settingsPanel: settingsPanel.el,
+  symmetryBox: symmetryBox.el,
+  mapsBox: mapsBox.el,
+});
 
 // ---- drawing input ----------------------------------------------------------------------
 
@@ -1328,17 +1315,6 @@ onViewportChange = () => imagePaste.handleCameraChange();
 
 // ---- durability on hide/close -----------------------------------------------------
 
-// When the tab hides (switch/minimize/close), commit any in-progress stroke —
-// its paint exists only on canvas until the stroke-end push — and flush any
-// dirty pixel-log rows. Everything else is already persisted at stroke end;
-// in-flight IDB transactions drain on their own. Both events because older
-// Safari closes tabs without firing visibilitychange; running twice is a
-// no-op (no active stroke, clean log).
-const persistOnHide = () => {
-  drawingInput.commitActiveStroke();
-  void pixelLog.flush();
-};
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") persistOnHide();
-});
-window.addEventListener("pagehide", persistOnHide);
+// Wired last in boot: it commits the in-progress stroke + flushes the pixel log
+// when the tab hides, so it needs the drawing input (assigned above).
+bindDurability({ drawingInput, pixelLog });
