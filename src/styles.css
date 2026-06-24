@@ -1629,13 +1629,21 @@ body {
   cursor: default;
   pointer-events: none;
 }
+/* While reordering, the non-grabbed rows glide to make room. */
+.layers-reordering .layer-block {
+  transition: transform 0.15s ease;
+}
+/* The grabbed row is lifted and tracks the pointer 1:1 (no transition). */
 .layer-block.dragging {
-  opacity: 0.6;
+  position: relative;
+  z-index: 5;
+  transition: none;
+  cursor: grabbing;
 }
 .layer-block.dragging .layer-row {
   cursor: grabbing;
-  border-color: var(--border-subtle);
-  outline: 1px dashed currentColor;
+  border-color: var(--border-stronger);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 .layer-action-btn {
   background: transparent;
