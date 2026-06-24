@@ -46,9 +46,10 @@ jobs:
           BRANCH: ${{ github.head_ref }}
         run: |
           echo "Branch: $BRANCH"
-          # release-please maintains its own branch; exempt it.
+          # release-please and Dependabot maintain their own branch names; exempt them.
           case "$BRANCH" in
             release-please--*) exit 0 ;;
+            dependabot/*) exit 0 ;;
           esac
           if ! echo "$BRANCH" | grep -Eq '^(feat|fix|perf|refactor|docs|test|build|ci|chore|revert)/.+'; then
             echo "::error::Branch '$BRANCH' must start with a type prefix, e.g. feat/, fix/, chore/."

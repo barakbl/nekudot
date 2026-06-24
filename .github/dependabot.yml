@@ -2,6 +2,8 @@
 # titles Conventional-Commit friendly (CI lints PR titles).
 version: 2
 updates:
+  # npm: one grouped weekly PR for minor + patch updates. Major bumps are left
+  # for you to do deliberately (security updates still come through regardless).
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -9,9 +11,22 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"
+    groups:
+      npm:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  # GitHub Actions are pinned at a major (e.g. @v4), so updates show up as major
+  # bumps - keep them flowing, just bundled into one weekly PR.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
