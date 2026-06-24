@@ -40,7 +40,7 @@ async function main() {
     await sleep(500);
 
     // ---- page-side helpers --------------------------------------------------
-    await E(`(${function () {
+    await E(`(${() => {
       const opaque = (c) => { const ctx = c.getContext("2d", { willReadFrequently: true }); const d = ctx.getImageData(0, 0, c.width, c.height).data; let n = 0, minX = 1e9, minY = 1e9, maxX = -1, maxY = -1; for (let i = 0; i < d.length; i += 4) { if (d[i + 3] > 20) { const px = (i / 4) % c.width, py = Math.floor((i / 4) / c.width); n++; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py; } } return { n, minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 }; };
       window.__paste = {
         preview() { return document.querySelector(".paste-preview"); },

@@ -15,7 +15,10 @@ function makeEl(): unknown {
   return new Proxy(backing, {
     get: (t, p) =>
       p in t ? t[p as string] : typeof p === "string" ? () => undefined : undefined,
-    set: (t, p, v) => ((t[p as string] = v), true),
+    set: (t, p, v) => {
+      t[p as string] = v;
+      return true;
+    },
   });
 }
 

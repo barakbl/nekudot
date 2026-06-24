@@ -997,17 +997,3 @@ function makeConnectingCombo(control: ConnectingControl): {
   };
 }
 
-
-function makeIconButton(
-  glyph: string,
-  title: string,
-  onClick?: () => void,
-): HTMLElement {
-  const btn = document.createElement("button");
-  btn.className = "icon-btn";
-  btn.title = title;
-  btn.textContent = glyph;
-  if (onClick) btn.addEventListener("click", onClick);
-  return btn;
-}
-

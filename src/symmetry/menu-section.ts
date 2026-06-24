@@ -1,4 +1,4 @@
-import { SymmetryController } from "./controller";
+import type { SymmetryController } from "./controller";
 import type { SymSetting } from "./tool";
 import { SYMMETRY_TOOL_DEFS } from "./registry";
 import { attachHelp } from "../help";

@@ -50,7 +50,7 @@ async function main() {
     await dismissOnboarding(); await sleep(150);
 
     // ---- page-side helpers (re-injectable: the page reloads for F/G) ---------
-    const injectView = () => E(`(${function () {
+    const injectView = () => E(`(${() => {
       window.__view = {
         // The stage's *visible* transform (canvas px -> viewport px) + the
         // viewport's screen offset = screen coords. This is what the eye sees.

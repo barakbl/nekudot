@@ -1,6 +1,6 @@
 import { makeCloseButton } from "../settings-panel";
 import { makeDraggable } from "../drag";
-import { SymmetryController } from "./controller";
+import type { SymmetryController } from "./controller";
 import { makeSymmetrySection } from "./menu-section";
 
 export type SymmetryBox = {
