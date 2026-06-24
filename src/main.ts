@@ -35,10 +35,8 @@ import { createPalettePanel } from "./colors/panel";
 import { clearColorsStore, loadGradientPalettes } from "./colors/store";
 import { setGradientPalettes, setGradientSpace } from "./brushes/color-source";
 import {
-  clampSize,
   fullScreenSize,
   squareOfScreen,
-  safeLoadSize,
   type CanvasSize,
 } from "./canvas-size";
 import { Overlay } from "./app/overlay";
@@ -56,6 +54,7 @@ import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
 import { registerHelpHints } from "./app/help-hints";
 import { bindDurability } from "./app/durability";
+import { createStage } from "./app/stage";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
   applyConnectionColor,
@@ -64,61 +63,20 @@ import {
 
 const store = new LocalStorageStore();
 
-const BORDER = 2;
 const MAX_LAYERS = 5;
 const MAX_UNDO = 10;
-const CANVAS_SIZE_KEY = "app.canvas.size";
 
 // ---- stage + canvas size ----------------------------------------------------
 
-document.body.style.margin = "0";
-document.body.style.overflow = "hidden";
-document.body.style.minHeight = "100vh";
-
-const dpr = window.devicePixelRatio || 1;
-const screenMax = (): CanvasSize => ({
-  width: Math.max(1, window.innerWidth - BORDER * 2),
-  height: Math.max(1, window.innerHeight - BORDER * 2),
-});
-
-const persistedSize = safeLoadSize(store.get<unknown>(CANVAS_SIZE_KEY));
-const initialCanvasSize: CanvasSize = (() => {
-  const max = screenMax();
-  return persistedSize
-    ? clampSize(persistedSize, max.width, max.height)
-    : fullScreenSize(max.width, max.height);
-})();
-
-// The viewport is a fixed full-window container; the camera (Viewport) pans /
-// zooms / rotates the stage inside it via a CSS transform. The stage sits at
-// 0,0 with transform-origin 0,0 so the camera matrix maps canvas px -> screen.
-const viewportEl = document.createElement("div");
-viewportEl.className = "viewport";
-viewportEl.style.position = "fixed";
-viewportEl.style.inset = "0";
-viewportEl.style.overflow = "hidden";
-viewportEl.style.touchAction = "none";
-document.body.appendChild(viewportEl);
-
-const stage = document.createElement("div");
-stage.className = "stage";
-stage.style.position = "absolute";
-stage.style.left = "0";
-stage.style.top = "0";
-stage.style.transformOrigin = "0 0";
-// Own stacking context so the stage's high-z overlays (symmetry guides, the
-// map flash, the invisible-brush glow) stay above the drawing layers but BELOW
-// the body-level toolbar and panels — without it they'd paint over the UI.
-stage.style.zIndex = "0";
-stage.style.touchAction = "none";
-stage.style.cursor = "crosshair"; // drawing-app style precise cursor
-viewportEl.appendChild(stage);
-
-// Apply saved theme before any UI renders
-const savedTheme = store.get<Theme>("app.theme") ?? "auto";
-if (savedTheme !== "auto") {
-  document.documentElement.dataset.theme = savedTheme;
-}
+const {
+  viewportEl,
+  stage,
+  dpr,
+  screenMax,
+  initialCanvasSize,
+  CANVAS_SIZE_KEY,
+  savedTheme,
+} = createStage({ store });
 
 // ---- layers + background ----------------------------------------------------
 
