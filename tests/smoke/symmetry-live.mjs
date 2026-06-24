@@ -33,6 +33,9 @@ async function main() {
     await S("Page.enable"); await S("Runtime.enable");
     await S("Emulation.setDeviceMetricsOverride", { width: 1100, height: 760, deviceScaleFactor: 1, mobile: false });
     const E = async (expr) => { const r = await S("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
+    // Treat as already onboarded so the Start page doesn't cover the canvas (the
+    // baseline draw needs to land). Re-applies after the localStorage.clear() below.
+    await S("Page.addScriptToEvaluateOnNewDocument", { source: "try { localStorage.setItem('app.onboarded', 'true'); } catch (e) {}" });
     await S("Page.navigate", { url: PAGE });
     await waitFor(() => E("!!document.querySelector('.stage canvas')"));
     await E("localStorage.clear()");
