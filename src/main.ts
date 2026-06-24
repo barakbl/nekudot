@@ -212,15 +212,17 @@ for (const b of Object.values(brushes)) {
 const storedBrushKey = store.get<string>("app.brush.selected");
 const initialBrushKey: string =
   storedBrushKey && storedBrushKey in brushes ? storedBrushKey : "Round";
-// Live "active tool" state. The first field of an app-state container that the
-// scattered top-level `let`s are migrating onto, so the many panels reading the
-// active brush share one source of truth. selectBrush is the only writer.
-type AppState = { brush: BrushBase };
-const appState: AppState = { brush: brushes[initialBrushKey] };
-
-// The connection art style is chosen from the navbar Connecting combo and
-// persisted; Round applies it on select (see RoundBrush.onSelect).
-let currentArtStyle = store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
+// Live "active tool" state: the container the scattered top-level `let`s are
+// migrating onto, so the many panels reading these share one source of truth.
+// - brush: the selected brush (selectBrush is the only writer).
+// - artStyle: the connection art style chosen from the navbar Connecting combo
+//   and persisted; Round applies it on select (see RoundBrush.onSelect).
+//   Written by setArtStyle and the onboarding reset.
+type AppState = { brush: BrushBase; artStyle: string };
+const appState: AppState = {
+  brush: brushes[initialBrushKey],
+  artStyle: store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE,
+};
 
 // Pen support (pressure/tilt modulation + the Pen settings section). Toggled
 // from the More menu; default on. When off, a stylus draws like a mouse (the
@@ -244,7 +246,7 @@ const brushPreview = createBrushPreview({
     const b = def.create({ host, store, getInvisibleOverlay: () => host });
     b.restore();
     if (b.supportsConnecting()) {
-      b.selectArtStyle(currentArtStyle);
+      b.selectArtStyle(appState.artStyle);
       // The preview ignores map routing (map-only / map+stroke): always weave to
       // both the stroke and the (single) cloud so the web always shows.
       b.applyRoutingPreset("classic");
@@ -288,7 +290,7 @@ const connectingComboGroups = () =>
 // and the navbar that are built below.
 const presets = createPresetsController({
   activeConnection: () => appState.brush.activeConnection(),
-  currentStyle: () => currentArtStyle,
+  currentStyle: () => appState.artStyle,
   applyStyle: (name) => setArtStyle(name),
   defaultStyle: () => DEFAULT_ART_STYLE,
   strokeAlpha: () => store.get<number>("app.opacity") ?? 1,
@@ -308,7 +310,7 @@ const presets = createPresetsController({
 // applied value (the renderer + symmetry proxy read it); these just persist +
 // recall the per-context value so switching brush/style no longer clobbers it.
 const opacityKey = () =>
-  opacityStorageKey(appState.brush.name(), appState.brush.supportsConnecting(), currentArtStyle);
+  opacityStorageKey(appState.brush.name(), appState.brush.supportsConnecting(), appState.artStyle);
 const recallOpacity = () =>
   recalledOpacity(store.get<number>(opacityKey()), appState.brush.getSelectOpacity());
 
@@ -352,7 +354,7 @@ const settingsPanel = createSettingsPanel({
   onSavePreset: () => presets.save(),
   onUpdatePreset: () => presets.update(),
   activeCustomName: () =>
-    presets.isCustom(currentArtStyle) ? currentArtStyle : null,
+    presets.isCustom(appState.artStyle) ? appState.artStyle : null,
   onReset: () => {
     appState.brush.resetSettings(); // brush params + art-style dials
     // Size + opacity are app-global (not part of getSettings), so reset them
@@ -395,7 +397,7 @@ const renderActiveBrush = () => {
   mapsBox.render(); // the routing "Connection" group tracks the active brush
   const supports = appState.brush.supportsConnecting();
   menu.setConnectingVisible(supports);
-  if (supports) menu.setConnectingValue(currentArtStyle);
+  if (supports) menu.setConnectingValue(appState.artStyle);
 };
 
 // Re-render the open settings window so the Primary/Secondary swatches in the
@@ -424,7 +426,7 @@ const applyBrushStrokeOpacity = (force: boolean) => {
 // Pick an art style from the combo: apply it to the active brush, match its
 // Harmony stroke-line opacity, persist it, and refresh the settings window.
 const setArtStyle = (name: string) => {
-  currentArtStyle = name;
+  appState.artStyle = name;
   store.set("app.artStyle", name);
   appState.brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
   applyBrushStrokeOpacity(true);
@@ -546,8 +548,8 @@ const clearArtContent = () => {
 const resetArtState = () => {
   clearArtContent();
   for (const b of Object.values(brushes)) b.resetArtStyle(DEFAULT_ART_STYLE);
-  currentArtStyle = DEFAULT_ART_STYLE;
-  store.set("app.artStyle", currentArtStyle);
+  appState.artStyle = DEFAULT_ART_STYLE;
+  store.set("app.artStyle", appState.artStyle);
   renderActiveBrush();
 };
 
@@ -902,7 +904,7 @@ const menu = createMenu(
   ],
   {
     groups: connectingComboGroups(),
-    initial: currentArtStyle,
+    initial: appState.artStyle,
     onChange: (name) => setArtStyle(name),
     onSettings: () => showConnecting(),
     onDeleteCustom: (name) => presets.remove(name),
@@ -952,7 +954,7 @@ document.body.appendChild(menu.el);
 // Custom presets load async (below), so a persisted custom name isn't known yet
 // — fall back to the default until presets.restore() brings it back.
 brushes["Round"]?.selectArtStyle(
-  hasConnection(currentArtStyle) ? currentArtStyle : DEFAULT_ART_STYLE,
+  hasConnection(appState.artStyle) ? appState.artStyle : DEFAULT_ART_STYLE,
 );
 // Apply the persisted brush's own onSelect (art style) + erase mode. The initial
 // brush is assigned directly, not through selectBrush, so do it here. Round is
@@ -966,7 +968,7 @@ renderActiveBrush();
 // Custom presets load async from IDB; once back, a persisted custom art style
 // can actually be applied (the fallback above covered the gap).
 void presets.restore().then((loaded) => {
-  if (loaded && hasConnection(currentArtStyle)) setArtStyle(currentArtStyle);
+  if (loaded && hasConnection(appState.artStyle)) setArtStyle(appState.artStyle);
 });
 
 // ---- onboarding / start page --------------------------------------------------
