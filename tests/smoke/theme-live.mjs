@@ -1,7 +1,8 @@
 // Drive the REAL app (root index.html -> /src/main.ts) in headless Chrome with
-// REAL mouse events, exercising the More menu + theme submenu, screenshotting
-// each step. This catches what a synthetic .click() harness misses (e.g. the
-// document 'mousedown' close-on-outside listener).
+// REAL mouse events: open App Settings and flip the theme via the segmented
+// Auto / Light / Dark control, screenshotting each step and asserting the root
+// dataset.theme actually changes. Theme lives in App Settings now (it used to
+// be a More-menu submenu); this catches what a synthetic .click() harness misses.
 //
 //   node tests/smoke/theme-live.mjs
 import { spawn } from "node:child_process";
@@ -34,6 +35,8 @@ async function main() {
     const S = (m, p) => send(m, p, sessionId);
     await S("Page.enable"); await S("Runtime.enable");
     await S("Emulation.setDeviceMetricsOverride", { width: 1100, height: 720, deviceScaleFactor: 1, mobile: false });
+    // Treat as already onboarded so the Start page doesn't cover the canvas/UI.
+    await S("Page.addScriptToEvaluateOnNewDocument", { source: "try { localStorage.setItem('app.onboarded', 'true'); } catch (e) {}" });
     await S("Page.navigate", { url: PAGE_URL });
     const E = async (expr) => { const r = await S("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 
@@ -48,63 +51,30 @@ async function main() {
         await S("Input.dispatchMouseEvent", { type, x: box.x, y: box.y, button: "left", clickCount: 1, buttons: 1 });
       await sleep(120);
     };
+    const key = async (type, k, code) => S("Input.dispatchKeyEvent", { type, key: k, code });
 
     if (!(await waitFor(() => E(`!!document.querySelector('.canvas-menu-btn')`), 30000))) throw new Error("app/toolbar did not load");
     await sleep(300);
     await shot("live-00-initial.png");
 
-    await realClick(".canvas-menu-btn");
-    const info1 = await E(`(() => {
-      const pop = document.querySelector('.canvas-menu-popover');
-      const head = pop && pop.querySelector('.canvas-menu-current');
-      const sub = pop && pop.querySelector('.canvas-menu-sub');
-      return {
-        popoverOpen: !!(pop && pop.classList.contains('open')),
-        hasCurrentRow: !!head,
-        currentLabel: head && head.querySelector('.opt-label')?.textContent,
-        subExists: !!sub,
-        subVisible: sub ? getComputedStyle(sub).display !== 'none' : null,
-      };
-    })()`);
-    await shot("live-01-more-open.png");
-    console.log("After clicking More:", JSON.stringify(info1));
+    // Theme moved from the More menu to App Settings: open it with the "," shortcut.
+    await key("keyDown", ",", "Comma"); await key("keyUp", ",", "Comma");
+    if (!(await waitFor(() => E(`(() => { const p = document.querySelector('.app-settings-box'); return p && getComputedStyle(p).display !== 'none'; })()`), 5000)))
+      throw new Error("App settings panel did not open");
+    await shot("live-01-appsettings.png");
 
-    await realClick(".canvas-menu-current");
-    const info2 = await E(`(() => {
-      const pop = document.querySelector('.canvas-menu-popover');
-      const sub = pop && pop.querySelector('.canvas-menu-sub');
-      return {
-        popoverStillOpen: !!(pop && pop.classList.contains('open')),
-        subVisible: sub ? getComputedStyle(sub).display !== 'none' : null,
-        subOptions: sub ? [...sub.querySelectorAll('.opt-label')].map(e => e.textContent) : [],
-      };
-    })()`);
-    await shot("live-02-theme-open.png");
-    console.log("After clicking current-theme row:", JSON.stringify(info2));
+    const before = await E(`document.documentElement.dataset.theme || '(auto/none)'`);
+    // Segmented Auto / Light / Dark control: pick the option that isn't active.
+    const picked = await E(`document.querySelector('.appset-seg-btn:not(.active)')?.textContent ?? null`);
+    if (!picked) throw new Error("no inactive theme button found");
+    await realClick(".appset-seg-btn:not(.active)");
+    await sleep(150);
+    const after = await E(`document.documentElement.dataset.theme || '(auto/none)'`);
+    const activeLabel = await E(`document.querySelector('.appset-seg-btn.active')?.textContent ?? null`);
+    await shot("live-02-theme-picked.png");
+    console.log(`Theme: ${before} -> ${after} (active button: ${activeLabel})`);
 
-    // click the theme option that isn't the current one
-    const picked = await E(`(() => {
-      const sub = document.querySelector('.canvas-menu-sub');
-      const rows = sub ? [...sub.querySelectorAll('.brush-option')] : [];
-      const target = rows.find(r => !r.classList.contains('active')) || rows[0];
-      return target ? target.querySelector('.opt-label')?.textContent : null;
-    })()`);
-    if (picked) {
-      await realClick(`.canvas-menu-sub .brush-option:not(.active)`);
-      const info3 = await E(`(() => {
-        const pop = document.querySelector('.canvas-menu-popover');
-        const head = pop && pop.querySelector('.canvas-menu-current');
-        const sub = pop && pop.querySelector('.canvas-menu-sub');
-        return {
-          docTheme: document.documentElement.dataset.theme || '(auto/none)',
-          currentLabel: head && head.querySelector('.opt-label')?.textContent,
-          subCollapsed: sub ? getComputedStyle(sub).display === 'none' : null,
-          popoverStillOpen: !!(pop && pop.classList.contains('open')),
-        };
-      })()`);
-      await shot("live-03-picked.png");
-      console.log(`After picking "${picked}":`, JSON.stringify(info3));
-    }
+    if (after === before) throw new Error(`theme did not change (still ${after})`);
 
     console.log(`\nScreenshots → ${OUT}/live-0*.png`);
     await send("Target.closeTarget", { targetId });
