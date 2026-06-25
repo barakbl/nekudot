@@ -1,4 +1,5 @@
 import { mixOklch } from "./oklch";
+import { hexToRgb } from "./hex";
 
 // Gradient / colour-interpolation primitives, shared by the connection colour
 // source (the 256-step LUT in brushes/color-source) and the palette UI previews
@@ -14,10 +15,7 @@ const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const FALLBACK = "#000000";
 
 export function parseHex(hex: string): [number, number, number] {
-  let h = (HEX.test(hex) ? hex : FALLBACK).slice(1);
-  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  const n = parseInt(h.slice(0, 6), 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return hexToRgb(HEX.test(hex) ? hex : FALLBACK);
 }
 
 export function toHex(r: number, g: number, b: number): string {

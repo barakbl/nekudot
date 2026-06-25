@@ -1,6 +1,6 @@
 import { CanvasRenderer, type IRenderer, type RendererInit } from "../renderer";
 import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
-import type { LayerConfig, LayerType } from "./schema";
+import type { LayerConfig } from "./schema";
 
 // One canvas per layer. Paint and connections both draw onto this surface.
 export class Layer {
@@ -33,10 +33,6 @@ export class Layer {
 
   setName(name: string): void {
     this.config.name = name;
-  }
-
-  hasType(t: LayerType): boolean {
-    return this.config.types.includes(t);
   }
 
   refreshZIndices(): void {

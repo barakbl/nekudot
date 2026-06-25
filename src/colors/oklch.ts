@@ -4,6 +4,8 @@
 // channels are clamped for tiny float overshoot. Self-contained (no dependency),
 // matching the hand-rolled colour maths in brushes/color-source.ts.
 
+import { hexToRgb } from "./hex";
+
 export type Oklch = { l: number; c: number; h: number };
 
 function srgbToLinear(c: number): number {
@@ -108,12 +110,10 @@ export function mixOklch(a: string, b: string, t: number): string {
 
 // "#rgb"/"#rrggbb" -> OKLCH (unparseable input falls back to black).
 export function hexToOklch(hex: string): Oklch {
-  let s = hex.trim().replace(/^#/, "");
-  if (/^[0-9a-f]{3}$/i.test(s)) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
-  const int = /^[0-9a-f]{6}$/i.test(s) ? parseInt(s, 16) : 0;
-  const r = srgbToLinear(((int >> 16) & 255) / 255);
-  const g = srgbToLinear(((int >> 8) & 255) / 255);
-  const b = srgbToLinear((int & 255) / 255);
+  const [r8, g8, b8] = hexToRgb(hex);
+  const r = srgbToLinear(r8 / 255);
+  const g = srgbToLinear(g8 / 255);
+  const b = srgbToLinear(b8 / 255);
   const [L, A, B] = linToOklab(r, g, b);
   const c = Math.sqrt(A * A + B * B);
   let h = (Math.atan2(B, A) * 180) / Math.PI;
