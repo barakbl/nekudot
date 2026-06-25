@@ -1,5 +1,4 @@
-import { makeCloseButton } from "../settings-panel";
-import { makeDraggable } from "../drag";
+import { createPanel } from "../ui/panel";
 
 // The navbar Maps pill opens this box. It lists the memory maps with live dot
 // counts (the active map is bold), and each row can flash / select / rename /
@@ -50,22 +49,10 @@ export function createMapsBox(
   // the Connecting tab). Re-run on every render; `rerender` refreshes the box.
   renderRouting?: (rerender: () => void) => HTMLElement | null,
 ): MapsBox {
-  const panel = document.createElement("div");
-  panel.className = "layers-box maps-box";
-  panel.style.display = "none";
-
-  const header = document.createElement("div");
-  header.className = "panel-header";
-  const title = document.createElement("h3");
-  title.textContent = "Memory Maps";
-  header.appendChild(title);
-  header.appendChild(
-    makeCloseButton(() => {
-      panel.style.display = "none";
-    }),
-  );
-  panel.appendChild(header);
-  makeDraggable(panel, header);
+  const { panel } = createPanel({
+    className: "layers-box maps-box",
+    title: "Memory Maps",
+  });
 
   // "New map" creates a map (made active by the manager) and re-renders so the
   // fresh map shows immediately, ready to rename.

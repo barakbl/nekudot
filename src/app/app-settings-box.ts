@@ -1,5 +1,4 @@
-import { makeCloseButton } from "../settings-panel";
-import { makeDraggable } from "../drag";
+import { createPanel } from "../ui/panel";
 import { makeToggle } from "../toggle";
 import { attachHelp } from "../help";
 import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
@@ -28,18 +27,10 @@ export function createAppSettingsBox(opts: {
   // Wipe all local data and reload to a fresh app (opens its own confirm modal).
   onResetToDefault: () => void;
 }): AppSettingsBox {
-  const panel = document.createElement("div");
-  panel.className = "layers-box app-settings-box";
-  panel.style.display = "none";
-
-  const header = document.createElement("div");
-  header.className = "panel-header";
-  const title = document.createElement("h3");
-  title.textContent = "Application settings";
-  header.appendChild(title);
-  header.appendChild(makeCloseButton(() => (panel.style.display = "none")));
-  panel.appendChild(header);
-  makeDraggable(panel, header);
+  const { panel } = createPanel({
+    className: "layers-box app-settings-box",
+    title: "Application settings",
+  });
 
   const body = document.createElement("div");
   body.className = "appset-body";

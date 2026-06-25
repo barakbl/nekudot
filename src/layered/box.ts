@@ -1,5 +1,4 @@
-import { makeCloseButton } from "../settings-panel";
-import { makeDraggable } from "../drag";
+import { createPanel } from "../ui/panel";
 import { makeToggle } from "../toggle";
 import { CONNECTION_LAYER_ICON } from "../connecting-types";
 import { sizeCanvasForDpr } from "../canvas-size";
@@ -47,22 +46,7 @@ export function createLayersBox(
   onBackgroundApply: () => void = () => {},
   openColorPicker?: OpenColorPicker,
 ): LayersBox {
-  const panel = document.createElement("div");
-  panel.className = "layers-box";
-  panel.style.display = "none";
-
-  const header = document.createElement("div");
-  header.className = "panel-header";
-  const title = document.createElement("h3");
-  title.textContent = "Layers";
-  header.appendChild(title);
-  header.appendChild(
-    makeCloseButton(() => {
-      panel.style.display = "none";
-    }),
-  );
-  panel.appendChild(header);
-  makeDraggable(panel, header);
+  const { panel } = createPanel({ className: "layers-box", title: "Layers" });
 
   const list = document.createElement("div");
   list.className = "layers-list";
