@@ -139,7 +139,14 @@ const viewport = new Viewport({
   onChange: () => onViewportChange(),
 });
 viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
-bindCameraInput({ viewportEl, viewport });
+bindCameraInput({
+  viewportEl,
+  viewport,
+  // Don't hijack the wheel while the Start page is over the canvas - let it
+  // scroll. `onboarding` is created below; this only runs on wheel events.
+  shouldIgnoreWheel: (e) =>
+    onboarding.isOpen() && onboarding.el.contains(e.target as Node),
+});
 
 // "transparent" sentinel when the background is off, so previews/flatten skip
 // the fill. Also the background to flatten against for export/share (the
