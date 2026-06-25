@@ -212,27 +212,29 @@ for (const b of Object.values(brushes)) {
 const storedBrushKey = store.get<string>("app.brush.selected");
 const initialBrushKey: string =
   storedBrushKey && storedBrushKey in brushes ? storedBrushKey : "Round";
-// Live "active tool" state: the container the scattered top-level `let`s are
-// migrating onto, so the many panels reading these share one source of truth.
-// - brush: the selected brush (selectBrush is the only writer).
-// - artStyle: the connection art style chosen from the navbar Connecting combo
-//   and persisted; Round applies it on select (see RoundBrush.onSelect).
-//   Written by setArtStyle and the onboarding reset.
-type AppState = { brush: BrushBase; artStyle: string };
+// Live app state: the container the scattered top-level `let`s are migrating
+// onto, so the many panels reading these share one source of truth. The toggle
+// handlers in App settings / onboarding are the writers (see each field).
+type AppState = {
+  brush: BrushBase; // selected brush; written by selectBrush
+  artStyle: string; // connection art style; written by setArtStyle + onboarding reset
+  penEnabled: boolean; // pen pressure/tilt support; off = stylus draws like a mouse, Pen section hidden
+  pixelLogEnabled: boolean; // pixel-log writing (future features); off by default
+  diagnosticsEnabled: boolean; // opt-in field diagnostics
+  smoothGradients: boolean; // OKLCH "smooth" gradient blend space vs sRGB; default on
+};
 const appState: AppState = {
   brush: brushes[initialBrushKey],
   artStyle: store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE,
+  penEnabled: store.get<boolean>("app.penEnabled") ?? true,
+  pixelLogEnabled: store.get<boolean>("app.pixelLog") ?? false,
+  diagnosticsEnabled: store.get<boolean>("app.diag") ?? false,
+  smoothGradients: store.get<boolean>("app.gradient.oklch") ?? true,
 };
 
-// Pen support (pressure/tilt modulation + the Pen settings section). Toggled
-// from the More menu; default on. When off, a stylus draws like a mouse (the
-// drawing input feeds neutral samples) and the Pen section is hidden.
-let penEnabled = store.get<boolean>("app.penEnabled") ?? true;
-
-// Pixel log writing (the "Pixel log" app setting). Off by default - it is for
-// future features and otherwise just grows storage (see pixel-log.ts).
-let pixelLogEnabled = store.get<boolean>("app.pixelLog") ?? false;
-pixelLog.setEnabled(pixelLogEnabled);
+// Apply the persisted pixel-log setting (App settings; off by default - it is
+// for future features and otherwise just grows storage, see pixel-log.ts).
+pixelLog.setEnabled(appState.pixelLogEnabled);
 
 // Brush settings preview: a big window (Preview button in the settings panel)
 // with a Playground tab (draw freely) and a Preview tab that replays a scripted
@@ -266,10 +268,9 @@ const brushPreview = createBrushPreview({
   showWindow,
 });
 
-// Opt-in field diagnostics (App settings -> Diagnostics). Enabled early so it
+// Apply opt-in field diagnostics early (App settings -> Diagnostics) so it
 // captures startup errors + an environment snapshot on a reload where it's on.
-let diagnosticsEnabled = store.get<boolean>("app.diag") ?? false;
-setDiagnostics(diagnosticsEnabled);
+setDiagnostics(appState.diagnosticsEnabled);
 
 // Registry groups → navbar combo option groups, flagging Custom rows (which get
 // a delete ×). Rebuilt whenever the custom set changes.
@@ -315,7 +316,7 @@ const recallOpacity = () =>
   recalledOpacity(store.get<number>(opacityKey()), appState.brush.getSelectOpacity());
 
 const settingsPanel = createSettingsPanel({
-  showPen: () => penEnabled,
+  showPen: () => appState.penEnabled,
   onOpenPreview: () => brushPreview.open(),
   onSettingChange: (change) => brushPreview.onSettingChanged(change),
   brushControls: {
@@ -648,10 +649,9 @@ const canvasMenuOptions = {
 // The global Application settings panel (theme / input / advanced) - the
 // app-wide counterpart to the per-brush settings panel. Theme + pen pressure
 // moved here from the More menu.
-// Gradient blend space (OKLCH "smooth" vs classic sRGB). Default on; applied to
-// the colour-source module here and toggled from App settings.
-let smoothGradients = store.get<boolean>("app.gradient.oklch") ?? true;
-setGradientSpace(smoothGradients ? "oklch" : "srgb");
+// Apply the gradient blend space (OKLCH "smooth" vs classic sRGB; App settings)
+// to the colour-source module.
+setGradientSpace(appState.smoothGradients ? "oklch" : "srgb");
 
 const appSettingsBox = createAppSettingsBox({
   theme: {
@@ -661,28 +661,28 @@ const appSettingsBox = createAppSettingsBox({
       store.set("app.theme", t);
     },
   },
-  smoothGradients,
+  smoothGradients: appState.smoothGradients,
   onToggleSmoothGradients: (on) => {
-    smoothGradients = on;
+    appState.smoothGradients = on;
     store.set("app.gradient.oklch", on);
     setGradientSpace(on ? "oklch" : "srgb");
     refreshSettingsColors(); // regenerate the Color dial swatches in the new space
   },
-  penEnabled,
+  penEnabled: appState.penEnabled,
   onTogglePen: (on) => {
-    penEnabled = on;
+    appState.penEnabled = on;
     store.set("app.penEnabled", on);
     settingsPanel.render(appState.brush); // show/hide the Pen section live
   },
-  pixelLog: pixelLogEnabled,
+  pixelLog: appState.pixelLogEnabled,
   onTogglePixelLog: (on) => {
-    pixelLogEnabled = on;
+    appState.pixelLogEnabled = on;
     store.set("app.pixelLog", on);
     pixelLog.setEnabled(on);
   },
-  diagnostics: diagnosticsEnabled,
+  diagnostics: appState.diagnosticsEnabled,
   onToggleDiagnostics: (on) => {
-    diagnosticsEnabled = on;
+    appState.diagnosticsEnabled = on;
     store.set("app.diag", on);
     setDiagnostics(on);
     if (on) {
@@ -695,7 +695,7 @@ const appSettingsBox = createAppSettingsBox({
         main: store.get<string>("app.color.main"),
         secondary: store.get<string>("app.color.secondary"),
         theme: store.get<string>("app.theme") ?? "auto",
-        penEnabled,
+        penEnabled: appState.penEnabled,
         background: bg.transparent ? "transparent" : bg.color,
         canvas: `${layerManager.currentSize.width}x${layerManager.currentSize.height}`,
       });
@@ -797,7 +797,7 @@ const refreshConnectionGradients = () => {
 
 const palettePanel = createPalettePanel({
   onGradientsChanged: refreshConnectionGradients,
-  smoothGradients: () => smoothGradients,
+  smoothGradients: () => appState.smoothGradients,
 });
 document.body.appendChild(palettePanel.el);
 refreshConnectionGradients();
@@ -1026,9 +1026,9 @@ const onboarding = createOnboarding({
       },
     },
     pen: {
-      initial: penEnabled,
+      initial: appState.penEnabled,
       onChange: (on) => {
-        penEnabled = on;
+        appState.penEnabled = on;
         store.set("app.penEnabled", on);
         settingsPanel.render(appState.brush); // show/hide the Pen section live
       },
@@ -1124,7 +1124,7 @@ const drawingInput = bindDrawingInput({
   brush: () => appState.brush,
   symmetry,
   layerManager,
-  penEnabled: () => penEnabled,
+  penEnabled: () => appState.penEnabled,
   gestureActive: () => touchGestures?.active() ?? false,
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
