@@ -632,6 +632,7 @@ const { exportImage, shareImage } = createExportActions({
   layerManager,
   exportBackground,
   showChip,
+  showError,
 });
 
 const canvasMenuOptions = {
