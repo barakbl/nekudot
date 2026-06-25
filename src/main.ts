@@ -522,14 +522,21 @@ const showMaps = () => {
 };
 
 // Async-restore paint state + undo stack from IDB on startup. Called here
-// (during module evaluation) so it's first in the history queue — a stroke
-// finished while the load is still running queues behind it.
-void history.init(async (paintSnap) => {
-  if (paintSnap) {
-    await layerManager.applyPaintData(paintSnap);
-    layersBox.refreshPreviews();
-  }
-});
+// (during module evaluation) so it's first in the history queue. Drawing input
+// is gated on `bootRestored` until this settles, so an early stroke can't be
+// drawn and then wiped by applyPaintData mid-flight (bug #1). `finally` (not
+// `then`) so a failed restore still unblocks input rather than freezing it.
+let bootRestored = false;
+void history
+  .init(async (paintSnap) => {
+    if (paintSnap) {
+      await layerManager.applyPaintData(paintSnap);
+      layersBox.refreshPreviews();
+    }
+  })
+  .finally(() => {
+    bootRestored = true;
+  });
 // Deliberately OUTSIDE the history queue: the log's IDB open can stall
 // indefinitely (version upgrade blocked by an old tab), and anything awaited
 // inside the queue's first op would deadlock every undo/push behind it.
@@ -1137,6 +1144,7 @@ const drawingInput = bindDrawingInput({
   layerManager,
   penEnabled: () => appState.penEnabled,
   gestureActive: () => touchGestures?.active() ?? false,
+  ready: () => bootRestored, // hold input until the boot paint-restore settles
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();

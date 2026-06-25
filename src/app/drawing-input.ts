@@ -33,6 +33,11 @@ export function bindDrawingInput(opts: {
   // True while a multi-touch camera gesture (pan/zoom/rotate) owns the input -
   // touch pointers must not draw then. See app/touch-gestures.
   gestureActive?: () => boolean;
+  // Gate: when this returns false, pointerdown is ignored so no stroke starts.
+  // Used to hold input until the boot paint-restore finishes - otherwise an
+  // early stroke is overwritten by applyPaintData mid-flight (bug #1). Default
+  // (unset) is always-ready.
+  ready?: () => boolean;
   onStrokeStart?: () => void; // fired when a stroke begins (e.g. arm GIF capture)
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
 }): { commitActiveStroke: () => void; cancelActiveStroke: () => void } {
@@ -101,6 +106,9 @@ export function bindDrawingInput(opts: {
 
   stage.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
+    // Boot restore still in flight - drop the pointer so a stroke can't start
+    // and be wiped by the incoming applyPaintData (bug #1).
+    if (opts.ready?.() === false) return;
     // Ignore extra pointers while a stroke is live (e.g. a 2nd finger landing -
     // that's a camera gesture, not a new stroke) and any touch while the camera
     // gesture owns the input. Guards both event orders (pointerdown vs touchstart).
