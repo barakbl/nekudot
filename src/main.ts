@@ -113,8 +113,11 @@ if (legacyBgColor) {
   if (cur.color === "#ffffff") {
     layerManager.setBackground({ color: legacyBgColor }, { emit: false });
   }
-  store.set("app.canvas.bg", undefined);
 }
+// Drop the legacy key once migrated. Unconditionally (not just when truthy) so a
+// prior build's `set(key, undefined)` - which wrote the string "undefined" and
+// left the key behind - is also cleaned up. removeItem on an absent key no-ops.
+store.remove("app.canvas.bg");
 
 // CSS checkerboard shown wherever a transparent background needs to read as
 // "no background" (the stage). Previews draw their own checker on canvas.
@@ -370,7 +373,7 @@ const settingsPanel = createSettingsPanel({
     // as a fresh brush selection (getSelectOpacity ?? 1).
     layerManager.setLineWidth(DEFAULT_BRUSH_SIZE);
     store.set("app.size", DEFAULT_BRUSH_SIZE);
-    store.set(opacityKey(), undefined); // forget the remembered opacity for this context
+    store.remove(opacityKey()); // forget the remembered opacity for this context
     const op = recallOpacity(); // -> the style's default (strokeAlpha) or 1
     layerManager.setGlobalAlpha(op);
     store.set("app.opacity", op);
