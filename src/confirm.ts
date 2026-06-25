@@ -1,3 +1,5 @@
+import { createModal } from "./ui/modal";
+
 export type ConfirmOptions = {
   title?: string;
   message: string;
@@ -10,10 +12,8 @@ export type ConfirmOptions = {
 
 // Single-button error modal. Used when a validation/load step fails.
 export function showError(message: string, title = "Couldn't load"): void {
-  const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal app-modal";
-  const card = document.createElement("div");
-  card.className = "confirm-card";
+  const modal = createModal();
+  const { card, close } = modal;
 
   const header = document.createElement("div");
   header.className = "confirm-header";
@@ -42,21 +42,11 @@ export function showError(message: string, title = "Couldn't load"): void {
   ok.textContent = "OK";
   actions.appendChild(ok);
   card.appendChild(actions);
-  backdrop.appendChild(card);
-  document.body.appendChild(backdrop);
 
-  const close = () => {
-    document.removeEventListener("keydown", onKey);
-    backdrop.remove();
-  };
-  const onKey = (e: KeyboardEvent) => {
+  ok.addEventListener("click", () => close());
+  modal.onKey = (e) => {
     if (e.key === "Escape" || e.key === "Enter") close();
   };
-  ok.addEventListener("click", close);
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close();
-  });
-  document.addEventListener("keydown", onKey);
   ok.focus();
 }
 
@@ -74,10 +64,8 @@ export type PromptOptions = {
 // Single-line text prompt modal (the styled replacement for window.prompt).
 // onConfirm fires with the trimmed value; an empty value keeps the modal open.
 export function showPrompt(opts: PromptOptions): void {
-  const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal app-modal";
-  const card = document.createElement("div");
-  card.className = "confirm-card";
+  const modal = createModal();
+  const { card, close } = modal;
 
   if (opts.title) {
     const header = document.createElement("div");
@@ -110,14 +98,7 @@ export function showPrompt(opts: PromptOptions): void {
   confirm.textContent = opts.confirmLabel ?? "Save";
   actions.append(cancel, confirm);
   card.appendChild(actions);
-  backdrop.appendChild(card);
-  document.body.appendChild(backdrop);
 
-  const close = (then?: () => void) => {
-    document.removeEventListener("keydown", onKey);
-    backdrop.remove();
-    then?.();
-  };
   const submit = () => {
     const value = input.value.trim();
     if (!value) {
@@ -126,16 +107,13 @@ export function showPrompt(opts: PromptOptions): void {
     }
     close(() => opts.onConfirm(value));
   };
-  const onKey = (e: KeyboardEvent) => {
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", submit);
+  modal.onKey = (e) => {
     if (e.key === "Escape") close(opts.onCancel);
     else if (e.key === "Enter") submit();
   };
-  cancel.addEventListener("click", () => close(opts.onCancel));
-  confirm.addEventListener("click", submit);
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close(opts.onCancel);
-  });
-  document.addEventListener("keydown", onKey);
+  modal.onBackdropClose = () => close(opts.onCancel);
   input.focus();
   input.select();
 }
@@ -155,10 +133,8 @@ export type ChecklistOptions = {
 // onConfirm fires with the ids of the ticked items; Confirm is disabled when
 // nothing is ticked. Items default to ticked unless `checked: false`.
 export function showChecklist(opts: ChecklistOptions): void {
-  const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal app-modal";
-  const card = document.createElement("div");
-  card.className = "confirm-card";
+  const modal = createModal();
+  const { card, close } = modal;
 
   if (opts.title) {
     const header = document.createElement("div");
@@ -202,8 +178,6 @@ export function showChecklist(opts: ChecklistOptions): void {
   confirm.textContent = opts.confirmLabel ?? "Export";
   actions.append(cancel, confirm);
   card.appendChild(actions);
-  backdrop.appendChild(card);
-  document.body.appendChild(backdrop);
 
   const selected = () => boxes.filter((b) => b.checked).map((b) => b.dataset.id ?? "");
   const sync = () => {
@@ -212,24 +186,16 @@ export function showChecklist(opts: ChecklistOptions): void {
   for (const b of boxes) b.addEventListener("change", sync);
   sync();
 
-  const close = (then?: () => void) => {
-    document.removeEventListener("keydown", onKey);
-    backdrop.remove();
-    then?.();
-  };
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Escape") close(opts.onCancel);
-  };
   cancel.addEventListener("click", () => close(opts.onCancel));
   confirm.addEventListener("click", () => {
     if (selected().length === 0) return;
     const ids = selected();
     close(() => opts.onConfirm(ids));
   });
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close(opts.onCancel);
-  });
-  document.addEventListener("keydown", onKey);
+  modal.onKey = (e) => {
+    if (e.key === "Escape") close(opts.onCancel);
+  };
+  modal.onBackdropClose = () => close(opts.onCancel);
 }
 
 export type TypedConfirmOptions = {
@@ -255,10 +221,8 @@ export function matchesRequiredText(value: string, required: string): boolean {
 // A destructive confirm gated behind typing a specific word (e.g. "yes"). The
 // Confirm button stays disabled until the input matches requireText.
 export function showTypedConfirm(opts: TypedConfirmOptions): void {
-  const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal app-modal";
-  const card = document.createElement("div");
-  card.className = "confirm-card";
+  const modal = createModal();
+  const { card, close } = modal;
 
   const header = document.createElement("div");
   header.className = "confirm-header";
@@ -301,8 +265,6 @@ export function showTypedConfirm(opts: TypedConfirmOptions): void {
   confirm.disabled = true;
   actions.append(cancel, confirm);
   card.appendChild(actions);
-  backdrop.appendChild(card);
-  document.body.appendChild(backdrop);
 
   const matches = () => matchesRequiredText(input.value, opts.requireText);
   const sync = () => {
@@ -310,11 +272,6 @@ export function showTypedConfirm(opts: TypedConfirmOptions): void {
   };
   input.addEventListener("input", sync);
 
-  const close = (then?: () => void) => {
-    document.removeEventListener("keydown", onKey);
-    backdrop.remove();
-    then?.();
-  };
   const submit = () => {
     if (!matches()) {
       input.focus();
@@ -322,25 +279,19 @@ export function showTypedConfirm(opts: TypedConfirmOptions): void {
     }
     close(opts.onConfirm);
   };
-  const onKey = (e: KeyboardEvent) => {
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", submit);
+  modal.onKey = (e) => {
     if (e.key === "Escape") close(opts.onCancel);
     else if (e.key === "Enter") submit();
   };
-  cancel.addEventListener("click", () => close(opts.onCancel));
-  confirm.addEventListener("click", submit);
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close(opts.onCancel);
-  });
-  document.addEventListener("keydown", onKey);
+  modal.onBackdropClose = () => close(opts.onCancel);
   input.focus();
 }
 
 export function showConfirm(opts: ConfirmOptions): void {
-  const backdrop = document.createElement("div");
-  backdrop.className = "confirm-modal app-modal";
-
-  const card = document.createElement("div");
-  card.className = "confirm-card";
+  const modal = createModal();
+  const { card, close } = modal;
 
   if (opts.title || opts.destructive) {
     const header = document.createElement("div");
@@ -385,28 +336,16 @@ export function showConfirm(opts: ConfirmOptions): void {
   actions.appendChild(cancel);
   actions.appendChild(confirm);
   card.appendChild(actions);
-  backdrop.appendChild(card);
-  document.body.appendChild(backdrop);
 
-  const close = (then?: () => void) => {
-    document.removeEventListener("keydown", onKey);
-    backdrop.remove();
-    then?.();
-  };
-
-  const onKey = (e: KeyboardEvent) => {
+  cancel.addEventListener("click", () => close(opts.onCancel));
+  confirm.addEventListener("click", () => close(opts.onConfirm));
+  modal.onKey = (e) => {
     if (e.key === "Escape") close(opts.onCancel);
     else if (e.key === "Enter") {
       close(opts.destructive ? opts.onCancel : opts.onConfirm);
     }
   };
-
-  cancel.addEventListener("click", () => close(opts.onCancel));
-  confirm.addEventListener("click", () => close(opts.onConfirm));
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close(opts.onCancel);
-  });
-  document.addEventListener("keydown", onKey);
+  modal.onBackdropClose = () => close(opts.onCancel);
 
   (opts.destructive ? cancel : confirm).focus();
 }
