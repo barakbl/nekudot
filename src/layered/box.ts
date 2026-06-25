@@ -2,6 +2,7 @@ import { makeCloseButton } from "../settings-panel";
 import { makeDraggable } from "../drag";
 import { makeToggle } from "../toggle";
 import { CONNECTION_LAYER_ICON } from "../connecting-types";
+import { sizeCanvasForDpr } from "../canvas-size";
 import type { LayerManager } from "./manager";
 
 export type LayersBox = {
@@ -457,10 +458,7 @@ function makePreview(
 
   const thumb = document.createElement("canvas");
   thumb.className = "layer-preview";
-  thumb.width = Math.round(PREVIEW_CSS_W * dpr);
-  thumb.height = Math.round(cssH * dpr);
-  thumb.style.width = `${PREVIEW_CSS_W}px`;
-  thumb.style.height = `${cssH}px`;
+  sizeCanvasForDpr(thumb, PREVIEW_CSS_W, cssH, dpr);
 
   const ctx = thumb.getContext("2d");
   const refresh = () => {
