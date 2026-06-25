@@ -3,6 +3,8 @@
 
 export type Hsv = { h: number; s: number; v: number }; // h 0..360, s/v 0..1
 
+import { hexToRgb } from "./hex";
+
 export function hsvToHex(h: number, s: number, v: number): string {
   h = ((h % 360) + 360) % 360;
   s = Math.max(0, Math.min(1, s));
@@ -27,12 +29,10 @@ export function hsvToHex(h: number, s: number, v: number): string {
 }
 
 export function hexToHsv(hex: string): Hsv {
-  let s = hex.trim().replace(/^#/, "");
-  if (/^[0-9a-f]{3}$/i.test(s)) s = s[0] + s[0] + s[1] + s[1] + s[2] + s[2];
-  const int = /^[0-9a-f]{6}$/i.test(s) ? parseInt(s, 16) : 0;
-  const r = ((int >> 16) & 255) / 255;
-  const g = ((int >> 8) & 255) / 255;
-  const b = (int & 255) / 255;
+  const [r8, g8, b8] = hexToRgb(hex);
+  const r = r8 / 255;
+  const g = g8 / 255;
+  const b = b8 / 255;
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
   const d = max - min;

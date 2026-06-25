@@ -11,7 +11,7 @@ export function genId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export const LayerTypeSchema = z.enum(["normal", "memory"]);
+export const LayerTypeSchema = z.enum(["normal"]);
 export type LayerType = z.infer<typeof LayerTypeSchema>;
 
 export const LayerSchema = z.object({
