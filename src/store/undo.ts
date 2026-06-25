@@ -148,7 +148,7 @@ export class UndoStore<S> {
     return {
       version: 1,
       pointer: state.pointer,
-      rowIds: state.stack.map((snap) => ids.get(snap)!),
+      rowIds: state.stack.map((snap) => ids.get(snap) ?? 0),
     };
   }
 }

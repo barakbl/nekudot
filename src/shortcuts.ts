@@ -240,7 +240,8 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
 
   const byGroup = new Map<string, GroupedShortcut[]>();
   for (const k of order) {
-    const e = byKey.get(k)!;
+    const e = byKey.get(k);
+    if (!e) continue; // order is built from byKey's own keys, so this never fires
     const list = byGroup.get(e.group) ?? [];
     list.push(e);
     byGroup.set(e.group, list);
@@ -249,7 +250,8 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
   // Apply stable order.
   const ordered = new Map<string, GroupedShortcut[]>();
   for (const g of GROUP_ORDER) {
-    if (byGroup.has(g)) ordered.set(g, byGroup.get(g)!);
+    const v = byGroup.get(g);
+    if (v) ordered.set(g, v);
   }
   for (const [g, v] of byGroup) {
     if (!ordered.has(g)) ordered.set(g, v);
@@ -340,13 +342,14 @@ export function createShortcutsPanel(shortcuts: Shortcut[]): {
       // route to help mode on touch, where there's no "?" key). The row owns
       // the click; the switch is a passive indicator kept in sync.
       if (item.state) {
+        const getState = item.state; // capture narrowed non-optional ref for the closure
         const sw = document.createElement("span");
         sw.className = "shortcuts-toggle";
         const knob = document.createElement("span");
         knob.className = "shortcuts-toggle-knob";
         sw.appendChild(knob);
         const sync = () => {
-          const on = item.state!();
+          const on = getState();
           sw.classList.toggle("on", on);
           row.setAttribute("aria-pressed", String(on));
         };

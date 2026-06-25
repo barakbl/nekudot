@@ -9,7 +9,7 @@
     "rules": {
       "recommended": true,
       "style": {
-        "noNonNullAssertion": "off",
+        "noNonNullAssertion": "error",
         "useTemplate": "off",
         "useExponentiationOperator": "off",
         "noDescendingSpecificity": "off"
@@ -29,6 +29,16 @@
         "rules": {
           "suspicious": {
             "noFocusedTests": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["tests/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
           }
         }
       }
