@@ -1,54 +1,27 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-// ---------------------------------------------------------------------------
-// Minimal DOM stub (same pattern as active-connection.test.ts) with an async
-// toBlob, so captures genuinely take time — that's what the races are made of.
+// This suite uses the shared LayerManager harness, extended with an ASYNC toBlob
+// so captures genuinely take time - that's what the races are made of.
 // `toBlobDelay` slows the encoding; `failNextToBlob` makes one capture reject.
-// ---------------------------------------------------------------------------
 let toBlobDelay = 1;
 let failNextToBlob = false;
-
-function makeCanvasStub(): HTMLCanvasElement {
-  const canvas: Record<string, unknown> = {
-    width: 0,
-    height: 0,
-    style: {},
-    remove() {},
-    toBlob(cb: (b: Blob | null) => void) {
-      if (failNextToBlob) {
-        failNextToBlob = false;
-        throw new Error("toBlob boom");
-      }
-      setTimeout(() => cb(null), toBlobDelay);
-    },
-  };
-  const ctx = new Proxy(
-    { canvas } as Record<string, unknown>,
-    {
-      get: (t, p) => (p in t ? t[p as string] : () => {}),
-      set: (t, p, v) => {
-        t[p as string] = v;
-        return true;
-      },
-    },
-  );
-  canvas.getContext = () => ctx;
-  return canvas as unknown as HTMLCanvasElement;
-}
-
-(globalThis as { document?: unknown }).document = {
-  createElement: (tag: string) =>
-    tag === "canvas"
-      ? makeCanvasStub()
-      : { style: {}, appendChild() {}, remove() {} },
+const raceToBlob = (cb: (b: Blob | null) => void) => {
+  if (failNextToBlob) {
+    failNextToBlob = false;
+    throw new Error("toBlob boom");
+  }
+  setTimeout(() => cb(null), toBlobDelay);
 };
 
-import { LayerManager } from "../src/layered/manager";
+import type { LayerManager } from "../src/layered/manager";
 import { AppHistory } from "../src/app/history";
+import {
+  installDocumentStub,
+  makeCanvasStub,
+  newManager,
+} from "./_layer-manager-harness";
 
-const container = { style: {}, appendChild() {} } as unknown as HTMLElement;
-const newManager = (): LayerManager =>
-  new LayerManager({ container, size: { width: 100, height: 100 }, dpr: 1 });
+installDocumentStub(() => makeCanvasStub(raceToBlob));
 
 // There is no IndexedDB in node — the Paint/Undo stores warn and fall back to
 // null/no-op, which is exactly the bare environment these tests want.

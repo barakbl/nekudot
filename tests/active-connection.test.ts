@@ -1,48 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-// ---------------------------------------------------------------------------
-// Minimal DOM stub. LayerManager builds real <canvas>-backed layers, so we give
-// it just enough of `document` + a canvas 2D context (every ctx method is a
-// no-op) to run headlessly in the node test environment. This lets us exercise
-// the actual manager logic rather than a re-implementation of it.
-// ---------------------------------------------------------------------------
-function makeCanvasStub(): HTMLCanvasElement {
-  const canvas: Record<string, unknown> = {
-    width: 0,
-    height: 0,
-    style: {},
-    remove() {},
-  };
-  const ctx = new Proxy(
-    { canvas } as Record<string, unknown>,
-    {
-      get: (t, p) => (p in t ? t[p as string] : () => {}),
-      set: (t, p, v) => {
-        t[p as string] = v;
-        return true;
-      },
-    },
-  );
-  canvas.getContext = () => ctx;
-  return canvas as unknown as HTMLCanvasElement;
-}
-
-(globalThis as { document?: unknown }).document = {
-  createElement: (tag: string) =>
-    tag === "canvas"
-      ? makeCanvasStub()
-      : { style: {}, appendChild() {}, remove() {} },
-};
-
-import { LayerManager } from "../src/layered/manager";
+import type { LayerManager } from "../src/layered/manager";
 import { defaultLayersConfig } from "../src/layered/schema";
+import { installDocumentStub, newManager } from "./_layer-manager-harness";
 
-const container = { style: {}, appendChild() {} } as unknown as HTMLElement;
-
-// Fresh manager with no store -> seeded from defaultLayersConfig.
-function newManager(): LayerManager {
-  return new LayerManager({ container, size: { width: 100, height: 100 }, dpr: 1 });
-}
+installDocumentStub();
 
 const connId = (m: LayerManager) => m.all[m.activeConnectionIdx].config.id;
 
