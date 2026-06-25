@@ -1,5 +1,5 @@
 import { CanvasRenderer, type IRenderer, type RendererInit } from "../renderer";
-import type { CanvasSize } from "../canvas-size";
+import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
 import type { LayerConfig, LayerType } from "./schema";
 
 // One canvas per layer. Paint and connections both draw onto this surface.
@@ -45,13 +45,10 @@ export class Layer {
 
   private createCanvas(): HTMLCanvasElement {
     const c = document.createElement("canvas");
-    c.width = Math.round(this.size.width * this.dpr);
-    c.height = Math.round(this.size.height * this.dpr);
+    sizeCanvasForDpr(c, this.size.width, this.size.height, this.dpr);
     c.style.position = "absolute";
     c.style.left = "0";
     c.style.top = "0";
-    c.style.width = `${this.size.width}px`;
-    c.style.height = `${this.size.height}px`;
     c.style.pointerEvents = "none";
     return c;
   }

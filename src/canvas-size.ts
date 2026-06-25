@@ -30,3 +30,22 @@ export function safeLoadSize(raw: unknown): CanvasSize | null {
   const parsed = CanvasSizeSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
 }
+
+// Size a canvas for a HiDPI display: the backing store is the CSS box scaled by
+// dpr (rounded to whole device pixels), while the element keeps its CSS size.
+// The single home for this ritual - every displayed canvas (layers, overlays,
+// wet-stroke, image paste, previews, thumbnails) sizes through here so the
+// backing-store-vs-CSS-box mapping can't drift across the codebase. Note that
+// writing canvas.width/height also clears the bitmap, so a caller that must
+// preserve its pixels guards the call (only re-sizing when the size changed).
+export function sizeCanvasForDpr(
+  canvas: HTMLCanvasElement,
+  cssWidth: number,
+  cssHeight: number,
+  dpr: number,
+): void {
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${cssHeight}px`;
+}

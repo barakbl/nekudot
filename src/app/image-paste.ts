@@ -1,5 +1,6 @@
 import type { Viewport } from "./viewport";
 import type { LayerManager } from "../layered/manager";
+import { sizeCanvasForDpr } from "../canvas-size";
 
 // Paste-an-image-onto-the-canvas flow. Listening for a clipboard image, it
 // drops the image into a PLACEMENT session: a preview rendered on the canvas
@@ -110,13 +111,10 @@ export function bindImagePaste(opts: {
 
     const canvas = document.createElement("canvas");
     canvas.className = "paste-preview";
-    canvas.width = Math.round(cs.width * dpr);
-    canvas.height = Math.round(cs.height * dpr);
+    sizeCanvasForDpr(canvas, cs.width, cs.height, dpr);
     canvas.style.position = "absolute";
     canvas.style.left = "0";
     canvas.style.top = "0";
-    canvas.style.width = `${cs.width}px`;
-    canvas.style.height = `${cs.height}px`;
     canvas.style.zIndex = "10000"; // above the layers + other stage overlays
     canvas.style.touchAction = "none";
     canvas.style.cursor = "move";

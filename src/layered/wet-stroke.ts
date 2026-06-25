@@ -1,6 +1,6 @@
 import { CanvasRenderer } from "../renderer";
 import type { IRenderer, RendererInit } from "../renderer";
-import type { CanvasSize } from "../canvas-size";
+import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
 import { dlog, diagnosticOverride } from "../diagnostics";
 
 // Per-stroke "wet" buffer for continuous strokes. While a partly-transparent
@@ -52,10 +52,7 @@ export class WetStrokeBuffer {
       this.canvas = c;
     }
     const c = this.canvas;
-    c.width = Math.round(size.width * this.dpr);
-    c.height = Math.round(size.height * this.dpr);
-    c.style.width = `${size.width}px`;
-    c.style.height = `${size.height}px`;
+    sizeCanvasForDpr(c, size.width, size.height, this.dpr);
     c.style.zIndex = String(zIndex); // sit on the active layer
     c.style.opacity = String(alpha); // live preview at the stroke's own opacity
     const ctx = c.getContext("2d");

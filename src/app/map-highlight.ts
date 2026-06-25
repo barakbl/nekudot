@@ -1,4 +1,5 @@
 import type { LayerManager } from "../layered/manager";
+import { sizeCanvasForDpr } from "../canvas-size";
 
 const DEFAULT_COLOR = "#22d3ee"; // cyan accent — reads on light + dark
 const DURATION = 2500;
@@ -44,11 +45,9 @@ export function createMapHighlighter(
     const size = layerManager.currentSize;
     const w = Math.round(size.width * dpr);
     const h = Math.round(size.height * dpr);
+    // Guard so we only clear the bitmap (width/height write) when the size changed.
     if (c.width !== w || c.height !== h) {
-      c.width = w;
-      c.height = h;
-      c.style.width = `${size.width}px`;
-      c.style.height = `${size.height}px`;
+      sizeCanvasForDpr(c, size.width, size.height, dpr);
     }
   };
 

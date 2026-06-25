@@ -1,5 +1,5 @@
 import { CanvasRenderer, type IRenderer } from "../renderer";
-import type { CanvasSize } from "../canvas-size";
+import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
 
 // A pointer-transparent canvas stacked over the layer canvases for transient
 // visuals (the invisible-brush glow, the symmetry guides). Owns the renderer
@@ -40,10 +40,7 @@ export class Overlay {
   // Sets canvas dimensions and builds a fresh renderer. Called by both the
   // constructor and resize() so the logic lives in one place.
   private applySize(size: CanvasSize): { renderer: IRenderer; cssSize: CanvasSize } {
-    this.el.width = Math.round(size.width * this.dpr);
-    this.el.height = Math.round(size.height * this.dpr);
-    this.el.style.width = `${size.width}px`;
-    this.el.style.height = `${size.height}px`;
+    sizeCanvasForDpr(this.el, size.width, size.height, this.dpr);
     const ctx = this.el.getContext("2d");
     if (!ctx) throw new Error("overlay: failed to get 2d context");
     return { renderer: new CanvasRenderer(ctx, { dpr: this.dpr }), cssSize: size };

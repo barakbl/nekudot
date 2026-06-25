@@ -15,6 +15,7 @@
 // with the × (no auto-dismiss).
 
 import { CanvasRenderer } from "./renderer";
+import { sizeCanvasForDpr } from "./canvas-size";
 import { createBareHost, type PaintHost } from "./paint-host";
 import { createNeighborFinder } from "./neighbor-finder";
 import { makeCloseButton } from "./settings-panel";
@@ -250,10 +251,7 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
   ): { canvas: HTMLCanvasElement; renderer: CanvasRenderer } | null => {
     const canvas = document.createElement("canvas");
     canvas.className = "brush-preview-canvas";
-    canvas.width = Math.round(s * opts.dpr);
-    canvas.height = Math.round(s * opts.dpr);
-    canvas.style.width = `${s}px`;
-    canvas.style.height = `${s}px`;
+    sizeCanvasForDpr(canvas, s, s, opts.dpr);
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
     const renderer = new CanvasRenderer(ctx, { dpr: opts.dpr, lineCap: "round", lineJoin: "round" });
