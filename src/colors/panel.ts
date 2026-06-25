@@ -6,10 +6,12 @@
 //     "Picker". The active tab + selected mood are remembered across sessions.
 //   - The Picker tab reveals OKLCH / HSB sub-tabs: OKLCH L/C/H sliders, or a
 //     Photoshop-style saturation/brightness square + hue bar, plus an Eyedropper
-//     (where supported) and a shared preview + Apply.
+//     (where supported) and a shared preview + Done.
 // Palettes are seeded from colors/gradients on first run (see store.ensureSeeded)
-// and are all editable. Picking a colour applies it (via the request's onPick),
-// records it as recent, and auto-closes. Outside-click / Escape also closes it.
+// and are all editable. In the editors the colour applies live as you drag (via
+// the request's onPreview, falling back to onPick); a swatch click or the Done
+// button commits it (onPick), records it as recent, and closes. Outside-click /
+// Escape also closes it.
 import { makeCloseButton } from "../settings-panel";
 import { makeToggle } from "../ui/toggle";
 import { attachHelp } from "../help";
@@ -52,7 +54,11 @@ export type PickRequest = {
   title: string; // shown in the header, e.g. "Primary color", "Background"
   anchor: HTMLElement; // the popover opens next to this element
   getColor: () => string; // the current colour (seeds the pickers)
-  onPick: (hex: string) => void; // apply a chosen "#rrggbb"
+  onPick: (hex: string) => void; // commit a chosen "#rrggbb" (records recent, closes)
+  // Live preview as the slider/marker moves, before the user commits with Done.
+  // Defaults to onPick; supply a lighter variant when onPick has side effects you
+  // don't want per drag-tick (e.g. recording an undo entry).
+  onPreview?: (hex: string) => void;
 };
 
 export type PalettePanel = {
@@ -247,7 +253,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     tools.appendChild(eye);
   }
 
-  // Shared preview / hex / Apply (declared before the editors so setWorking's
+  // Shared preview / hex / Done (declared before the editors so setWorking's
   // targets exist; reflects whichever picker sub-tab is active).
   const foot = document.createElement("div");
   foot.className = "picker-foot";
@@ -259,17 +265,20 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   hexInput.maxLength = 7;
   hexInput.spellcheck = false;
   hexInput.setAttribute("aria-label", "Hex colour");
-  // Typing a valid hex drives the active editor (sliders/markers) + preview.
+  // Typing a valid hex drives the active editor (sliders/markers) + preview, and
+  // applies the colour live - just like dragging a slider (see setWorking).
   hexInput.addEventListener("input", () => {
     const n = normalizeHex(hexInput.value);
-    if (n) seedActiveEditor(n);
+    if (n) seedActiveEditor(n, true);
   });
   // On blur/enter, snap the text to the canonical form (or revert if invalid).
   hexInput.addEventListener("change", () => (hexInput.value = working));
   const applyBtn = document.createElement("button");
   applyBtn.type = "button";
   applyBtn.className = "picker-apply";
-  applyBtn.textContent = "Apply";
+  // The colour already applies live as you drag (see setWorking); this just
+  // finalises - records it as recent and closes the popover.
+  applyBtn.textContent = "Done";
   applyBtn.addEventListener("click", () => pick(working));
   foot.append(preview, hexInput, applyBtn);
 
@@ -401,7 +410,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   }
 
   // --- Picker sub-tabs (OKLCH / HSB) -----------------------------------------
-  function setWorking(hex: string): void {
+  // `live` is true only for a user gesture in an editor (slider drag / marker
+  // move), false for programmatic seeding (open, sub-tab switch, hex typing).
+  function setWorking(hex: string, live = false): void {
     working = hex;
     preview.style.background = hex;
     // Don't fight the user while they're typing in the hex field.
@@ -410,11 +421,19 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     if (editDraft && editSelected >= 0 && editSelected < editDraft.colors.length) {
       editDraft.colors[editSelected] = hex;
       editSwatchEls[editSelected]?.style.setProperty("background", hex);
+    } else if (live && current) {
+      // Outside the editor, dragging the slider/marker applies the colour live -
+      // no Apply step. The footer button (Done) just records it as recent + closes
+      // (see pick()). onPreview keeps this off the undo stack where onPick commits.
+      const n = normalizeHex(hex);
+      if (n) (current.onPreview ?? current.onPick)(n);
     }
   }
-  function seedActiveEditor(hex: string): void {
-    if (pickerMode === "oklch") oklchEditor.seed(hex);
-    else hsbEditor.seed(hex);
+  // live=true when the seed is itself a user gesture (typing a hex), so it applies
+  // the colour the same way dragging a slider does; false for programmatic seeds.
+  function seedActiveEditor(hex: string, live = false): void {
+    if (pickerMode === "oklch") oklchEditor.seed(hex, live);
+    else hsbEditor.seed(hex, live);
   }
   function makePickTab(label: string, mode: PickerMode): HTMLButtonElement {
     const b = document.createElement("button");
@@ -438,9 +457,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   }
 
   // --- OKLCH editor: L / C / H sliders with live gradient tracks --------------
-  function buildOklchEditor(onChange: (hex: string) => void): {
+  function buildOklchEditor(onChange: (hex: string, live: boolean) => void): {
     el: HTMLElement;
-    seed: (hex: string) => void;
+    seed: (hex: string, live?: boolean) => void;
   } {
     const el = document.createElement("div");
     el.className = "oklch-editor";
@@ -451,7 +470,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     const hRow = makeSliderRow("H", 0, 360, "any");
     el.append(lRow.row, cRow.row, hRow.row);
 
-    const update = () => {
+    const update = (live: boolean) => {
       const l = lRow.value();
       const c = cRow.value();
       const h = hRow.value();
@@ -461,20 +480,20 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       lRow.setText(`${Math.round(l * 100)}%`);
       cRow.setText(c.toFixed(3));
       hRow.setText(`${Math.round(h)}°`);
-      onChange(oklchToHex({ l, c, h }));
+      onChange(oklchToHex({ l, c, h }), live);
     };
-    lRow.onInput(update);
-    cRow.onInput(update);
-    hRow.onInput(update);
+    lRow.onInput(() => update(true));
+    cRow.onInput(() => update(true));
+    hRow.onInput(() => update(true));
 
     return {
       el,
-      seed(hex: string) {
+      seed(hex: string, live = false) {
         const o = hexToOklch(normalizeHex(hex) ?? "#000000");
         lRow.set(o.l);
         cRow.set(o.c);
         hRow.set(o.h);
-        update();
+        update(live);
       },
     };
   }
@@ -511,9 +530,9 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   }
 
   // --- HSB editor: Photoshop-style saturation/brightness square + hue bar -----
-  function buildHsbEditor(onChange: (hex: string) => void): {
+  function buildHsbEditor(onChange: (hex: string, live: boolean) => void): {
     el: HTMLElement;
-    seed: (hex: string) => void;
+    seed: (hex: string, live?: boolean) => void;
   } {
     const el = document.createElement("div");
     el.className = "hsb-editor";
@@ -536,7 +555,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     let s = 0;
     let v = 0;
 
-    const update = () => {
+    const update = (live: boolean) => {
       // S/B field for the current hue: white -> hue across, black overlay down.
       sb.style.background =
         `linear-gradient(to top, #000, rgba(0,0,0,0)),` +
@@ -544,14 +563,14 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
       sbMarker.style.left = `${s * 100}%`;
       sbMarker.style.top = `${(1 - v) * 100}%`;
       hueMarker.style.top = `${(h / 360) * 100}%`;
-      onChange(hsvToHex(h, s, v));
+      onChange(hsvToHex(h, s, v), live);
     };
 
     const sbPick = (ev: PointerEvent) => {
       const r = sb.getBoundingClientRect();
       s = clamp01((ev.clientX - r.left) / r.width);
       v = clamp01(1 - (ev.clientY - r.top) / r.height);
-      update();
+      update(true);
     };
     sb.addEventListener("pointerdown", (e) => {
       sb.setPointerCapture(e.pointerId);
@@ -565,7 +584,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     const huePick = (ev: PointerEvent) => {
       const r = hue.getBoundingClientRect();
       h = clamp01((ev.clientY - r.top) / r.height) * 360;
-      update();
+      update(true);
     };
     hue.addEventListener("pointerdown", (e) => {
       hue.setPointerCapture(e.pointerId);
@@ -578,12 +597,12 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
 
     return {
       el,
-      seed(hex: string) {
+      seed(hex: string, live = false) {
         const o = hexToHsv(normalizeHex(hex) ?? "#000000");
         h = o.h;
         s = o.s;
         v = o.v;
-        update();
+        update(live);
       },
     };
   }
@@ -719,7 +738,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
     gradRow.append(gradToggle.el, gradLabel);
     editGradWrap.replaceChildren(gradRow);
     editPickerSlot.appendChild(pickerGroup); // move the picker into the editor
-    applyBtn.style.display = "none"; // changes are live; no Apply in edit mode
+    applyBtn.style.display = "none"; // changes are live; no Done button in edit mode
     setMode("edit");
     renderEditGrid();
     if (editSelected >= 0) {

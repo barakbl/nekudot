@@ -3222,7 +3222,7 @@ body.help-mode .help-icon {
   border: 2px solid #fff;
   box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.45);
 }
-/* Shared preview / hex / Apply under the active picker editor. */
+/* Shared preview / hex / Done under the active picker editor. */
 .picker-foot {
   display: flex;
   align-items: center;

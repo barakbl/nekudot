@@ -56,6 +56,10 @@ const clickImport = (el: HTMLElement) =>
   [...el.querySelectorAll<HTMLElement>(".palette-footer .palette-action-btn")]
     .find((b) => b.textContent?.trim() === "Import/Export")!
     .click();
+const clickTab = (el: HTMLElement, label: string) =>
+  [...el.querySelectorAll<HTMLElement>(".settings-tab")]
+    .find((b) => b.textContent?.trim() === label)!
+    .click();
 
 beforeEach(async () => {
   await clearColorsStore();
@@ -76,6 +80,34 @@ describe("colour popover smoke (real DOM)", () => {
     expect(picked).toHaveLength(1);
     expect(picked[0]).toMatch(/^#[0-9a-f]{6}$/);
     expect((panel.el as HTMLElement).style.display).toBe("none"); // auto-closed
+  });
+
+  it("moving a picker slider applies the colour live; Done just closes", async () => {
+    const { panel, el } = await openPanel();
+    clickTab(el, "Picker");
+    clickTab(el, "OKLCH");
+    // Opening + switching sub-tabs only seeds the editor - nothing applied yet.
+    expect(picked).toHaveLength(0);
+
+    // Dragging the L slider applies live (no Apply step).
+    const slider = el.querySelector<HTMLInputElement>(".oklch-slider")!;
+    expect(slider).toBeTruthy();
+    slider.value = "0.5";
+    slider.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(picked.length).toBeGreaterThan(0);
+    expect(picked.at(-1)).toMatch(/^#[0-9a-f]{6}$/);
+
+    // Typing a valid hex applies live too.
+    const hex = el.querySelector<HTMLInputElement>(".picker-hex")!;
+    hex.value = "#abcdef";
+    hex.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(picked.at(-1)).toBe("#abcdef");
+
+    // The footer button reads "Done" now and only closes the popover.
+    const done = el.querySelector<HTMLElement>(".picker-apply")!;
+    expect(done.textContent).toBe("Done");
+    done.click();
+    expect((panel.el as HTMLElement).style.display).toBe("none");
   });
 
   it("Edit toggle gates the editing affordances", async () => {
