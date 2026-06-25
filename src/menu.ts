@@ -1,3 +1,5 @@
+import { closeOnOutsidePointer } from "./ui/popover";
+
 export type MenuOption<T extends string> = {
   value: T;
   label: string;
@@ -273,11 +275,7 @@ function makeSymmetryCombo(control: SymmetryControl): {
       return;
     popover.classList.toggle("open");
   });
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (pill.contains(e.target as Node)) return;
-    popover.classList.remove("open");
-  });
+  closeOnOutsidePointer(pill, popover);
 
   setValue(current);
   return { el: pill, setValue };
@@ -326,11 +324,7 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
     e.stopPropagation();
     popover.classList.toggle("open");
   });
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (wrap.contains(e.target as Node)) return;
-    popover.classList.remove("open");
-  });
+  closeOnOutsidePointer(wrap, popover);
 
   return wrap;
 }
@@ -544,11 +538,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
     popover.classList.toggle("open");
   });
 
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (wrap.contains(e.target as Node)) return;
-    popover.classList.remove("open");
-  });
+  closeOnOutsidePointer(wrap, popover);
 
   const toggle = () => popover.classList.toggle("open");
   return { el: wrap, toggle };
@@ -810,11 +800,7 @@ function makeBrushPill<T extends string>(
     popover.classList.toggle("open");
   });
 
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (pill.contains(e.target as Node)) return;
-    popover.classList.remove("open");
-  });
+  closeOnOutsidePointer(pill, popover);
 
   setValue(initial);
   return { pill, setValue };
@@ -976,11 +962,7 @@ function makeConnectingCombo(control: ConnectingControl): {
     }
     popover.classList.toggle("open");
   });
-  document.addEventListener("mousedown", (e) => {
-    if (!popover.classList.contains("open")) return;
-    if (pill.contains(e.target as Node)) return;
-    popover.classList.remove("open");
-  });
+  closeOnOutsidePointer(pill, popover);
 
   renderOptions();
 
