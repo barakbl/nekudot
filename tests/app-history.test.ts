@@ -108,6 +108,37 @@ describe("AppHistory serialization", () => {
     expect(await history.undo(async () => {})).toBeNull();
   });
 
+  it("clear() resolves only after both IDB clears commit (so reset can't reload mid-wipe)", async () => {
+    // Make the underlying undo + paint clears deferred; clear() must await both.
+    // Before the fix the enqueued op didn't await them, so clear() resolved
+    // immediately and resetToDefault reloaded before the wipe committed.
+    let resolveUndo!: () => void;
+    let resolvePaint!: () => void;
+    const undoCleared = new Promise<void>((r) => (resolveUndo = r));
+    const paintCleared = new Promise<void>((r) => (resolvePaint = r));
+    const h = history as unknown as {
+      undoManager: { clear: () => Promise<void> };
+      paintStore: { clear: () => Promise<void> };
+    };
+    h.undoManager.clear = () => undoCleared;
+    h.paintStore.clear = () => paintCleared;
+
+    let resolved = false;
+    const done = history.clear().then(() => {
+      resolved = true;
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    expect(resolved).toBe(false); // still waiting on the deferred clears
+
+    resolveUndo();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(resolved).toBe(false); // one done, still waiting on the other
+
+    resolvePaint();
+    await done;
+    expect(resolved).toBe(true);
+  });
+
   it("rapid undo+redo serialize their applies (no interleaving)", async () => {
     await history.push("stroke 1");
     let inFlight = 0;
