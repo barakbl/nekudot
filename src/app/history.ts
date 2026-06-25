@@ -107,9 +107,13 @@ export class AppHistory {
   // paint snapshot — if the tab closes before the caller's follow-up push
   // lands, the next boot must not restore the pre-wipe paint.
   clear(): Promise<void> {
-    return this.enqueue(() => {
-      this.undoManager.clear();
-      void this.paintStore.clear();
+    return this.enqueue(async () => {
+      // Await both IDB clears so the returned promise only resolves once they've
+      // actually committed. resetToDefault reloads the instant this resolves, and
+      // a reload mid-clear left the data behind (the reset didn't stick); the
+      // queued follow-up push (New art / Load artwork) also now lands after the
+      // wipe, not racing it.
+      await Promise.all([this.undoManager.clear(), this.paintStore.clear()]);
     });
   }
 
