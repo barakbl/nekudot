@@ -14,43 +14,10 @@ import { describe, it, expect } from "vitest";
 //      by config.index (the key applyPaintData matches on).
 //   4. layers and neighbor maps are never emptied (removeLayer/removeNeighborsMap
 //      refuse the last one).
-//
-// Minimal canvas + document stub (same pattern as app-history.test.ts) so a real
-// LayerManager can be constructed without a browser 2D context.
-function makeCanvasStub(): HTMLCanvasElement {
-  const canvas: Record<string, unknown> = {
-    width: 0,
-    height: 0,
-    style: {},
-    remove() {},
-    // No real pixels in the stub; getPaintData still keys layers by index.
-    toBlob(cb: (b: Blob | null) => void) {
-      cb(null);
-    },
-  };
-  const ctx = new Proxy({ canvas } as Record<string, unknown>, {
-    get: (t, p) => (p in t ? t[p as string] : () => {}),
-    set: (t, p, v) => {
-      t[p as string] = v;
-      return true;
-    },
-  });
-  canvas.getContext = () => ctx;
-  return canvas as unknown as HTMLCanvasElement;
-}
+import type { LayerManager } from "../src/layered/manager";
+import { installDocumentStub, newManager } from "./_layer-manager-harness";
 
-(globalThis as { document?: unknown }).document = {
-  createElement: (tag: string) =>
-    tag === "canvas"
-      ? makeCanvasStub()
-      : { style: {}, appendChild() {}, remove() {} },
-};
-
-import { LayerManager } from "../src/layered/manager";
-
-const container = { style: {}, appendChild() {} } as unknown as HTMLElement;
-const newManager = (): LayerManager =>
-  new LayerManager({ container, size: { width: 100, height: 100 }, dpr: 1 });
+installDocumentStub();
 
 const indices = (m: LayerManager): number[] => m.all.map((l) => l.config.index);
 const ids = (m: LayerManager): string[] => m.all.map((l) => l.config.id);

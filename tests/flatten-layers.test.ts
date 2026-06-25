@@ -1,41 +1,9 @@
 import { describe, it, expect } from "vitest";
 
-// Minimal canvas + document stub (same pattern as layer-manager-invariants.test.ts)
-// so a real LayerManager can be built without a browser 2D context.
-function makeCanvasStub(): HTMLCanvasElement {
-  const canvas: Record<string, unknown> = {
-    width: 0,
-    height: 0,
-    style: {},
-    remove() {},
-    toBlob(cb: (b: Blob | null) => void) {
-      cb(null);
-    },
-  };
-  const ctx = new Proxy({ canvas } as Record<string, unknown>, {
-    get: (t, p) => (p in t ? t[p as string] : () => {}),
-    set: (t, p, v) => {
-      t[p as string] = v;
-      return true;
-    },
-  });
-  canvas.getContext = () => ctx;
-  return canvas as unknown as HTMLCanvasElement;
-}
-
-(globalThis as { document?: unknown }).document = {
-  createElement: (tag: string) =>
-    tag === "canvas"
-      ? makeCanvasStub()
-      : { style: {}, appendChild() {}, remove() {} },
-};
-
-import { LayerManager } from "../src/layered/manager";
 import { flattenLayers } from "../src/export";
+import { installDocumentStub, newManager } from "./_layer-manager-harness";
 
-const container = { style: {}, appendChild() {} } as unknown as HTMLElement;
-const newManager = (): LayerManager =>
-  new LayerManager({ container, size: { width: 10, height: 10 }, dpr: 1 });
+installDocumentStub();
 
 // A renderer that records the compositing calls flattenLayers makes into it.
 function recordingRenderer() {
