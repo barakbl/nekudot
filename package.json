@@ -13,6 +13,7 @@
     "lint:fix": "biome lint --write",
     "test": "vitest",
     "smoke": "node tests/smoke/smoke.mjs",
+    "smoke:boot": "node tests/smoke/boot-live.mjs",
     "smoke:viewport": "node tests/smoke/viewport-live.mjs",
     "smoke:open": "node tests/smoke/canvas-open-live.mjs",
     "smoke:paste": "node tests/smoke/image-paste-live.mjs",
