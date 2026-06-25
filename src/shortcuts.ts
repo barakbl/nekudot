@@ -1,5 +1,4 @@
-import { makeCloseButton } from "./settings-panel";
-import { makeDraggable } from "./drag";
+import { createPanel } from "./ui/panel";
 
 export type Shortcut = {
   key?: string;
@@ -265,22 +264,10 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
 export function createShortcutsPanel(shortcuts: Shortcut[]): {
   el: HTMLElement;
 } {
-  const panel = document.createElement("div");
-  panel.className = "shortcuts-panel";
-  panel.style.display = "none";
-
-  const header = document.createElement("div");
-  header.className = "panel-header";
-  const title = document.createElement("h3");
-  title.textContent = "Shortcuts";
-  header.appendChild(title);
-  header.appendChild(
-    makeCloseButton(() => {
-      panel.style.display = "none";
-    }),
-  );
-  panel.appendChild(header);
-  makeDraggable(panel, header);
+  const { panel } = createPanel({
+    className: "shortcuts-panel",
+    title: "Shortcuts",
+  });
 
   const card = document.createElement("div");
   card.className = "shortcuts-body";
