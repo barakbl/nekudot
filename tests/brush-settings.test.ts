@@ -18,6 +18,9 @@ class FakeStore extends Store {
     this.sets++;
     this.data.set(key, value);
   }
+  remove(key: string): void {
+    this.data.delete(key);
+  }
 }
 
 const noopRenderer = new Proxy({}, { get: () => () => {} }) as unknown as IRenderer;

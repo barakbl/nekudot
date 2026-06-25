@@ -18,4 +18,12 @@ export class LocalStorageStore extends Store {
       // quota exceeded or localStorage disabled — silently drop
     }
   }
+
+  remove(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // localStorage disabled — nothing to remove
+    }
+  }
 }
