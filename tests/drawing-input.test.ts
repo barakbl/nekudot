@@ -203,6 +203,50 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
   });
 });
 
+describe("drawing input: ready gate (boot paint-restore)", () => {
+  const setup = (ready: () => boolean) => {
+    const stage = makeStage();
+    let ends = 0;
+    const brush = {
+      strokeStart() {},
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => true,
+      ready,
+      onStrokeEnd: () => void ends++,
+    });
+    return { stage, ends: () => ends };
+  };
+
+  it("ignores pointerdown while not ready, so a stroke can't start mid-restore", () => {
+    const { stage, ends } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(ends()).toBe(0); // gated — nothing drew
+  });
+
+  it("draws once ready flips true (restore settled)", () => {
+    let restored = false;
+    const { stage, ends } = setup(() => restored);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(ends()).toBe(0); // still gated
+    restored = true;
+    stage.fire("pointerdown", { button: 0, pointerId: 2, offsetX: 5, offsetY: 5 });
+    stage.fire("pointerup", { pointerId: 2 });
+    expect(ends()).toBe(1); // now it draws
+  });
+});
+
 // Regression: an artist on iPad (iOS 17 Safari) saw no lines because
 // PointerEvent.getCoalescedEvents() - which only shipped in Safari 18 - was
 // called unguarded, throwing on every pointermove and aborting the draw.
