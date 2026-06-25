@@ -35,6 +35,7 @@ import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
+import { createOpacityController } from "./app/opacity-controller";
 import { opacityStorageKey, recalledOpacity } from "./app/opacity-store";
 import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
@@ -99,6 +100,16 @@ const layerManager = new LayerManager({
     lineCap: "round",
     lineJoin: "round",
   },
+});
+
+// The single owner of the live applied opacity ("app.opacity"): set() updates the
+// renderer's global alpha and the persisted value together, so the deposited
+// points (renderer) and the symmetry proxy + previews (store reads) can never
+// drift apart. The per-(brush, art-style) remembered opacity is separate (below).
+const appOpacity = createOpacityController({
+  layerManager,
+  store,
+  defaultAlpha: initialAlpha,
 });
 
 // Migrate the legacy app.canvas.bg color into the manager's background slot
@@ -192,7 +203,7 @@ const { invisibleOverlay, mapHighlighter, applyNewCanvasSize } = createDrawingCo
 const symmetryProxy = makeSymmetryProxy(
   layerManager,
   () => symmetry.transforms(),
-  () => store.get<number>("app.opacity") ?? 1,
+  () => appOpacity.get(),
   () => symmetry.mirrorsPoints(),
 );
 
@@ -261,7 +272,7 @@ const brushPreview = createBrushPreview({
     return b;
   },
   size: () => store.get<number>("app.size") ?? initialSize,
-  alpha: () => store.get<number>("app.opacity") ?? initialAlpha,
+  alpha: () => appOpacity.get(),
   color: () => store.get<string>("app.color.main") ?? initialMainColor,
   background: () => {
     const bg = layerManager.getBackground();
@@ -299,7 +310,7 @@ const presets = createPresetsController({
   currentStyle: () => appState.artStyle,
   applyStyle: (name) => setArtStyle(name),
   defaultStyle: () => DEFAULT_ART_STYLE,
-  strokeAlpha: () => store.get<number>("app.opacity") ?? 1,
+  strokeAlpha: () => appOpacity.get(),
   refreshMenu: () => menu.setConnectingOptions(connectingComboGroups()),
 });
 
@@ -341,13 +352,12 @@ const settingsPanel = createSettingsPanel({
       },
     },
     opacity: {
-      get: () => store.get<number>("app.opacity") ?? initialAlpha,
+      get: () => appOpacity.get(),
       min: 0,
       max: 1,
       step: 0.05,
       onChange: (a) => {
-        layerManager.setGlobalAlpha(a);
-        store.set("app.opacity", a); // live applied value
+        appOpacity.set(a); // renderer alpha + live persisted value, together
         store.set(opacityKey(), a); // remembered per (brush, art-style)
         brushPreview.onSettingChanged({
           label: "Opacity",
@@ -370,8 +380,7 @@ const settingsPanel = createSettingsPanel({
     store.set("app.size", DEFAULT_BRUSH_SIZE);
     store.remove(opacityKey()); // forget the remembered opacity for this context
     const op = recallOpacity(); // -> the style's default (strokeAlpha) or 1
-    layerManager.setGlobalAlpha(op);
-    store.set("app.opacity", op);
+    appOpacity.set(op);
     renderActiveBrush();
     brushPreview.onSettingChanged({
       label: "Reset",
@@ -417,15 +426,14 @@ const refreshSettingsColors = () => {
 // that don't pin one. `force` overrides a saved opacity (used on style switch);
 // at load we keep the saved value (which already equals the last style's).
 const applyBrushStrokeOpacity = (force: boolean) => {
-  if (!force && store.get<number>("app.opacity") !== undefined) return;
+  if (!force && appOpacity.isSet()) return;
   // Recall this (brush, style)'s remembered opacity, falling back to the style's
   // preferred opacity. No-op for brushes with neither (non-connecting on a fresh
   // store), so a plain mouse stroke stays fully opaque.
   if (store.get<number>(opacityKey()) === undefined && appState.brush.getSelectOpacity() === undefined)
     return;
   const op = recallOpacity();
-  layerManager.setGlobalAlpha(op);
-  store.set("app.opacity", op);
+  appOpacity.set(op);
   settingsPanel.render(appState.brush); // reflect the new value in the Opacity slider
 };
 
@@ -703,7 +711,7 @@ const appSettingsBox = createAppSettingsBox({
       const bg = layerManager.getBackground();
       dlog("app", "state", {
         brush: appState.brush.name(),
-        opacity: store.get<number>("app.opacity") ?? 1,
+        opacity: appOpacity.get(),
         size: store.get<number>("app.size"),
         main: store.get<string>("app.color.main"),
         secondary: store.get<string>("app.color.secondary"),
@@ -757,8 +765,7 @@ const selectBrush = (key: string) => {
   // else the style's preferred opacity, else fully opaque - so switching brushes
   // no longer wipes a manual opacity, and Shading still starts at 0 by default.
   const op = recallOpacity();
-  layerManager.setGlobalAlpha(op);
-  store.set("app.opacity", op);
+  appOpacity.set(op);
   // renderActiveBrush re-renders both boxes (reading the live opacity) and syncs
   // the navbar Connecting combo's visibility + value for this brush.
   renderActiveBrush();
