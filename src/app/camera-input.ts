@@ -7,6 +7,10 @@ import type { Viewport } from "./viewport";
 export function bindCameraInput(deps: {
   viewportEl: HTMLElement;
   viewport: Viewport;
+  // True when this wheel event should be left alone (no preventDefault, no
+  // pan/zoom) so an overlay inside the viewport - the Start page - can scroll
+  // natively. Read lazily per event (the onboarding overlay is built later).
+  shouldIgnoreWheel?: (e: WheelEvent) => boolean;
 }): void {
   const { viewportEl, viewport } = deps;
 
@@ -27,6 +31,9 @@ export function bindCameraInput(deps: {
   viewportEl.addEventListener(
     "wheel",
     (e) => {
+      // Let the Start-page overlay scroll natively instead of panning the canvas
+      // under it (issue #4: the unconditional preventDefault trapped its scroll).
+      if (deps.shouldIgnoreWheel?.(e)) return;
       e.preventDefault();
       if (e.ctrlKey || e.metaKey) {
         viewport.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
