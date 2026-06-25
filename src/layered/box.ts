@@ -1,5 +1,5 @@
 import { createPanel } from "../ui/panel";
-import { makeToggle } from "../toggle";
+import { makeToggle } from "../ui/toggle";
 import { CONNECTION_LAYER_ICON } from "../connecting-types";
 import { sizeCanvasForDpr } from "../canvas-size";
 import type { LayerManager } from "./manager";

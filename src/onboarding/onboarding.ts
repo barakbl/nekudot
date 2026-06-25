@@ -1,5 +1,5 @@
 import settings from "./settings.json";
-import { makeToggle } from "../toggle";
+import { makeToggle } from "../ui/toggle";
 import type { Theme } from "../menu";
 
 // The Start page (a.k.a. onboarding): a full-screen takeover shown on first run

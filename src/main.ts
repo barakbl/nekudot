@@ -22,7 +22,7 @@ import { createSizePicker } from "./layered/size-picker";
 import { saveArtwork } from "./save-artwork";
 import { pixelLog } from "./pixel-log";
 import { showChip } from "./chip";
-import { registerWindow, showWindow } from "./window-stack";
+import { registerWindow, showWindow } from "./ui/window-stack";
 import { createPalettePanel } from "./colors/panel";
 import { clearColorsStore, loadGradientPalettes } from "./colors/store";
 import { setGradientPalettes, setGradientSpace } from "./brushes/color-source";

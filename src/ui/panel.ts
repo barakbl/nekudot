@@ -1,4 +1,4 @@
-import { makeDraggable } from "../drag";
+import { makeDraggable } from "./drag";
 import { makeCloseButton } from "../settings-panel";
 
 // The draggable floating-panel shell shared by the Layers / Maps / Symmetry boxes,

@@ -2,7 +2,7 @@ import type { SymmetryController } from "./controller";
 import type { SymSetting } from "./tool";
 import { SYMMETRY_TOOL_DEFS } from "./registry";
 import { attachHelp } from "../help";
-import { makeToggle } from "../toggle";
+import { makeToggle } from "../ui/toggle";
 
 // None = a single freehand wave (one free stroke - positive, not a crossed-out
 // "off" badge, since None is the resting state shown in the navbar). The mode
