@@ -17,10 +17,7 @@ export async function saveArtwork(manager: LayerManager): Promise<void> {
 
   // 1. One PNG per layer.
   const layerFiles: LayerFiles[] = [];
-  const ordered = [...manager.all].sort(
-    (a, b) => a.config.index - b.config.index,
-  );
-  for (const layer of ordered) {
+  for (const layer of manager.orderedLayers()) {
     const idx = layer.config.index;
     const baseFile = `layers/layer${idx}.png`;
     filesU8[baseFile] = await blobToU8(

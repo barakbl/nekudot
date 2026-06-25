@@ -180,6 +180,14 @@ export class LayerManager implements PaintHost {
     return this.layers;
   }
 
+  // Layers bottom-to-top (ascending config.index) - the single order that
+  // export (flattenLayers), the clip recorder, and save-artwork all composite or
+  // emit in. config.index == array position (see renumberLayers), but sort
+  // explicitly so callers never depend on that internal invariant.
+  orderedLayers(): readonly Layer[] {
+    return [...this.layers].sort((a, b) => a.config.index - b.config.index);
+  }
+
   get active(): Layer {
     return this.layers[this.activeIndex];
   }

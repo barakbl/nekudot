@@ -14,10 +14,7 @@ export function flattenLayers(
   if (opts.backgroundColor !== "transparent") {
     flat.fillBackground(opts.backgroundColor);
   }
-  const ordered = [...manager.all].sort(
-    (a, b) => a.config.index - b.config.index,
-  );
-  for (const layer of ordered) {
+  for (const layer of manager.orderedLayers()) {
     flat.drawSource(layer.renderer, layer.config.opacity / 100);
   }
   return flat;

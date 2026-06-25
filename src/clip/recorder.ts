@@ -79,10 +79,7 @@ export class ClipRecorder {
     ctx.globalAlpha = 1;
     ctx.fillStyle = bg === "transparent" ? "#ffffff" : bg;
     ctx.fillRect(0, 0, this.w, this.h);
-    const layers = [...this.manager.all].sort(
-      (a, b) => a.config.index - b.config.index,
-    );
-    for (const layer of layers) {
+    for (const layer of this.manager.orderedLayers()) {
       ctx.globalAlpha = layer.config.opacity / 100;
       const src = layer.canvas;
       ctx.drawImage(src, 0, 0, src.width, src.height, 0, 0, this.w, this.h);
