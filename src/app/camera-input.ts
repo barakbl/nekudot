@@ -11,8 +11,16 @@ export function bindCameraInput(deps: {
   const { viewportEl, viewport } = deps;
 
   // Issue #3: shrinking the window can leave the canvas bigger than the viewport
-  // and unreachable - fit it back in (no-op while it still fits).
-  window.addEventListener("resize", () => viewport.onResize());
+  // and unreachable - fit it back in (no-op while it still fits). Coalesced to one
+  // re-fit per frame so a burst of resize events (a drag-resize) doesn't thrash.
+  let resizeRaf = 0;
+  window.addEventListener("resize", () => {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      viewport.onResize();
+    });
+  });
 
   // Desktop wheel: Cmd/Ctrl + wheel zooms about the cursor; a plain wheel /
   // two-finger trackpad scroll pans (the page itself never scrolls).
@@ -30,27 +38,30 @@ export function bindCameraInput(deps: {
   );
 
   // Desktop pan: middle-mouse drag. Reaches here by bubbling up from the stage,
-  // whose draw handler ignores any button other than 0, so it never draws.
-  let panning = false;
+  // whose draw handler ignores any button other than 0, so it never draws. Track
+  // the captured pointerId so a second pointer landing mid-pan (another finger /
+  // button) can't hijack the delta or end the pan early - only the owning pointer
+  // drives it.
+  let panId: number | null = null;
   let panX = 0;
   let panY = 0;
   viewportEl.addEventListener("pointerdown", (e) => {
-    if (e.button !== 1) return;
+    if (e.button !== 1 || panId !== null) return;
     e.preventDefault();
-    panning = true;
+    panId = e.pointerId;
     panX = e.clientX;
     panY = e.clientY;
     viewportEl.setPointerCapture(e.pointerId);
   });
   viewportEl.addEventListener("pointermove", (e) => {
-    if (!panning) return;
+    if (e.pointerId !== panId) return;
     viewport.panBy(e.clientX - panX, e.clientY - panY);
     panX = e.clientX;
     panY = e.clientY;
   });
   const endPan = (e: PointerEvent) => {
-    if (!panning) return;
-    panning = false;
+    if (e.pointerId !== panId) return;
+    panId = null;
     viewportEl.releasePointerCapture(e.pointerId);
   };
   viewportEl.addEventListener("pointerup", endPan);
