@@ -26,11 +26,12 @@ export function flattenLayers(
 export async function exportArt(
   manager: LayerManager,
   opts: ExportOptions,
-): Promise<void> {
+): Promise<"downloaded" | "empty"> {
   const flat = flattenLayers(manager, { backgroundColor: opts.backgroundColor });
   const blob = await flat.toBlob("image/png");
-  if (!blob) return;
+  if (!blob) return "empty";
   triggerDownload(blob, `${opts.prefix ?? "art"}_${timestamp()}.png`);
+  return "downloaded";
 }
 
 // Default caption sent with the shared image (the native share sheet passes this
