@@ -358,12 +358,13 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
   const refreshInfo = (): void => {
     hideHint();
     if (!infoEl) return;
-    infoEl.replaceChildren();
+    const el = infoEl; // capture so the closure below can use the narrowed non-null value
+    el.replaceChildren();
     const message = (text: string): void => {
       const m = document.createElement("span");
       m.className = "brush-preview-info-empty";
       m.textContent = text;
-      infoEl!.append(m);
+      el.append(m);
     };
     if (!lastChange) {
       // Standing prompt until a setting is changed - phrased per tab.

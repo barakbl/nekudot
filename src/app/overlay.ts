@@ -7,8 +7,8 @@ import type { CanvasSize } from "../canvas-size";
 // the dpr scale set in CanvasRenderer's constructor needs reapplying.
 export class Overlay {
   readonly el: HTMLCanvasElement;
-  private liveRenderer!: IRenderer;
-  private cssSize!: CanvasSize;
+  private liveRenderer: IRenderer;
+  private cssSize: CanvasSize;
 
   constructor(
     parent: HTMLElement,
@@ -24,19 +24,29 @@ export class Overlay {
     this.el.style.pointerEvents = "none";
     this.el.style.zIndex = String(zIndex);
     if (opts?.hidden) this.el.style.display = "none";
-    this.resize(size);
+    // Direct assignment so TypeScript sees both fields as definitely set here.
+    const { renderer, cssSize } = this.applySize(size);
+    this.liveRenderer = renderer;
+    this.cssSize = cssSize;
     parent.appendChild(this.el);
   }
 
   resize(size: CanvasSize): void {
+    const { renderer, cssSize } = this.applySize(size);
+    this.liveRenderer = renderer;
+    this.cssSize = cssSize;
+  }
+
+  // Sets canvas dimensions and builds a fresh renderer. Called by both the
+  // constructor and resize() so the logic lives in one place.
+  private applySize(size: CanvasSize): { renderer: IRenderer; cssSize: CanvasSize } {
     this.el.width = Math.round(size.width * this.dpr);
     this.el.height = Math.round(size.height * this.dpr);
     this.el.style.width = `${size.width}px`;
     this.el.style.height = `${size.height}px`;
-    this.cssSize = size;
     const ctx = this.el.getContext("2d");
     if (!ctx) throw new Error("overlay: failed to get 2d context");
-    this.liveRenderer = new CanvasRenderer(ctx, { dpr: this.dpr });
+    return { renderer: new CanvasRenderer(ctx, { dpr: this.dpr }), cssSize: size };
   }
 
   // The renderer for the current canvas backing store (rebuilt on resize, so

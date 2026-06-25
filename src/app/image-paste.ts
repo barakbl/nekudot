@@ -169,17 +169,19 @@ export function bindImagePaste(opts: {
         return;
       }
       e.stopPropagation();
+      if (!session) return; // always non-null when mode !== "none"; guard for the type narrower
       if (mode === "move") {
         box.x = p.x - moveOff.x;
         box.y = p.y - moveOff.y;
       } else {
         // Aspect-locked resize anchored to the opposite corner.
+        const { aspect } = session;
         let w = Math.abs(p.x - anchor.x);
         let h = Math.abs(p.y - anchor.y);
-        if (w / session!.aspect > h) h = w / session!.aspect;
-        else w = h * session!.aspect;
+        if (w / aspect > h) h = w / aspect;
+        else w = h * aspect;
         w = Math.max(MIN, w);
-        h = w / session!.aspect;
+        h = w / aspect;
         const right = mode === "tr" || mode === "br";
         const down = mode === "bl" || mode === "br";
         box.x = right ? anchor.x : anchor.x - w;
