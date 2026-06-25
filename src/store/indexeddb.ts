@@ -1,37 +1,34 @@
 // Low-level IndexedDB wrapper. Callers (e.g. PaintStore) use this; nothing
-// outside this file should know about the IDB API.
+// outside this file should know about the IDB API. Opening goes through the
+// shared guarded opener (open-idb.ts) so a stale tab can't hang an upgrade.
+
+import { createDbOpener } from "./open-idb";
 
 export type BatchOp =
   | { type: "put"; key: string; value: unknown }
   | { type: "delete"; key: string };
 
 export class IndexedDbStore {
-  private dbPromise: Promise<IDBDatabase> | null = null;
+  private readonly open: () => Promise<IDBDatabase>;
 
   constructor(
-    private dbName: string,
-    private storeName: string,
-    private version: number = 1,
-  ) {}
-
-  private openDb(): Promise<IDBDatabase> {
-    if (this.dbPromise) return this.dbPromise;
-    this.dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.dbName, this.version);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName);
+    dbName: string,
+    private readonly storeName: string,
+    version: number = 1,
+  ) {
+    this.open = createDbOpener({
+      dbName,
+      version,
+      upgrade: (db) => {
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName);
         }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      },
     });
-    return this.dbPromise;
   }
 
   async get<T>(key: string): Promise<T | null> {
-    const db = await this.openDb();
+    const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.storeName, "readonly");
       const req = tx.objectStore(this.storeName).get(key);
@@ -41,7 +38,7 @@ export class IndexedDbStore {
   }
 
   async put(key: string, value: unknown): Promise<void> {
-    const db = await this.openDb();
+    const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.storeName, "readwrite");
       const req = tx.objectStore(this.storeName).put(value, key);
@@ -51,7 +48,7 @@ export class IndexedDbStore {
   }
 
   async delete(key: string): Promise<void> {
-    const db = await this.openDb();
+    const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.storeName, "readwrite");
       const req = tx.objectStore(this.storeName).delete(key);
@@ -64,7 +61,7 @@ export class IndexedDbStore {
   // readers never observe a half-applied group.
   async batch(ops: readonly BatchOp[]): Promise<void> {
     if (ops.length === 0) return;
-    const db = await this.openDb();
+    const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.storeName, "readwrite");
       const store = tx.objectStore(this.storeName);

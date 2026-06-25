@@ -4,6 +4,8 @@
 // rows) under one key on every stroke. Like store/indexeddb.ts, nothing
 // outside this file should know about the IDB API.
 
+import { createDbOpener } from "./open-idb";
+
 const DB_NAME = "nekudot-pixel-log";
 const DB_VERSION = 2; // v1: single "log" store holding the whole array
 const ROWS_STORE = "rows";
@@ -16,54 +18,21 @@ const LEGACY_KEY = "entries";
 const OPEN_TIMEOUT_MS = 4000;
 
 export class AppendLogStore {
-  private dbPromise: Promise<IDBDatabase> | null = null;
-
-  private openDb(): Promise<IDBDatabase> {
-    if (this.dbPromise) return this.dbPromise;
-    const attempt = new Promise<IDBDatabase>((resolve, reject) => {
-      let timedOut = false;
-      const timer = setTimeout(() => {
-        timedOut = true;
-        if (this.dbPromise === attempt) this.dbPromise = null; // retry later
-        reject(new Error("pixel log open timed out (old tab blocking the upgrade?)"));
-      }, OPEN_TIMEOUT_MS);
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onupgradeneeded = () => {
-        const db = req.result;
-        // Keep the legacy store: load() adopts its array, then deletes the key.
-        if (!db.objectStoreNames.contains(LEGACY_STORE)) {
-          db.createObjectStore(LEGACY_STORE);
-        }
-        if (!db.objectStoreNames.contains(ROWS_STORE)) {
-          db.createObjectStore(ROWS_STORE, { autoIncrement: true });
-        }
-      };
-      req.onblocked = () => {
-        console.warn("pixel log: upgrade blocked by another open tab");
-      };
-      req.onsuccess = () => {
-        clearTimeout(timer);
-        const db = req.result;
-        if (timedOut) {
-          db.close(); // a retry owns the connection now
-          return;
-        }
-        // Never be the tab that blocks a future upgrade.
-        db.onversionchange = () => {
-          db.close();
-          if (this.dbPromise === attempt) this.dbPromise = null;
-        };
-        resolve(db);
-      };
-      req.onerror = () => {
-        clearTimeout(timer);
-        if (this.dbPromise === attempt) this.dbPromise = null;
-        reject(req.error);
-      };
-    });
-    this.dbPromise = attempt;
-    return attempt;
-  }
+  // Same guarded opener as the other stores; keeps the legacy "log" store so
+  // load() can adopt its v1 whole-array value, then delete the key.
+  private readonly open = createDbOpener({
+    dbName: DB_NAME,
+    version: DB_VERSION,
+    timeoutMs: OPEN_TIMEOUT_MS,
+    upgrade: (db) => {
+      if (!db.objectStoreNames.contains(LEGACY_STORE)) {
+        db.createObjectStore(LEGACY_STORE);
+      }
+      if (!db.objectStoreNames.contains(ROWS_STORE)) {
+        db.createObjectStore(ROWS_STORE, { autoIncrement: true });
+      }
+    },
+  });
 
   // Run `fn` inside one readwrite transaction over `stores`; resolves on
   // commit, so a multi-store migration/replace is all-or-nothing.
@@ -71,7 +40,7 @@ export class AppendLogStore {
     stores: string[],
     fn: (tx: IDBTransaction) => void,
   ): Promise<void> {
-    const db = await this.openDb();
+    const db = await this.open();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(stores, "readwrite");
       fn(tx);
@@ -84,7 +53,7 @@ export class AppendLogStore {
   // All rows in insertion order. An empty rows store falls back to the legacy
   // whole-array key, adopting it (rows written + key deleted, atomically).
   async load(): Promise<unknown[]> {
-    const db = await this.openDb();
+    const db = await this.open();
     const rows = await new Promise<unknown[]>((resolve, reject) => {
       const req = db
         .transaction(ROWS_STORE, "readonly")
