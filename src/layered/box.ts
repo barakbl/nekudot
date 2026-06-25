@@ -25,6 +25,7 @@ type ColorPickRequest = {
   anchor: HTMLElement;
   getColor: () => string;
   onPick: (hex: string) => void;
+  onPreview?: (hex: string) => void;
 };
 type OpenColorPicker = (req: ColorPickRequest) => void;
 
@@ -386,6 +387,9 @@ function makeBackgroundRow(
         title: "Background",
         anchor: swatch,
         getColor: () => manager.getBackground().color,
+        // Live drag updates the canvas; only committing (Done / swatch click)
+        // records an undo entry, so dragging the slider doesn't flood history.
+        onPreview: (hex) => applyBackgroundColor(hex),
         onPick: (hex) => {
           applyBackgroundColor(hex);
           onCommit(`Background color → ${hex}`);
