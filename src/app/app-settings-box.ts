@@ -1,5 +1,5 @@
 import { createPanel } from "../ui/panel";
-import { makeToggle } from "../toggle";
+import { makeToggle } from "../ui/toggle";
 import { attachHelp } from "../help";
 import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
 import { triggerDownload } from "../export";

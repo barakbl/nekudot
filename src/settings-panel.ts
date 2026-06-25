@@ -5,8 +5,8 @@ import {
   type BrushBase,
   type BrushSetting,
 } from "./base";
-import { makeDraggable } from "./drag";
-import { makeToggle } from "./toggle";
+import { makeDraggable } from "./ui/drag";
+import { makeToggle } from "./ui/toggle";
 import { attachHelp } from "./help";
 import { ROUTING_PRESETS, flattenRouting } from "./brushes/connections/routing";
 import {

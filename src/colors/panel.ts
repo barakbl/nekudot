@@ -11,7 +11,7 @@
 // and are all editable. Picking a colour applies it (via the request's onPick),
 // records it as recent, and auto-closes. Outside-click / Escape also closes it.
 import { makeCloseButton } from "../settings-panel";
-import { makeToggle } from "../toggle";
+import { makeToggle } from "../ui/toggle";
 import { attachHelp } from "../help";
 import {
   clampColors,
