@@ -20,6 +20,26 @@ export function flattenLayers(
   return flat;
 }
 
+// Fit `size` (CSS px) so its longest side is at most `maxDim`. With `clampToOne`
+// it never upscales (the GIF cap); without it the result can be larger (the save
+// thumbnail always renders at 100px). Returns the rounded target pixel dimensions
+// plus the CSS-space `scale`. The "dpr cancels" step lives at the call sites: a
+// device-pixel source (size * dpr) scales by `scale / dpr` (drawSource), or
+// drawImage's dest scaling handles it implicitly.
+export function downscaleToMaxDim(
+  size: { width: number; height: number },
+  maxDim: number,
+  { clampToOne = false }: { clampToOne?: boolean } = {},
+): { width: number; height: number; scale: number } {
+  const longest = Math.max(size.width, size.height) || 1;
+  const scale = clampToOne ? Math.min(1, maxDim / longest) : maxDim / longest;
+  return {
+    width: Math.max(1, Math.round(size.width * scale)),
+    height: Math.max(1, Math.round(size.height * scale)),
+    scale,
+  };
+}
+
 export async function exportArt(
   manager: LayerManager,
   opts: ExportOptions,

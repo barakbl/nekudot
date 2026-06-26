@@ -1,4 +1,5 @@
 import type { LayerManager } from "../layered/manager";
+import { downscaleToMaxDim } from "../export";
 
 // A captured clip: downscaled, opaque RGBA frames plus the rate they were
 // grabbed at. Speed + trim are applied later (preview/export) on these frames,
@@ -55,9 +56,9 @@ export class ClipRecorder {
   start(): void {
     if (this.recording) return;
     const size = this.manager.currentSize;
-    const scale = Math.min(1, MAX_DIM / Math.max(size.width, size.height));
-    this.w = Math.max(1, Math.round(size.width * scale));
-    this.h = Math.max(1, Math.round(size.height * scale));
+    const { width, height } = downscaleToMaxDim(size, MAX_DIM, { clampToOne: true });
+    this.w = width;
+    this.h = height;
     const canvas = document.createElement("canvas");
     canvas.width = this.w;
     canvas.height = this.h;

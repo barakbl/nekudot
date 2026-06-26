@@ -1,6 +1,6 @@
 import { zipSync, strToU8 } from "fflate";
 import type { LayerManager } from "./layered/manager";
-import { flattenLayers, timestamp, triggerDownload } from "./export";
+import { flattenLayers, downscaleToMaxDim, timestamp, triggerDownload } from "./export";
 import { createOffscreenRenderer } from "./renderer";
 import { pixelLog } from "./pixel-log";
 import {
@@ -67,12 +67,10 @@ async function buildPreviewBlob(
   bg: string,
 ): Promise<Blob> {
   const size = manager.currentSize;
-  const maxDim = Math.max(size.width, size.height);
-  const cssScale = 100 / maxDim;
-  const target = {
-    width: Math.max(1, Math.round(size.width * cssScale)),
-    height: Math.max(1, Math.round(size.height * cssScale)),
-  };
+  // Preview thumbnail: longest side = 100px. dpr cancels - the device-pixel
+  // source (size * dpr) draws into the target at scale / dpr.
+  const { width, height, scale: cssScale } = downscaleToMaxDim(size, 100);
+  const target = { width, height };
   const dpr = window.devicePixelRatio || 1;
   const sourcePixelScale = cssScale / dpr;
 
