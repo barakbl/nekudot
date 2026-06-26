@@ -16,7 +16,11 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded runs on normal branches, but not on release-please's
+  # branch: the bot pushes follow-up commits, and cancelling the prior run
+  # surfaces as a failed check on the release PR (a cancel, not a real failure
+  # - a re-run goes green). See PR #93.
+  cancel-in-progress: ${{ !startsWith(github.ref_name, 'release-please--') }}
 
 jobs:
   verify:
