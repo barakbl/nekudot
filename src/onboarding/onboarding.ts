@@ -96,6 +96,10 @@ export function createOnboarding(opts: {
   };
   // Mark the app as onboarded so it won't auto-show again (until a reset).
   onDismiss: () => void;
+  // Optional: seed this device from a previously exported settings file before
+  // choosing a canvas. Opens a file picker; a successful import reloads the app.
+  // Omitted -> the affordance isn't shown.
+  onImportSettings?: () => void;
 }): Onboarding {
   const el = document.createElement("div");
   el.className = "onboarding";
@@ -176,6 +180,20 @@ export function createOnboarding(opts: {
 
   prefs.append(themeWrap, penWrap);
   card.appendChild(prefs);
+
+  // Optional: import a settings file (app settings + presets + palettes) to set
+  // this device up like another. A subtle link - most first-runs start fresh.
+  if (opts.onImportSettings) {
+    const importRow = document.createElement("div");
+    importRow.className = "onboarding-import";
+    const importBtn = document.createElement("button");
+    importBtn.type = "button";
+    importBtn.className = "onboarding-import-btn";
+    importBtn.textContent = "Import a settings file";
+    importBtn.addEventListener("click", () => opts.onImportSettings?.());
+    importRow.appendChild(importBtn);
+    card.appendChild(importRow);
+  }
 
   // Option grid.
   const grid = document.createElement("div");

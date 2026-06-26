@@ -31,6 +31,7 @@ import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
+import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
 import { createMapsControl } from "./app/maps-control";
@@ -733,6 +734,8 @@ const appSettingsBox = createAppSettingsBox({
       onConfirm: () => void resetToDefault(),
     });
   },
+  onExportSettings: () => void exportSettings(),
+  onImportSettings: () => importSettings(),
 });
 
 // Wipe every local data store + settings, then reload to the fresh (onboarding)
@@ -938,6 +941,7 @@ const onboarding = createOnboarding({
     },
   },
   onDismiss: () => store.set(ONBOARDED_KEY, true),
+  onImportSettings: () => importSettings(),
 });
 // Lives INSIDE the viewport so it replaces the canvas area (the toolbar/panels
 // stay above it), not the whole page.
