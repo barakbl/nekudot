@@ -26,6 +26,10 @@ export function createAppSettingsBox(opts: {
   onToggleDiagnostics: (on: boolean) => void;
   // Wipe all local data and reload to a fresh app (opens its own confirm modal).
   onResetToDefault: () => void;
+  // Download the whole local config (app settings + presets + palettes) as a file.
+  onExportSettings: () => void;
+  // Pick a settings file and import it (replaces config, then reloads).
+  onImportSettings: () => void;
 }): AppSettingsBox {
   const { panel } = createPanel({
     className: "layers-box app-settings-box",
@@ -120,6 +124,27 @@ export function createAppSettingsBox(opts: {
     setDiagnosticOverride("disableWetOverlay", on),
   );
 
+  // Backup: export / import the whole local config as one portable file.
+  const ioActions = document.createElement("div");
+  ioActions.className = "appset-io-actions";
+  const exportBtn = document.createElement("button");
+  exportBtn.type = "button";
+  exportBtn.className = "appset-io-btn";
+  exportBtn.textContent = "Export";
+  exportBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    opts.onExportSettings();
+  });
+  const importBtn = document.createElement("button");
+  importBtn.type = "button";
+  importBtn.className = "appset-io-btn";
+  importBtn.textContent = "Import";
+  importBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    opts.onImportSettings();
+  });
+  ioActions.append(exportBtn, importBtn);
+
   const resetBtn = document.createElement("button");
   resetBtn.type = "button";
   resetBtn.className = "appset-reset-btn";
@@ -177,6 +202,12 @@ export function createAppSettingsBox(opts: {
       "Bypass wet layer",
       bypassWet.el,
       "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
+    ),
+    sub("Backup"),
+    row(
+      "Settings file",
+      ioActions,
+      "Save your app settings, custom presets and saved palettes to one file you can keep or carry to another device. Import replaces those with the file's (your artwork is not affected) and reloads.",
     ),
     sub("Reset"),
     row(
