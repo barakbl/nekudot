@@ -1,0 +1,65 @@
+name: Deploy site to GitHub Pages
+
+# Build the app (build.sh -> docs/app/index.html) and the Updates page
+# (npm run build:updates -> docs/updates.html), then publish the whole docs/ tree
+# (landing pages + book + the freshly built files + the CNAME) to GitHub Pages.
+# This is what lets us stop committing the generated files - the deploy rebuilds
+# them from source on every push to main.
+#
+# REQUIRES the repo's Pages "Source" to be set to "GitHub Actions"
+# (Settings -> Pages). While it's still "Deploy from a branch", the deploy step
+# has nowhere to publish and will fail - the live site keeps serving the last
+# branch deploy, so flip the setting before relying on this.
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One publish at a time; never cancel an in-flight deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Regenerate the deployed app + Updates page into docs/ (over the committed
+      # copies, if any). The build is deterministic, so this reproduces byte-for-byte.
+      - name: Build the app + Updates page into docs/
+        run: |
+          bash build.sh
+          npm run build:updates
+
+      - uses: actions/configure-pages@v5
+
+      # Publish the whole docs/ site: landing pages, book, the freshly built
+      # app (/app/) + Updates page, and the CNAME (custom domain).
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
