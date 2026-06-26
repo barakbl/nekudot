@@ -19,6 +19,19 @@ export type PaintSnapshot = {
   neighborsMaps?: NeighborsMapPaint[];
 };
 
+// Paint with bitmaps already decoded (vs LayerPaint's raw blob), ready to write
+// straight to the live layers. Shared input for LayerManager.applyDecodedPaint,
+// used by both undo-apply and file-load-apply so the two can't drift.
+export type DecodedLayerPaint = {
+  index: number;
+  bitmaps: ImageBitmap[];
+};
+
+export type DecodedPaint = {
+  layers: DecodedLayerPaint[];
+  maps: NeighborsMapPaint[];
+};
+
 const SNAPSHOT_KEY = "snapshot";
 
 export class PaintStore {

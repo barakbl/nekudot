@@ -59,4 +59,26 @@ describe("paint serialization: shared collectors", () => {
       .map((p) => `${p.x},${p.y}`);
     expect(restored).toEqual(["1,2"]);
   });
+
+  // A2: applyPaintData (undo) and applyArtwork (file load) now both route through
+  // LayerManager.applyDecodedPaint. These lock the shared apply path.
+  it("applyDecodedPaint writes map points to the live finders", () => {
+    manager.applyDecodedPaint({
+      layers: [],
+      maps: [{ index: 0, pixels: [{ x: 5, y: 6 }] }],
+    });
+    expect(
+      manager.allNeighborsMaps[0].finder.allPixels().map((p) => `${p.x},${p.y}`),
+    ).toEqual(["5,6"]);
+  });
+
+  it("applyDecodedPaint clears the finder before re-adding", () => {
+    const finder = manager.allNeighborsMaps[0].finder;
+    finder.addPixel(9, 9);
+    manager.applyDecodedPaint({
+      layers: [],
+      maps: [{ index: 0, pixels: [{ x: 1, y: 1 }] }],
+    });
+    expect(finder.allPixels().map((p) => `${p.x},${p.y}`)).toEqual(["1,1"]);
+  });
 });

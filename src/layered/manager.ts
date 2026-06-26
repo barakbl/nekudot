@@ -3,7 +3,12 @@ import type { IRenderer, LineStyle, LineConnectType, RendererInit } from "../ren
 import type { Pixel } from "../neighbor-finder";
 import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
-import type { PaintSnapshot, LayerPaint, NeighborsMapPaint } from "../store/paint";
+import type {
+  PaintSnapshot,
+  LayerPaint,
+  NeighborsMapPaint,
+  DecodedPaint,
+} from "../store/paint";
 import type { CanvasSize } from "../canvas-size";
 import { Layer } from "./layer";
 import { NeighborsMap } from "./neighbors-map";
@@ -588,28 +593,40 @@ export class LayerManager implements PaintHost {
     return { version: 2, layers, neighborsMaps };
   }
 
+  // Write already-decoded paint to the live model: per layer match by
+  // config.index then clear + drawBitmap; per map clear the finder + re-add the
+  // points. Shared by undo (applyPaintData) and file load (applyArtwork). Does
+  // not close bitmaps, emit, or touch config / pixel-log - those stay caller-side.
+  applyDecodedPaint(decoded: DecodedPaint): void {
+    for (const L of decoded.layers) {
+      const layer = this.layers.find((l) => l.config.index === L.index);
+      if (!layer) continue;
+      layer.renderer.clear();
+      for (const bmp of L.bitmaps) layer.renderer.drawBitmap(bmp);
+    }
+    for (const M of decoded.maps) {
+      const nm = this.neighborsMaps[M.index];
+      if (!nm) continue;
+      nm.finder.clear();
+      for (const p of M.pixels) nm.finder.addPixel(p.x, p.y);
+    }
+  }
+
   async applyPaintData(snapshot: PaintSnapshot): Promise<void> {
+    // Decode each layer's blob to a bitmap (skip a layer whose capture failed),
+    // then hand off to the shared apply path.
+    const layers: DecodedPaint["layers"] = [];
     for (const layerPaint of snapshot.layers) {
-      const layer = this.layers.find(
-        (l) => l.config.index === layerPaint.layerIndex,
-      );
-      if (!layer || !layerPaint.blob) continue;
+      if (!layerPaint.blob) continue;
       try {
         const bitmap = await createImageBitmap(layerPaint.blob);
-        layer.renderer.clear();
-        layer.renderer.drawBitmap(bitmap);
-        bitmap.close?.();
+        layers.push({ index: layerPaint.layerIndex, bitmaps: [bitmap] });
       } catch (e) {
         console.warn("applyPaintData: failed to restore layer", e);
       }
     }
-
-    for (const nmPaint of snapshot.neighborsMaps ?? []) {
-      const nm = this.neighborsMaps[nmPaint.index];
-      if (!nm) continue;
-      nm.finder.clear();
-      for (const p of nmPaint.pixels) nm.finder.addPixel(p.x, p.y);
-    }
+    this.applyDecodedPaint({ layers, maps: snapshot.neighborsMaps ?? [] });
+    for (const L of layers) for (const bmp of L.bitmaps) bmp.close?.();
 
     // applyConfig (called just before this on undo/redo) emits while the finders
     // are still empty, so the maps box would show 0 dots. Re-emit now that the

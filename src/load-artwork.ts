@@ -204,20 +204,8 @@ export async function applyArtwork(
   art: LoadedArtwork,
 ): Promise<void> {
   manager.applyConfig(art.config, art.size);
-  for (const L of art.layers) {
-    const layer = manager.all.find((l) => l.config.index === L.index);
-    if (layer) {
-      layer.renderer.clear();
-      for (const bmp of L.bitmaps) layer.renderer.drawBitmap(bmp);
-    }
-    for (const bmp of L.bitmaps) bmp.close?.();
-  }
-  for (const M of art.maps) {
-    const nm = manager.allNeighborsMaps[M.index];
-    if (!nm) continue;
-    nm.finder.clear();
-    for (const p of M.pixels) nm.finder.addPixel(p.x, p.y);
-  }
+  manager.applyDecodedPaint({ layers: art.layers, maps: art.maps });
+  for (const L of art.layers) for (const bmp of L.bitmaps) bmp.close?.();
   await pixelLog.loadRawJSONL(art.pixelLogText);
 }
 
