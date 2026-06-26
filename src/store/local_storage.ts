@@ -11,7 +11,7 @@ export class LocalStorageStore extends Store {
     }
   }
 
-  set<T>(key: string, value: T): void {
+  set<T>(key: string, value: T extends undefined ? never : T): void {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch {
