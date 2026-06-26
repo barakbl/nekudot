@@ -81,6 +81,12 @@ export type BrushSetting =
       onChange: (low: number, high: number) => void;
     });
 
+// The value a brush setting carries, by kind: a number, a colour/option string,
+// a boolean, or a [low, high] range tuple. Never undefined - persistSetting and
+// Store.set forbid persisting undefined (it serializes to the string "undefined",
+// which lingers and reads back as a parse error).
+export type SettingValue = BrushSetting["value"];
+
 // Push a stored/loaded value into a setting's binding, dispatching on kind so
 // a malformed stored value (wrong type) is ignored rather than applied. The
 // one place "a raw value becomes a setting change" lives — used by restore,
@@ -665,7 +671,7 @@ export abstract class BrushBase {
 
   // Brush-own setting defaults, snapshotted before restore overwrites them, so
   // the Reset button can revert to them.
-  private ownDefaults: Record<string, unknown> | null = null;
+  private ownDefaults: Record<string, SettingValue> | null = null;
 
   // Restore the brush's own params + routing from storage. Art-style dials are
   // NOT restored here — the active style isn't decided yet at boot; they load
@@ -682,7 +688,7 @@ export abstract class BrushBase {
 
   private captureOwnDefaults(): void {
     if (this.ownDefaults) return;
-    const d: Record<string, unknown> = {};
+    const d: Record<string, SettingValue> = {};
     for (const s of this.getSettings()) {
       if (!isConnectingSetting(s)) d[s.key] = s.value; // brush-own only
     }
@@ -709,8 +715,9 @@ export abstract class BrushBase {
 
   // Persist one setting the panel just changed. An art-style dial saves the
   // whole style flat (one write, correctly partitioned by style); anything
-  // else saves its single value.
-  persistSetting(s: BrushSetting, value: unknown): void {
+  // else saves its single value. `value` is a SettingValue (never undefined) so
+  // a setting can't be laundered through `unknown` into store.set as undefined.
+  persistSetting(s: BrushSetting, value: SettingValue): void {
     if (!this.store) return;
     if (isStyleDial(s)) this.persistConnectionStyle();
     else this.store.set(this.brushKey(s.key), value);
