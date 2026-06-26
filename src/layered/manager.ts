@@ -596,7 +596,10 @@ export class LayerManager implements PaintHost {
   // Write already-decoded paint to the live model: per layer match by
   // config.index then clear + drawBitmap; per map clear the finder + re-add the
   // points. Shared by undo (applyPaintData) and file load (applyArtwork). Does
-  // not close bitmaps, emit, or touch config / pixel-log - those stay caller-side.
+  // not close bitmaps or touch config / pixel-log - those stay caller-side.
+  // Emits at the end: applyConfig runs just before this (on both paths) and emits
+  // while the finders are still empty, so the maps box / navbar would read 0 dots;
+  // re-emitting here makes the live counts reflect the restored points.
   applyDecodedPaint(decoded: DecodedPaint): void {
     for (const L of decoded.layers) {
       const layer = this.layers.find((l) => l.config.index === L.index);
@@ -610,6 +613,7 @@ export class LayerManager implements PaintHost {
       nm.finder.clear();
       for (const p of M.pixels) nm.finder.addPixel(p.x, p.y);
     }
+    this.emit();
   }
 
   async applyPaintData(snapshot: PaintSnapshot): Promise<void> {
@@ -626,12 +630,8 @@ export class LayerManager implements PaintHost {
       }
     }
     this.applyDecodedPaint({ layers, maps: snapshot.neighborsMaps ?? [] });
+    // applyDecodedPaint emits (so the maps box / navbar reflect the restored points).
     for (const L of layers) for (const bmp of L.bitmaps) bmp.close?.();
-
-    // applyConfig (called just before this on undo/redo) emits while the finders
-    // are still empty, so the maps box would show 0 dots. Re-emit now that the
-    // points are restored so the live counts reflect the snapshot.
-    this.emit();
   }
 
   // ---- internals ------------------------------------------------------------

@@ -81,4 +81,19 @@ describe("paint serialization: shared collectors", () => {
     });
     expect(finder.allPixels().map((p) => `${p.x},${p.y}`)).toEqual(["1,1"]);
   });
+
+  // #29: the maps-box / navbar dot count must update after a restore. applyConfig
+  // emits while the finders are empty, so applyDecodedPaint has to re-emit once the
+  // points are back - otherwise a loaded .nekudot shows 0 dots in the navbar.
+  it("applyDecodedPaint emits so subscribers (maps box / navbar) refresh", () => {
+    let emits = 0;
+    const unsub = manager.subscribe(() => emits++);
+    manager.applyDecodedPaint({
+      layers: [],
+      maps: [{ index: 0, pixels: [{ x: 1, y: 2 }] }],
+    });
+    unsub();
+    expect(emits).toBe(1); // fired once, after the points were restored
+    expect(manager.allNeighborsMaps[0].finder.allPixels()).toHaveLength(1);
+  });
 });
