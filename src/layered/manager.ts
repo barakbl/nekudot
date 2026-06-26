@@ -3,7 +3,7 @@ import type { IRenderer, LineStyle, LineConnectType, RendererInit } from "../ren
 import type { Pixel } from "../neighbor-finder";
 import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
-import type { PaintSnapshot } from "../store/paint";
+import type { PaintSnapshot, LayerPaint, NeighborsMapPaint } from "../store/paint";
 import type { CanvasSize } from "../canvas-size";
 import { Layer } from "./layer";
 import { NeighborsMap } from "./neighbors-map";
@@ -555,28 +555,37 @@ export class LayerManager implements PaintHost {
 
   // ---- snapshot for persistence --------------------------------------------
 
-  async getPaintData(): Promise<PaintSnapshot> {
-    // Sample everything before the first await so the snapshot is
-    // point-in-time: the map points and layer indices here, and the layer
-    // bitmaps via toBlob (which copies the bitmap at invocation — only the
-    // encoding is async). Strokes landing while blobs encode can't bleed in.
-    const neighborsMaps = this.neighborsMaps.map((nm, i) => ({
-      index: i,
-      pixels: nm.finder.allPixels().map((p) => ({ x: p.x, y: p.y })),
-    }));
-    const layers = await Promise.all(
-      this.layers.map((layer) => {
+  // Sample each layer's bitmap as a PNG blob, keyed by config.index so the apply
+  // side can match it back regardless of array order. toBlob copies the bitmap at
+  // invocation (only the encode is async), so the returned promises are already
+  // point-in-time. Shared by the undo snapshot (getPaintData) and the .nekudot
+  // save (save-artwork) so the two model->bytes paths can't drift.
+  collectLayerBlobs(): Promise<LayerPaint[]> {
+    return Promise.all(
+      this.orderedLayers().map((layer) => {
         const layerIndex = layer.config.index;
         return layer.renderer
           .toBlob("image/png")
           .then((blob) => ({ layerIndex, blob }));
       }),
     );
-    return {
-      version: 2,
-      layers,
-      neighborsMaps,
-    };
+  }
+
+  // Sample each neighbors map's points. Synchronous - call it before awaiting
+  // collectLayerBlobs() to keep a snapshot point-in-time. Shared with save-artwork.
+  collectMapPixels(): NeighborsMapPaint[] {
+    return this.neighborsMaps.map((nm, index) => ({
+      index,
+      pixels: nm.finder.allPixels().map((p) => ({ x: p.x, y: p.y })),
+    }));
+  }
+
+  async getPaintData(): Promise<PaintSnapshot> {
+    // Sample the maps (sync) before awaiting the layer blobs so the whole
+    // snapshot is point-in-time: strokes landing mid-encode can't bleed in.
+    const neighborsMaps = this.collectMapPixels();
+    const layers = await this.collectLayerBlobs();
+    return { version: 2, layers, neighborsMaps };
   }
 
   async applyPaintData(snapshot: PaintSnapshot): Promise<void> {
