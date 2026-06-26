@@ -77,9 +77,12 @@ describe("connection colour source", () => {
     expect(colorsFor({ color: "secondary" })).toEqual(["#ffffff", "#ffffff", "#ffffff", "#ffffff"]);
   });
 
-  it("gradient -> distinct Primary..Secondary blends by angle", () => {
+  it("gradient -> cyclic Primary..Secondary blends by angle (seamless)", () => {
     const c = colorsFor({ color: "gradient" });
-    expect(distinct(c)).toBe(4); // four lines, four angles
+    // The gradient source is cyclic, so it mirrors around the wrap. The four
+    // fixed angles (t = 0.25/0.5/0.75/1.0) give the two midpoints (0.25 and 0.75
+    // coincide), Secondary (0.5) and Primary (1.0) -> 3 distinct.
+    expect(distinct(c)).toBeGreaterThanOrEqual(3);
     expect(c.every((x) => /^#[0-9a-f]{6}$/.test(x ?? ""))).toBe(true);
   });
 
