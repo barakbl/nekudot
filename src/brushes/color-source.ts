@@ -180,7 +180,10 @@ export function connectionLineColor(
     case "secondary":
       return secondary;
     case "gradient":
-      return blend(primary, secondary, t, gradientSpace);
+      // Cyclic (seamless), like complement and the palette ramps: primary ->
+      // secondary -> primary around the circle, so there's no hard colour flip
+      // as the line angle drives t across the wrap.
+      return paletteHex([primary, secondary], t, gradientSpace);
     case "rainbow":
       return hueHex(t * 360);
     case "complement":
