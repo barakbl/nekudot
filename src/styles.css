@@ -1916,32 +1916,7 @@ body.help-mode .help-icon {
   background: var(--accent, #3b82f6);
   color: #fff;
 }
-.brush-preview-tabs {
-  display: flex;
-  gap: 4px;
-}
-.brush-preview-tab {
-  flex: 1;
-  padding: 6px 10px;
-  border: 1px solid var(--border-stronger);
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-muted, var(--text-body));
-  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-weight: 600;
-  cursor: pointer;
-}
-.brush-preview-tab.active {
-  background: var(--accent, #3b82f6);
-  border-color: var(--accent, #3b82f6);
-  color: #fff;
-}
-/* Playground is the last tab, pushed to the right end of the bar. */
-.brush-preview-tab-play {
-  flex: 0 0 auto;
-  margin-left: auto;
-}
-/* Top strip: the "what changed" info line + the play-speed slider. */
+/* Top strip: the "what changed" info line. */
 .brush-preview-top {
   display: flex;
   align-items: center;
@@ -1959,20 +1934,6 @@ body.help-mode .help-icon {
   border-radius: 8px;
   background: var(--hover-bg, rgba(128, 128, 128, 0.08));
   font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-.brush-preview-speed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  border: 1px solid var(--border-stronger);
-  border-radius: 8px;
-  color: var(--text-muted);
-  font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-.brush-preview-speed input[type="range"] {
-  width: 90px;
 }
 .brush-preview-info-name {
   font-weight: 600;
