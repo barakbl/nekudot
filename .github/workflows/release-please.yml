@@ -33,10 +33,10 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      # The deployed app (docs/app/index.html) embeds the version, so when the
-      # release PR bumps it the committed bundle goes stale. Rebuild it on the
-      # release PR branch so CI's staleness check passes and the shipped app
-      # shows the new version. (Needs RELEASE_TOKEN so this push triggers CI.)
+      # On a new release, seed a hidden draft Updates entry for the version so it
+      # isn't missed on the Updates page. (The deployed app is built + published by
+      # deploy-pages.yml - no committed bundle to rebuild.) Needs RELEASE_TOKEN so
+      # this push triggers CI.
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
         uses: actions/checkout@v7
         with:
@@ -50,17 +50,16 @@ jobs:
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
         run: npm ci
       - if: ${{ steps.release.outputs.prs_created == 'true' }}
-        name: Rebuild the deployed app + draft the Updates entry for the release
+        name: Draft the Updates entry for the release
         run: |
-          bash build.sh
-          # Drop a hidden draft stub for the new version so the release isn't
-          # missed on the Updates page (it stays hidden until rewritten in an
-          # artist-friendly voice with draft: false).
+          # Drop a hidden draft stub for the new version (stays hidden until
+          # rewritten in an artist-friendly voice with draft: false). The deployed
+          # app itself is built + published by deploy-pages.yml - nothing to rebuild.
           node scripts/build-updates.mjs --sync
-          git add docs/app/index.html docs/updates.html docs/updates
+          git add docs/updates
           if ! git diff --cached --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "chore: rebuild deployed app + draft updates entry for release"
+            git commit -m "chore: draft updates entry for release"
             git push
           fi

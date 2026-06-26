@@ -1,9 +1,8 @@
 name: CI
 
-# Typecheck, test, and - crucially - prove the deployed single-file app
-# (docs/app/index.html, what GitHub Pages serves) is in sync with the source.
-# It's a committed build artifact, so it's easy to merge a feature and forget to
-# rebuild it; this rebuilds it and fails if the committed copy is stale.
+# Lint, typecheck, test, and build the deployed app to catch build breakage.
+# The build output (docs/app/index.html + docs/updates.html) is no longer
+# committed - deploy-pages.yml publishes it - so this just proves it builds.
 #
 # Runs on every branch push (public repo = unlimited Actions minutes), so you
 # get verification before opening a PR. No separate pull_request trigger: a push
@@ -44,28 +43,8 @@ jobs:
       - name: Test
         run: npx vitest run
 
-      # Rebuild the deployed app from source. The build is deterministic (deps
-      # are pinned by package-lock; the inliner emits hashless content), so a
-      # correct, committed build reproduces byte-for-byte here.
+      # Build the deployed app + Updates page to catch build breakage. The output
+      # isn't committed (deploy-pages.yml publishes it), so there's nothing to
+      # compare against here - this just proves `bash build.sh` succeeds.
       - name: Build the deployed app
         run: bash build.sh
-
-      - name: Verify docs/app/index.html is up to date
-        run: |
-          if ! git diff --quiet -- docs/app/index.html; then
-            echo "::error::docs/app/index.html is stale. Run ./build.sh and commit it (the deployed app must match source)."
-            git --no-pager diff --stat -- docs/app/index.html
-            exit 1
-          fi
-          echo "Deployed app is in sync with source."
-
-      # build.sh also renders the Updates page from docs/updates/*.md, so it must
-      # likewise be committed up to date.
-      - name: Verify docs/updates.html is up to date
-        run: |
-          if ! git diff --quiet -- docs/updates.html; then
-            echo "::error::docs/updates.html is stale. Run 'npm run build:updates' and commit it."
-            git --no-pager diff --stat -- docs/updates.html
-            exit 1
-          fi
-          echo "Updates page is in sync with source."
