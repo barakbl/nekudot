@@ -39,8 +39,10 @@ const FileSchema = z.object({
 
 const round = (n: number, p = 1000) => Math.round(n * p) / p;
 
-export function palettesToOklchJson(palettes: readonly Palette[]): string {
-  const data = {
+// The OKLCH backup payload object. Shared by palettesToOklchJson and the
+// settings bundle, which embeds it (so palettesFromOklchData reads it back).
+export function palettesToOklchObject(palettes: readonly Palette[]) {
+  return {
     version: 1,
     format: "oklch" as const,
     palettes: palettes.map((p) => ({
@@ -54,21 +56,17 @@ export function palettesToOklchJson(palettes: readonly Palette[]): string {
       }),
     })),
   };
-  return JSON.stringify(data, null, 2);
 }
 
-// Parse a backup file into palettes. Returns [] on malformed input; per-palette
-// skip-on-error. Colours convert OKLCH -> hex; ids are kept (for merge-by-id) or
-// generated when absent.
-export function palettesFromOklchJson(text: string): Palette[] {
-  // Bail before parsing if the payload is implausibly large (cheap DoS guard).
-  if (typeof text !== "string" || text.length > MAX_BACKUP_BYTES) return [];
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    return [];
-  }
+export function palettesToOklchJson(palettes: readonly Palette[]): string {
+  return JSON.stringify(palettesToOklchObject(palettes), null, 2);
+}
+
+// Validate already-parsed backup JSON into palettes (no JSON.parse / size
+// check - the caller owns those). Per-palette skip-on-error; the same caps
+// (MAX_PALETTES/MAX_COLORS_PER_PALETTE) still apply via the schema. Reused by
+// the settings bundle, which embeds this payload.
+export function palettesFromOklchData(data: unknown): Palette[] {
   const parsed = FileSchema.safeParse(data);
   if (!parsed.success) return [];
   const out: Palette[] = [];
@@ -84,4 +82,19 @@ export function palettesFromOklchJson(text: string): Palette[] {
     });
   }
   return out;
+}
+
+// Parse a backup file into palettes. Returns [] on malformed input; per-palette
+// skip-on-error. Colours convert OKLCH -> hex; ids are kept (for merge-by-id) or
+// generated when absent.
+export function palettesFromOklchJson(text: string): Palette[] {
+  // Bail before parsing if the payload is implausibly large (cheap DoS guard).
+  if (typeof text !== "string" || text.length > MAX_BACKUP_BYTES) return [];
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  return palettesFromOklchData(data);
 }

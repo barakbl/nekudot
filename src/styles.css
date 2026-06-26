@@ -1425,6 +1425,12 @@ body {
   text-transform: uppercase;
   color: var(--text-faint);
 }
+.appset-desc {
+  margin: 0 0 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 .appset-row {
   display: flex;
   align-items: center;
@@ -1491,13 +1497,16 @@ body {
   background: #d9534f;
   color: #fff;
 }
-/* Diagnostics: Copy / Download buttons under the toggle. */
-.appset-diag-actions {
+/* Neutral pill buttons in App settings: Diagnostics Copy/Download, and the
+   Backup Export/Import pair. */
+.appset-diag-actions,
+.appset-io-actions {
   display: flex;
   gap: 8px;
   margin: 2px 0 4px;
 }
-.appset-diag-btn {
+.appset-diag-btn,
+.appset-io-btn {
   font: inherit;
   font-size: 11px;
   cursor: pointer;
@@ -1508,7 +1517,8 @@ body {
   color: var(--text-body);
   white-space: nowrap;
 }
-.appset-diag-btn:hover {
+.appset-diag-btn:hover,
+.appset-io-btn:hover {
   border-color: var(--accent);
   color: var(--text-primary);
 }
@@ -2768,6 +2778,26 @@ body.help-mode .help-icon {
 .onboarding-seg-btn.active {
   background: var(--accent);
   color: var(--accent-text);
+}
+
+/* Optional "Import a settings file" link under the quick prefs. */
+.onboarding-import {
+  display: flex;
+  justify-content: center;
+}
+.onboarding-import-btn {
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.onboarding-import-btn:hover {
+  color: var(--text-primary);
 }
 
 .onboarding-grid {
