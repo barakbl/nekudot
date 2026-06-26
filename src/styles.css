@@ -1425,6 +1425,12 @@ body {
   text-transform: uppercase;
   color: var(--text-faint);
 }
+.appset-desc {
+  margin: 0 0 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 .appset-row {
   display: flex;
   align-items: center;

@@ -46,6 +46,14 @@ export function createAppSettingsBox(opts: {
     el.textContent = text;
     return el;
   };
+  // A small always-visible blurb under a section heading (for sections whose
+  // purpose isn't obvious from a one-word row label alone).
+  const desc = (text: string) => {
+    const el = document.createElement("div");
+    el.className = "appset-desc";
+    el.textContent = text;
+    return el;
+  };
   const row = (labelText: string, control: HTMLElement, help?: string) => {
     const r = document.createElement("div");
     r.className = "appset-row";
@@ -204,10 +212,11 @@ export function createAppSettingsBox(opts: {
       "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
     ),
     sub("Backup"),
+    desc("Backup your app settings, custom presets and saved palettes as one file"),
     row(
       "Settings file",
       ioActions,
-      "Save your app settings, custom presets and saved palettes to one file you can keep or carry to another device. Import replaces those with the file's (your artwork is not affected) and reloads.",
+      "Export downloads a .nekudotapp file with your app settings, custom connection presets and saved colour palettes. Import loads one back, replacing your current settings, presets and palettes (your artwork is not affected), then reloads.",
     ),
     sub("Reset"),
     row(
