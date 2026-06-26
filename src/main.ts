@@ -31,6 +31,7 @@ import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
+import { createFolderSync } from "./app/folder-sync";
 import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
@@ -111,6 +112,16 @@ const appOpacity = createOpacityController({
   layerManager,
   store,
   defaultAlpha: initialAlpha,
+});
+
+// Folder sync (Chrome only): connect a local folder once, then save/load the
+// settings file and sync the current artwork there without download dialogs.
+// refreshFolderUI is wired to the App settings box once it exists; restore()
+// re-attaches a previously chosen folder at boot (see below).
+let refreshFolderUI = (): void => {};
+const folderSync = createFolderSync({
+  manager: layerManager,
+  onChange: () => refreshFolderUI(),
 });
 
 // Migrate the legacy app.canvas.bg color into the manager's background slot
@@ -605,6 +616,7 @@ const loadArtwork = async (file: File): Promise<void> => {
   store.set(CANVAS_SIZE_KEY, size);
   void history.clear();
   pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
+  folderSync.forgetArtworkFile(); // a different drawing -> next sync makes a new file
   showChip("Artwork loaded");
 };
 
@@ -641,6 +653,7 @@ const sizePicker = createSizePicker({
         store.set(CANVAS_SIZE_KEY, size);
         void history.clear();
         pushUndo("New art");
+        folderSync.forgetArtworkFile();
       },
     });
   },
@@ -666,6 +679,11 @@ const canvasMenuOptions = {
     });
   },
   onLoadArtwork: promptLoadArtwork,
+  // Chrome only: write the .nekudot straight into the connected folder. Omitted
+  // (item hidden) where the File System Access API isn't available.
+  onSyncArtworkToFolder: folderSync.supported
+    ? () => void folderSync.syncArtwork()
+    : undefined,
 };
 
 // The global Application settings panel (theme / input / advanced) - the
@@ -736,7 +754,21 @@ const appSettingsBox = createAppSettingsBox({
   },
   onExportSettings: () => void exportSettings(),
   onImportSettings: () => importSettings(),
+  folder: folderSync.supported
+    ? {
+        isConnected: () => folderSync.isConnected(),
+        folderName: () => folderSync.folderName(),
+        onConnect: () => void folderSync.connect(),
+        onDisconnect: () => void folderSync.disconnect(),
+        onSaveSettings: () => void folderSync.saveSettings(),
+        onLoadSettings: () => void folderSync.loadSettings(),
+      }
+    : undefined,
 });
+// Now that the box exists, route folder-state changes to its Local folder
+// section, and re-attach a previously connected folder (silent if still granted).
+refreshFolderUI = appSettingsBox.refreshFolder;
+void folderSync.restore();
 
 // Wipe every local data store + settings, then reload to the fresh (onboarding)
 // app. See src/app/reset.ts for the orchestration (and its tests).
@@ -902,6 +934,7 @@ const onboarding = createOnboarding({
       store.set(CANVAS_SIZE_KEY, size);
       void history.clear();
       pushUndo("Mandala");
+      folderSync.forgetArtworkFile();
       showSymmetry(); // open the symmetry (mandala) panel
     },
     startBlank: (variant) => {
@@ -920,6 +953,7 @@ const onboarding = createOnboarding({
       store.set(CANVAS_SIZE_KEY, size);
       void history.clear();
       pushUndo("New art");
+      folderSync.forgetArtworkFile();
     },
     loadArtworkFile: (file) => loadArtwork(file),
   },

@@ -10,7 +10,15 @@ import {
   type NeighborsMapFile,
 } from "./nekudot-schema";
 
+// Save the artwork as a downloaded .nekudot file.
 export async function saveArtwork(manager: LayerManager): Promise<void> {
+  const blob = await buildArtworkBlob(manager);
+  triggerDownload(blob, `art_${timestamp()}.nekudot`);
+}
+
+// Build the .nekudot archive Blob (zip of layers + maps + preview + manifest)
+// without delivering it - the download path and the folder-sync path share this.
+export async function buildArtworkBlob(manager: LayerManager): Promise<Blob> {
   const bg = manager.getBackground().color;
   const size = manager.currentSize;
   const filesU8: Record<string, Uint8Array> = {};
@@ -56,10 +64,9 @@ export async function saveArtwork(manager: LayerManager): Promise<void> {
   ManifestSchema.parse(manifest);
   filesU8["manifest.json"] = strToU8(JSON.stringify(manifest, null, 2));
 
-  // 6. Zip (STORE — payloads are already compressed) and trigger download.
+  // 6. Zip (STORE — payloads are already compressed).
   const zipped = zipSync(filesU8, { level: 0 });
-  const blob = new Blob([zipped as BlobPart], { type: "application/zip" });
-  triggerDownload(blob, `art_${timestamp()}.nekudot`);
+  return new Blob([zipped as BlobPart], { type: "application/zip" });
 }
 
 async function buildPreviewBlob(
