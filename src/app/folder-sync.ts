@@ -27,6 +27,21 @@ function stamp(): string {
   return `${date}_${time}`;
 }
 
+// Normalize an uploaded file's name into a safe in-folder name: basename only (no
+// path separators, no control chars) with a .nekudot extension. Returns null if
+// nothing usable remains. Keeps writes scoped to a single entry in the folder.
+function toArtFileName(name: string): string | null {
+  const base = (name.split(/[/\\]/).pop() ?? "")
+    .split("")
+    .filter((c) => c.charCodeAt(0) >= 0x20) // drop control chars
+    .join("")
+    .trim();
+  if (!base || base === "." || base === "..") return null;
+  return /\.nekudot$/i.test(base)
+    ? base
+    : `${base.replace(/\.[^.]*$/, "")}.nekudot`;
+}
+
 export type FolderSync = ReturnType<typeof createFolderSync>;
 
 export function createFolderSync(deps: {
@@ -58,6 +73,13 @@ export function createFolderSync(deps: {
     }
     return ok;
   }
+
+  // Drop the remembered artwork filename (next sync starts a fresh file).
+  const forget = (): void => {
+    if (store.get<string>(ART_FILE_KEY) === undefined) return;
+    store.remove(ART_FILE_KEY);
+    notify();
+  };
 
   return {
     get supported(): boolean {
@@ -140,12 +162,21 @@ export function createFolderSync(deps: {
       }
     },
 
-    // The drawing was replaced (new/blank/mandala/load): the next sync should
-    // create a fresh file rather than overwrite the previous drawing's.
-    forgetArtworkFile(): void {
-      if (store.get<string>(ART_FILE_KEY) === undefined) return;
-      store.remove(ART_FILE_KEY);
+    // Adopt an uploaded/opened file's name as the current artwork file, so a
+    // later sync overwrites that same file instead of making a timestamped
+    // duplicate. An unusable name falls back to forgetting (next sync generates).
+    setArtworkFile(name: string): void {
+      const safe = toArtFileName(name);
+      if (!safe) {
+        forget();
+        return;
+      }
+      store.set(ART_FILE_KEY, safe);
       notify();
     },
+
+    // The drawing was replaced (new/blank/mandala): the next sync should create a
+    // fresh file rather than overwrite the previous drawing's.
+    forgetArtworkFile: forget,
   };
 }

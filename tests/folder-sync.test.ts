@@ -151,4 +151,29 @@ describe("folder sync controller", () => {
     await fs.loadSettings(); // folder empty
     expect(applied).toHaveLength(0);
   });
+
+  it("adopts an uploaded filename so a sync overwrites it (no duplicate)", async () => {
+    const vault = new FakeVault();
+    const fs = make(vault);
+    await fs.connect();
+    fs.setArtworkFile("My Painting.nekudot");
+    expect(fs.currentArtworkFile()).toBe("My Painting.nekudot");
+
+    await fs.syncArtwork();
+    expect(vault.files.has("My Painting.nekudot")).toBe(true);
+    expect([...vault.files.keys()].some((n) => /^art_/.test(n))).toBe(false);
+  });
+
+  it("normalizes an adopted name to a basename with a .nekudot extension", () => {
+    const fs = make(new FakeVault());
+    fs.setArtworkFile("/Users/me/art/sketch.zip");
+    expect(fs.currentArtworkFile()).toBe("sketch.nekudot");
+  });
+
+  it("forgets when the adopted name is unusable", () => {
+    const fs = make(new FakeVault());
+    fs.setArtworkFile("keep.nekudot");
+    fs.setArtworkFile(""); // unusable -> forget
+    expect(fs.currentArtworkFile()).toBeNull();
+  });
 });

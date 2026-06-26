@@ -594,7 +594,7 @@ document.body.appendChild(loadFileInput);
 
 // Parse + apply a .nekudot file onto the canvas (shared by the file picker and
 // the onboarding "open a saved piece" cards).
-const loadArtwork = async (file: File): Promise<void> => {
+const loadArtwork = async (file: File, rememberName = false): Promise<void> => {
   const result = await loadArtworkFile(file);
   if (!result.ok) {
     showError(result.error);
@@ -616,14 +616,17 @@ const loadArtwork = async (file: File): Promise<void> => {
   store.set(CANVAS_SIZE_KEY, size);
   void history.clear();
   pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
-  folderSync.forgetArtworkFile(); // a different drawing -> next sync makes a new file
+  // An uploaded file keeps its name, so a later folder sync overwrites the same
+  // file instead of making a duplicate. Bundled onboarding samples start fresh.
+  if (rememberName) folderSync.setArtworkFile(file.name);
+  else folderSync.forgetArtworkFile();
   showChip("Artwork loaded");
 };
 
 loadFileInput.addEventListener("change", async () => {
   const file = loadFileInput.files?.[0];
   loadFileInput.value = ""; // allow re-picking the same file later
-  if (file) await loadArtwork(file);
+  if (file) await loadArtwork(file, true); // remember the uploaded name for sync
 });
 
 const promptLoadArtwork = () => {
