@@ -15,26 +15,22 @@ export async function saveArtwork(manager: LayerManager): Promise<void> {
   const size = manager.currentSize;
   const filesU8: Record<string, Uint8Array> = {};
 
-  // 1. One PNG per layer.
+  // 1. One PNG per layer. collectLayerBlobs() is the shared model->bytes
+  //    collector, so this stays in lockstep with the undo snapshot.
   const layerFiles: LayerFiles[] = [];
-  for (const layer of manager.orderedLayers()) {
-    const idx = layer.config.index;
-    const baseFile = `layers/layer${idx}.png`;
-    filesU8[baseFile] = await blobToU8(
-      await layer.renderer.toBlob("image/png"),
-    );
-    layerFiles.push({ layerIndex: idx, baseFile });
+  for (const { layerIndex, blob } of await manager.collectLayerBlobs()) {
+    const baseFile = `layers/layer${layerIndex}.png`;
+    filesU8[baseFile] = await blobToU8(blob);
+    layerFiles.push({ layerIndex, baseFile });
   }
 
-  // 2. Top-level neighbors map JSONs.
+  // 2. Top-level neighbors map JSONs (shared collectMapPixels() keeps the saved
+  //    points identical to the undo snapshot).
   const nmFiles: NeighborsMapFile[] = [];
-  for (let i = 0; i < manager.allNeighborsMaps.length; i++) {
-    const file = `neighbors/map${i}.json`;
-    const pixels = manager.allNeighborsMaps[i].finder
-      .allPixels()
-      .map((p) => ({ x: p.x, y: p.y }));
+  for (const { index, pixels } of manager.collectMapPixels()) {
+    const file = `neighbors/map${index}.json`;
     filesU8[file] = strToU8(JSON.stringify(pixels));
-    nmFiles.push({ index: i, file });
+    nmFiles.push({ index, file });
   }
 
   // 3. Append-only pixel log (one JSON object per line).
