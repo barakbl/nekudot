@@ -4,6 +4,7 @@ import {
   PEN_SECTION,
   type BrushBase,
   type BrushSetting,
+  type SettingValue,
 } from "./base";
 import { makeDraggable } from "./ui/drag";
 import { makeToggle } from "./ui/toggle";
@@ -28,7 +29,9 @@ const WEB_TAB_ICON =
 
 // A row's value changed: forward to the brush so it persists (art-style dials
 // per style, everything else per key). Threaded down to every input handler.
-type PersistFn = (s: BrushSetting, value: unknown) => void;
+// `value` is a SettingValue (never undefined) - the persist path mirrors
+// Store.set's no-undefined contract end to end.
+type PersistFn = (s: BrushSetting, value: SettingValue) => void;
 const NO_PERSIST: PersistFn = () => {};
 
 // Short what/why help for a setting, keyed by setting key - covers the
