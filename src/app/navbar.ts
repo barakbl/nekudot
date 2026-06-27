@@ -203,7 +203,7 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
       canRedo: () => history.canRedo(),
     },
     [
-      { label: "Brushes", shortcut: "b", open: showSettings },
+      { label: "Brush settings", shortcut: "b", open: showSettings },
       { label: "Layers", shortcut: "l", open: showLayers },
       { label: "Maps", shortcut: "m", open: showMaps },
       { label: "Symmetry", shortcut: "y", open: showSymmetry },

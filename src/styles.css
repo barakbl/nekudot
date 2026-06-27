@@ -3800,3 +3800,54 @@ body.help-mode .help-icon {
   flex: 1 1 0;
   min-width: 0;
 }
+
+/* ---- Accessibility (audit quick wins) ------------------------------------ */
+
+/* Always show a focus ring for keyboard users, even on controls that clear the
+   default outline for mouse use. :focus-visible only triggers on keyboard, so
+   mouse/touch interaction is unaffected; !important beats the scattered
+   `outline: none` rules without editing each one. */
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}
+
+/* Respect "reduce motion": collapse transitions/animations (incl. the looping
+   record-blink) to near-instant for users who opt out of motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch devices: grow the tap area of small, isolated icon controls to a
+   finger-friendly size (the glyph stays the same; only padding/min-size grows).
+   Desktop (fine pointer) is unaffected. Dense layer/maps rows and the in-pill
+   gears/swatches need a layout rework - tracked separately. */
+@media (pointer: coarse) {
+  .toolbar .icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .help-icon {
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .maps-menu-flash,
+  .maps-menu-delete,
+  .palette-icon-btn,
+  .layer-action-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .swatch-remove,
+  .brush-option .opt-remove {
+    min-width: 28px;
+    min-height: 28px;
+  }
+}
