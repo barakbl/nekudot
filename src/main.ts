@@ -967,6 +967,9 @@ const onboarding = createOnboarding({
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
       selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
+      // The "Bloom" art style (connections.json): the user's first stroke
+      // multiplies into a full, glowing mandala - what makes one tap WOW.
+      setArtStyle("bloom");
       menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
       symmetry.setMode("radial");
       const round = brushes["Round"];

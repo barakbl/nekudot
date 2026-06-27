@@ -288,6 +288,10 @@ export abstract class BrushBase {
     const current = this.depositPixel(x, y);
     this.onStroke(x, y, current);
     this.connection?.connect(current);
+    // Bloom (density-targeted point multiplier): tops the local neighbourhood up
+    // to the bloom target so the user's own stroke blooms into a full web. No-op
+    // when the bloom dial is 0, so normal brushes/styles are unaffected.
+    this.connection?.bloomTopUp(current);
   }
 
   // True if (x,y) is far enough (>= step px) from the last connection sample to
