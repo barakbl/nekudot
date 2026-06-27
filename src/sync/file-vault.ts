@@ -23,6 +23,10 @@ export interface FileVault {
   // when nothing is connected.
   label(): string | null;
 
+  // The name of a previously-connected destination whose permission has lapsed
+  // (needs a user gesture to re-grant), or null - lets the UI offer "Reconnect".
+  pendingLabel(): string | null;
+
   // True when there's a usable, permitted destination right now.
   isConnected(): boolean;
 

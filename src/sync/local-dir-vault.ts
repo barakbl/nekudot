@@ -23,6 +23,10 @@ export class LocalDirVault implements FileVault {
     return this.dir?.name || null; // some handles report an empty name
   }
 
+  pendingLabel(): string | null {
+    return this.pending?.name || null;
+  }
+
   isConnected(): boolean {
     return this.dir !== null;
   }

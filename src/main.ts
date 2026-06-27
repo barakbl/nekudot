@@ -796,6 +796,7 @@ const folderBox = folderSync.supported
   ? createFolderBox({
       isConnected: () => folderSync.isConnected(),
       folderName: () => folderSync.folderName(),
+      pendingFolderName: () => folderSync.pendingFolderName(),
       currentFile: () => folderSync.currentArtworkFile(),
       onConnect: () => void folderSync.connect(),
       onDisconnect: () => void folderSync.disconnect(),

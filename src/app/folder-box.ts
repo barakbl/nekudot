@@ -12,6 +12,7 @@ export type FolderBox = {
 export type FolderBoxHost = {
   isConnected: () => boolean;
   folderName: () => string | null;
+  pendingFolderName: () => string | null;
   currentFile: () => string | null;
   onConnect: () => void;
   onDisconnect: () => void;
@@ -76,6 +77,18 @@ export function createFolderBox(host: FolderBoxHost): FolderBox {
   const refresh = () => {
     body.replaceChildren();
     if (!host.isConnected()) {
+      const pending = host.pendingFolderName();
+      if (pending) {
+        // Folder is remembered but the browser cleared its permission; offer a
+        // one-click reconnect (onConnect re-grants the stored handle, no re-pick).
+        const head = actions(btn("Reconnect", host.onConnect));
+        head.prepend(valueText(pending));
+        body.append(
+          desc("This folder needs permission again. Reconnect to keep saving here."),
+          row("Folder", head),
+        );
+        return;
+      }
       body.append(
         desc(
           "Save your settings and artwork to a folder on this computer - no download each time.",

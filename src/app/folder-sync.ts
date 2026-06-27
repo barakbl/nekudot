@@ -83,13 +83,17 @@ export function createFolderSync(deps: {
     },
     isConnected: (): boolean => vault.isConnected(),
     folderName: (): string | null => vault.label(),
+    // The prior folder whose grant lapsed, so the UI can offer a one-click reconnect.
+    pendingFolderName: (): string | null => vault.pendingLabel(),
     currentArtworkFile: (): string | null =>
       store.get<string>(ART_FILE_KEY) ?? null,
 
     // Re-attach a previously connected folder at boot (silent if still permitted).
     async restore(): Promise<void> {
       try {
-        if (await vault.restore()) notify();
+        await vault.restore();
+        // Re-render whether it reconnected or only surfaced a lapsed folder to reconnect.
+        if (vault.isConnected() || vault.pendingLabel()) notify();
       } catch (e) {
         console.warn("folder restore failed", e);
       }
