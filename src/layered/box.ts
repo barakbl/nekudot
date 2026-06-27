@@ -471,16 +471,31 @@ function makeEditableName(
   const el = document.createElement("span");
   el.className = "editable-name";
   el.textContent = initial;
-  el.title = "Double-click to rename";
+  el.tabIndex = 0;
+  el.setAttribute("aria-label", `Rename ${initial}`);
+  el.title = "Double-click or press Enter to rename";
 
-  el.addEventListener("dblclick", (e) => {
-    e.stopPropagation();
+  const startEdit = () => {
     el.contentEditable = "true";
     el.focus();
     document.getSelection()?.selectAllChildren(el);
+  };
+
+  el.addEventListener("dblclick", (e) => {
+    e.stopPropagation();
+    startEdit();
   });
 
   el.addEventListener("keydown", (e) => {
+    // Before editing, Enter/F2 begins a rename (keyboard parity with dblclick).
+    if (el.contentEditable !== "true") {
+      if (e.key === "Enter" || e.key === "F2") {
+        e.preventDefault();
+        e.stopPropagation();
+        startEdit();
+      }
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
       el.blur();

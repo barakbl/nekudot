@@ -122,12 +122,14 @@ export function createMapsBox(
 
       const name = document.createElement("span");
       name.className = "maps-menu-name";
-      name.title = "Click to rename";
+      name.title = "Rename map";
       name.textContent = m.name;
-      // Click the name to rename inline: swap in an input; Enter/blur commits,
-      // Escape cancels. stopPropagation on keys so brush shortcuts don't fire.
-      name.addEventListener("click", (e) => {
-        e.stopPropagation();
+      name.tabIndex = 0;
+      name.setAttribute("role", "button");
+      name.setAttribute("aria-label", `Rename map ${m.name}`);
+      // Swap the label for an inline input; Enter/blur commits, Escape cancels.
+      // stopPropagation on keys so brush shortcuts don't fire.
+      const startRename = () => {
         const input = document.createElement("input");
         input.className = "maps-menu-name-input";
         input.value = m.name;
@@ -148,6 +150,16 @@ export function createMapsBox(
           else if (ev.key === "Escape") commit(false);
         });
         input.addEventListener("blur", () => commit(true));
+      };
+      name.addEventListener("click", (e) => {
+        e.stopPropagation();
+        startRename();
+      });
+      name.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== "F2") return;
+        e.preventDefault();
+        e.stopPropagation();
+        startRename();
       });
 
       // Active map gets an "(Active)" tag; the others get a Select button that

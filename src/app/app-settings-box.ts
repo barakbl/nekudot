@@ -20,6 +20,8 @@ export function createAppSettingsBox(opts: {
   onToggleSmoothGradients: (on: boolean) => void;
   penEnabled: boolean;
   onTogglePen: (on: boolean) => void;
+  singleKeyShortcuts: boolean;
+  onToggleSingleKeyShortcuts: (on: boolean) => void;
   pixelLog: boolean;
   onTogglePixelLog: (on: boolean) => void;
   diagnostics: boolean;
@@ -90,6 +92,10 @@ export function createAppSettingsBox(opts: {
 
   const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
+  const singleKey = makeToggle(
+    opts.singleKeyShortcuts,
+    opts.onToggleSingleKeyShortcuts,
+  );
   const pixelLog = makeToggle(opts.pixelLog, opts.onTogglePixelLog);
   const diagnostics = makeToggle(opts.diagnostics, opts.onToggleDiagnostics);
 
@@ -191,6 +197,11 @@ export function createAppSettingsBox(opts: {
       "Pen pressure",
       pen.el,
       "Use a stylus's pressure and tilt to shape the stroke. Off makes a pen draw like a mouse.",
+    ),
+    row(
+      "Single-key shortcuts",
+      singleKey.el,
+      "Let single keys (b, c, y, 1-9 …) trigger tools and toggles. Turn off if you use voice control or hit them by accident - Cmd/Ctrl shortcuts keep working either way.",
     ),
     sub("Advanced"),
     row(

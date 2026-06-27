@@ -124,6 +124,8 @@ export function createMenu<T extends string>(
 } {
   const bar = document.createElement("div");
   bar.className = "toolbar";
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", "Drawing tools");
 
   bar.appendChild(makeDragDots(bar));
   let toggleCanvasMenu = () => {};
@@ -194,6 +196,7 @@ export function createMenu<T extends string>(
     const btn = document.createElement("button");
     btn.className = action.className ? `icon-btn ${action.className}` : "icon-btn";
     btn.title = action.label;
+    btn.setAttribute("aria-label", action.label);
     if (action.icon) btn.innerHTML = action.icon;
     else btn.textContent = action.label;
     btn.addEventListener("click", action.onClick);
@@ -305,6 +308,7 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   btn.type = "button";
   btn.className = "icon-btn";
   btn.title = "Windows";
+  btn.setAttribute("aria-label", "Windows");
   btn.innerHTML =
     '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">' +
     '<rect x="3" y="4" width="18" height="16" rx="2"/>' +
@@ -400,9 +404,14 @@ function makeMapsPill(control: MapsPillControl): {
     const { name, dots } = control.getActiveInfo();
     label.textContent = `${dots} ${dots === 1 ? "pt" : "pts"}`;
     open.title = `Open Memory Maps — active: ${name}`;
+    open.setAttribute("aria-label", `Open Memory Maps, active map: ${name}`);
     const isPinned = control.pinned();
     flash.classList.toggle("is-on", isPinned);
     flash.setAttribute("aria-pressed", String(isPinned));
+    flash.setAttribute(
+      "aria-label",
+      isPinned ? `Hot map on for ${name}` : `Show ${name} on canvas (hot map)`,
+    );
     flash.title = isPinned
       ? `Hot map on — ${name} stays visible while drawing (click to turn off)`
       : `Show ${name} on canvas and keep it visible while drawing (hot map)`;
@@ -425,6 +434,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   btn.type = "button";
   btn.className = "icon-btn canvas-menu-btn";
   btn.title = "More";
+  btn.setAttribute("aria-label", "More");
   btn.innerHTML =
     '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">' +
     '<circle cx="5" cy="12" r="1.6"/>' +
@@ -515,6 +525,7 @@ function makeSvgButton(
   btn.type = "button";
   btn.className = "icon-btn";
   btn.title = title;
+  btn.setAttribute("aria-label", title);
   btn.innerHTML = svg;
   if (onClick) btn.addEventListener("click", onClick);
   return btn;

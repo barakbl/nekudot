@@ -20,6 +20,7 @@ export function attachHelp(target: HTMLElement, text: string): HTMLElement {
   icon.textContent = "?";
   icon.setAttribute("role", "button");
   icon.setAttribute("aria-label", "Help");
+  icon.tabIndex = 0;
   icon.title = ""; // suppress native title; we render our own popover
   icon.dataset.helpText = text;
 
@@ -42,6 +43,14 @@ export function attachHelp(target: HTMLElement, text: string): HTMLElement {
   });
   // Don't let a click on the chip bubble to the panel/window behind it.
   icon.addEventListener("click", (e) => e.stopPropagation());
+  // Keyboard parity with the pointer paths: Enter/Space toggles the hint.
+  icon.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (activeIcon === icon) hide();
+    else show(icon, text);
+  });
 
   return icon;
 }
