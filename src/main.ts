@@ -1040,6 +1040,7 @@ const shortcuts = buildAppShortcuts({
     symmetryBox.el,
     mapsBox.el,
     appSettingsBox.el,
+    ...(folderBox ? [folderBox.el] : []),
     shortcutsPanel.el,
   ],
   showMaps,
@@ -1054,6 +1055,12 @@ const shortcuts = buildAppShortcuts({
   selectBrush,
   undo: doUndo,
   redo: doRedo,
+  // Cmd/Ctrl+S: save to the connected folder if there is one, otherwise fall
+  // back to the regular .nekudot download so Save works everywhere.
+  save: () => {
+    if (folderSync.isConnected()) void folderSync.syncArtwork();
+    else saveArtwork(layerManager).catch((e) => console.error("saveArtwork failed", e));
+  },
   recordClip,
 });
 const shortcutsPanel = createShortcutsPanel(shortcuts);
