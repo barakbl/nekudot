@@ -56,6 +56,7 @@ import {
   applyConnectionColor,
   mandalaConnectionColor,
 } from "./onboarding/connection-color";
+import { neutralCanvasDefaults } from "./onboarding/canvas-defaults";
 
 const store = new LocalStorageStore();
 
@@ -988,9 +989,12 @@ const onboarding = createOnboarding({
       layerManager.reset(size);
       replaceArtwork(size);
       resetArtState();
-      layerManager.setBackground({ color: "#ffffff", transparent: false });
+      // Contrast-safe defaults: a dark canvas + light ink, never white + black,
+      // so the first stroke and its connecting web are clearly visible (G1).
+      const { background, ink } = neutralCanvasDefaults();
+      layerManager.setBackground({ color: background, transparent: false });
       applyStageBackground();
-      menu.setMainColor("#000000");
+      menu.setMainColor(ink);
       symmetry.setMode("none");
       store.set(CANVAS_SIZE_KEY, size);
       void history.clear();
@@ -1030,8 +1034,16 @@ viewportEl.appendChild(onboarding.el);
   const hasPriorUse =
     store.get<unknown>("app.brush.selected") !== undefined ||
     store.get<unknown>(CANVAS_SIZE_KEY) !== undefined;
-  if (shouldShowOnboarding({ onboarded, hasPriorUse })) onboarding.show();
-  else if (!onboarded && hasPriorUse) store.set(ONBOARDED_KEY, true);
+  if (shouldShowOnboarding({ onboarded, hasPriorUse })) {
+    // A first-run user who dismisses the Start page (X / Escape) lands on this
+    // underlying canvas, so make it contrast-safe too - never reveal the hostile
+    // white + black blank. Picking Mandala/Blank overrides these.
+    const { background, ink } = neutralCanvasDefaults();
+    layerManager.setBackground({ color: background, transparent: false });
+    applyStageBackground();
+    menu.setMainColor(ink);
+    onboarding.show();
+  } else if (!onboarded && hasPriorUse) store.set(ONBOARDED_KEY, true);
 }
 // Opening the Start page mid-session is a deliberate "start over", so confirm
 // first (the first-run auto-show below calls onboarding.show() directly).
