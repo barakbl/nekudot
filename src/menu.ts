@@ -1,4 +1,4 @@
-import { closeOnOutsidePointer } from "./ui/popover";
+import { attachMenu } from "./ui/menu";
 
 export type MenuOption<T extends string> = {
   value: T;
@@ -224,20 +224,28 @@ function makeSymmetryCombo(control: SymmetryControl): {
   const pill = document.createElement("span");
   pill.className = "pill brush-pill sym-combo-pill";
 
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "brush-pill-trigger";
+
   const iconEl = document.createElement("span");
   iconEl.className = "brush-icon";
+  trigger.appendChild(iconEl);
 
   const chevron = document.createElement("span");
   chevron.className = "chevron";
   chevron.textContent = "⌄";
+  chevron.setAttribute("aria-hidden", "true");
 
-  pill.appendChild(iconEl);
+  pill.appendChild(trigger);
   pill.appendChild(makeGear("Symmetry settings", control.onSettings));
   pill.appendChild(chevron);
 
   const popover = document.createElement("div");
   popover.className = "brush-popover";
   pill.appendChild(popover);
+
+  const menu = attachMenu({ trigger, menu: popover, container: pill });
 
   const optionEls = new Map<string, HTMLElement>();
   let current = control.initial;
@@ -246,13 +254,19 @@ function makeSymmetryCombo(control: SymmetryControl): {
     current = v;
     const opt = control.modes.find((m) => m.value === v);
     iconEl.innerHTML = opt?.icon ?? "";
-    pill.title = opt ? `Symmetry: ${opt.label}` : "Symmetry";
-    for (const [k, el] of optionEls) el.classList.toggle("active", k === v);
+    const name = opt ? `Symmetry: ${opt.label}` : "Symmetry";
+    trigger.title = name;
+    trigger.setAttribute("aria-label", name);
+    for (const [k, el] of optionEls) {
+      el.classList.toggle("active", k === v);
+      el.setAttribute("aria-checked", String(k === v));
+    }
   };
 
   for (const m of control.modes) {
     const optEl = document.createElement("div");
     optEl.className = "brush-option";
+    optEl.setAttribute("role", "menuitemradio");
     const optIcon = document.createElement("span");
     optIcon.className = "opt-icon";
     optIcon.innerHTML = m.icon;
@@ -264,18 +278,19 @@ function makeSymmetryCombo(control: SymmetryControl): {
       e.stopPropagation();
       setValue(m.value);
       control.onChange(m.value);
-      popover.classList.remove("open");
+      menu.close();
     });
     popover.appendChild(optEl);
     optionEls.set(m.value, optEl);
   }
 
+  // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
-    if (e.target instanceof HTMLElement && e.target.closest(".brush-option"))
-      return;
-    popover.classList.toggle("open");
+    const t = e.target as HTMLElement;
+    if (t.closest(".brush-pill-trigger") || t.closest(".brush-gear")) return;
+    if (t.closest("[role='menu']")) return;
+    menu.toggle();
   });
-  closeOnOutsidePointer(pill, popover);
 
   setValue(current);
   return { el: pill, setValue };
@@ -301,9 +316,12 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   popover.className = "brush-popover canvas-menu-popover";
   wrap.appendChild(popover);
 
+  const menu = attachMenu({ trigger: btn, menu: popover, container: wrap });
+
   for (const it of items) {
     const row = document.createElement("div");
     row.className = "brush-option";
+    row.setAttribute("role", "menuitem");
     const kbd = document.createElement("span");
     kbd.className = "opt-shortcut";
     kbd.textContent = it.shortcut;
@@ -312,19 +330,15 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
     lbl.className = "opt-label";
     lbl.textContent = it.label;
     row.appendChild(lbl);
+    // Spell the shortcut out for assistive tech (the visible glyph is terse).
+    row.setAttribute("aria-label", `${it.label} (${it.shortcut})`);
     row.addEventListener("click", (e) => {
       e.stopPropagation();
       it.open();
-      popover.classList.remove("open");
+      menu.close();
     });
     popover.appendChild(row);
   }
-
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    popover.classList.toggle("open");
-  });
-  closeOnOutsidePointer(wrap, popover);
 
   return wrap;
 }
@@ -423,124 +437,60 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   popover.className = "brush-popover canvas-menu-popover";
   wrap.appendChild(popover);
 
-  // Share as PNG — flatten + hand to the native share sheet (download +
-  // clipboard-caption fallback on desktop).
-  const sh = document.createElement("div");
-  sh.className = "brush-option";
-  const shIc = document.createElement("span");
-  shIc.className = "opt-icon";
-  shIc.innerHTML =
+  const menu = attachMenu({ trigger: btn, menu: popover, container: wrap });
+
+  // Each row is a role="menuitem" with an icon (SVG markup or a glyph) + label.
+  const addRow = (icon: string, label: string, onPick: () => void) => {
+    const row = document.createElement("div");
+    row.className = "brush-option";
+    row.setAttribute("role", "menuitem");
+    const ic = document.createElement("span");
+    ic.className = "opt-icon";
+    setIcon(ic, icon, "");
+    const lbl = document.createElement("span");
+    lbl.className = "opt-label";
+    lbl.textContent = label;
+    row.append(ic, lbl);
+    row.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onPick();
+      menu.close();
+    });
+    popover.appendChild(row);
+  };
+
+  const SHARE_ICON =
     '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M4 12 v7 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1 -1 v-7"/>' +
     '<path d="M12 15 V3"/>' +
     '<path d="M8 7 L12 3 L16 7"/>' +
     "</svg>";
-  sh.appendChild(shIc);
-  const shLbl = document.createElement("span");
-  shLbl.className = "opt-label";
-  shLbl.textContent = "Share as PNG";
-  sh.appendChild(shLbl);
-  sh.addEventListener("click", (e) => {
-    e.stopPropagation();
-    opts.onShareImage();
-    popover.classList.remove("open");
-  });
-  popover.appendChild(sh);
-
-  // Export image (.png) — flattened share-ready PNG.
-  const exp = document.createElement("div");
-  exp.className = "brush-option";
-  const expIc = document.createElement("span");
-  expIc.className = "opt-icon";
-  expIc.textContent = "⤓";
-  exp.appendChild(expIc);
-  const expLbl = document.createElement("span");
-  expLbl.className = "opt-label";
-  expLbl.textContent = "Export image (.png)";
-  exp.appendChild(expLbl);
-  exp.addEventListener("click", (e) => {
-    e.stopPropagation();
-    opts.onExportImage();
-    popover.classList.remove("open");
-  });
-  popover.appendChild(exp);
-
-  // Record GIF - capture a few seconds of drawing, then preview/trim/speed.
-  const gif = document.createElement("div");
-  gif.className = "brush-option";
-  const gifIc = document.createElement("span");
-  gifIc.className = "opt-icon";
-  gifIc.innerHTML =
+  const GIF_ICON =
     '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<rect x="3" y="5" width="18" height="14" rx="2"/>' +
     '<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>' +
     "</svg>";
-  gif.appendChild(gifIc);
-  const gifLbl = document.createElement("span");
-  gifLbl.className = "opt-label";
-  gifLbl.textContent = "Record GIF";
-  gif.appendChild(gifLbl);
-  gif.addEventListener("click", (e) => {
-    e.stopPropagation();
-    opts.onRecordClip();
-    popover.classList.remove("open");
-  });
-  popover.appendChild(gif);
-
-  // Save artwork (.nekudot) — editable archive for resuming work later.
-  const dl = document.createElement("div");
-  dl.className = "brush-option";
-  const dlIc = document.createElement("span");
-  dlIc.className = "opt-icon";
-  dlIc.innerHTML =
+  const SAVE_ICON =
     '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M5 3 H16 L19 6 V21 H5 Z"/>' +
     '<path d="M8 3 V8 H15 V3"/>' +
     '<path d="M8 14 H16 V21 H8 Z"/>' +
     "</svg>";
-  dl.appendChild(dlIc);
-  const dlLbl = document.createElement("span");
-  dlLbl.className = "opt-label";
-  dlLbl.textContent = "Save artwork (.nekudot)";
-  dl.appendChild(dlLbl);
-  dl.addEventListener("click", (e) => {
-    e.stopPropagation();
-    opts.onSaveArtwork();
-    popover.classList.remove("open");
-  });
-  popover.appendChild(dl);
-
-  // Load artwork (.nekudot) — upload + verify an existing archive.
-  const ld = document.createElement("div");
-  ld.className = "brush-option";
-  const ldIc = document.createElement("span");
-  ldIc.className = "opt-icon";
-  ldIc.innerHTML =
+  const LOAD_ICON =
     '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M12 16 V4"/>' +
     '<path d="M8 8 L12 4 L16 8"/>' +
     '<path d="M4 16 V20 H20 V16"/>' +
     "</svg>";
-  ld.appendChild(ldIc);
-  const ldLbl = document.createElement("span");
-  ldLbl.className = "opt-label";
-  ldLbl.textContent = "Load artwork (.nekudot)";
-  ld.appendChild(ldLbl);
-  ld.addEventListener("click", (e) => {
-    e.stopPropagation();
-    opts.onLoadArtwork();
-    popover.classList.remove("open");
-  });
-  popover.appendChild(ld);
 
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    popover.classList.toggle("open");
-  });
+  addRow(SHARE_ICON, "Share as PNG", opts.onShareImage);
+  addRow("⤓", "Export image (.png)", opts.onExportImage);
+  addRow(GIF_ICON, "Record GIF", opts.onRecordClip);
+  addRow(SAVE_ICON, "Save artwork (.nekudot)", opts.onSaveArtwork);
+  addRow(LOAD_ICON, "Load artwork (.nekudot)", opts.onLoadArtwork);
 
-  closeOnOutsidePointer(wrap, popover);
-
-  const toggle = () => popover.classList.toggle("open");
+  // The app's keyboard shortcut toggles the menu; focus the first item on open.
+  const toggle = () => menu.toggle(true);
   return { el: wrap, toggle };
 }
 
@@ -608,18 +558,32 @@ function makeColorSwatch(
 ): { el: HTMLElement; setMain: (v: string) => void; setSecondary: (v: string) => void } {
   const wrap = document.createElement("span");
   wrap.className = "swatch-wrap";
-  wrap.title = "Right-click to swap colors";
+  wrap.title = "Right-click or Shift+Enter to swap colors";
 
   const back = makeColorSlot("swatch-back", colors?.secondary, "secondary", colors?.onOpenPalette);
   const front = makeColorSlot("swatch-front", colors?.main, "main", colors?.onOpenPalette);
 
-  wrap.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const swap = () => {
     const a = back.getValue();
     const b = front.getValue();
     back.setValue(b);
     front.setValue(a);
+  };
+
+  wrap.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    swap();
+  });
+  // Keyboard equivalent of the right-click swap: the ContextMenu key or
+  // Shift+Enter while a swatch button is focused (plain Enter still opens the
+  // picker). Caught on the wrap as the keydown bubbles up from the buttons.
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key === "ContextMenu" || (e.key === "Enter" && e.shiftKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+      swap();
+    }
   });
 
   wrap.appendChild(back.el);
@@ -641,19 +605,35 @@ function makeColorSlot(
   target?: "main" | "secondary",
   onOpenPalette?: (target: "main" | "secondary", anchor: HTMLElement) => void,
 ): ColorSlotHandle {
-  const el = document.createElement("span");
-  el.className = className;
   const initial = slot?.initial ?? "#000000";
+
+  // Without a slot the swatch is inert decoration, so keep it a plain span.
+  if (!slot) {
+    const span = document.createElement("span");
+    span.className = className;
+    span.style.background = initial;
+    return { el: span, getValue: () => initial, setValue: () => {} };
+  }
+
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = className;
   el.style.background = initial;
 
-  if (!slot) {
-    return { el, getValue: () => initial, setValue: () => {} };
-  }
+  const name = target === "secondary" ? "Secondary" : "Main";
+  const setLabel = (v: string) =>
+    el.setAttribute(
+      "aria-label",
+      `${name} color: ${v}. Enter to change, Shift+Enter to swap`,
+    );
+  setLabel(initial);
 
   const input = document.createElement("input");
   input.type = "color";
   input.value = initial;
   input.className = "swatch-input";
+  input.tabIndex = -1; // the button is the focus stop, not the hidden input
+  input.setAttribute("aria-hidden", "true");
   el.appendChild(input);
 
   // With a palette panel wired, the swatch opens it (the panel reaches the OS
@@ -666,6 +646,7 @@ function makeColorSlot(
   });
   input.addEventListener("input", () => {
     el.style.background = input.value;
+    setLabel(input.value);
     slot.onChange(input.value);
   });
 
@@ -675,6 +656,7 @@ function makeColorSlot(
     setValue: (v) => {
       input.value = v;
       el.style.background = v;
+      setLabel(v);
       slot.onChange(v);
     },
   };
@@ -712,6 +694,10 @@ function makeBrushPill<T extends string>(
   const pill = document.createElement("span");
   pill.className = "pill brush-pill";
 
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "brush-pill-trigger";
+
   const iconEl = document.createElement("span");
   iconEl.className = "brush-icon";
 
@@ -721,9 +707,11 @@ function makeBrushPill<T extends string>(
   const chevron = document.createElement("span");
   chevron.className = "chevron";
   chevron.textContent = "⌄";
+  chevron.setAttribute("aria-hidden", "true");
 
-  pill.appendChild(iconEl);
-  pill.appendChild(labelEl);
+  trigger.appendChild(iconEl);
+  trigger.appendChild(labelEl);
+  pill.appendChild(trigger);
 
   if (onBrushSettings) {
     pill.appendChild(makeGear("Brush settings", onBrushSettings));
@@ -735,6 +723,8 @@ function makeBrushPill<T extends string>(
   popover.className = "brush-popover";
   pill.appendChild(popover);
 
+  const menu = attachMenu({ trigger, menu: popover, container: pill });
+
   const optionEls = new Map<T, HTMLElement>();
   const flatOptions = flattenMenuEntries(entries);
 
@@ -743,14 +733,18 @@ function makeBrushPill<T extends string>(
     if (!opt) return;
     setIcon(iconEl, opt.icon, "∿");
     labelEl.textContent = opt.label;
+    trigger.setAttribute("aria-label", `Brush: ${opt.label}`);
     for (const [k, el] of optionEls) {
-      el.classList.toggle("active", k === v);
+      const active = k === v;
+      el.classList.toggle("active", active);
+      el.setAttribute("aria-checked", String(active));
     }
   };
 
   const renderOption = (opt: MenuOption<T>, inGroup: boolean) => {
     const optEl = document.createElement("div");
     optEl.className = inGroup ? "brush-option in-group" : "brush-option";
+    optEl.setAttribute("role", "menuitemradio");
 
     const optIcon = document.createElement("span");
     optIcon.className = "opt-icon";
@@ -774,7 +768,7 @@ function makeBrushPill<T extends string>(
       e.stopPropagation();
       setValue(opt.value);
       onChange(opt.value);
-      popover.classList.remove("open");
+      menu.close();
     });
 
     popover.appendChild(optEl);
@@ -793,14 +787,13 @@ function makeBrushPill<T extends string>(
     }
   }
 
+  // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
-    if (e.target instanceof HTMLElement && e.target.closest(".brush-option")) {
-      return;
-    }
-    popover.classList.toggle("open");
+    const t = e.target as HTMLElement;
+    if (t.closest(".brush-pill-trigger") || t.closest(".brush-gear")) return;
+    if (t.closest("[role='menu']")) return;
+    menu.toggle();
   });
-
-  closeOnOutsidePointer(pill, popover);
 
   setValue(initial);
   return { pill, setValue };
@@ -813,9 +806,11 @@ const GEAR_SVG =
   "</svg>";
 
 function makeGear(title: string, onClick: () => void): HTMLElement {
-  const gear = document.createElement("span");
+  const gear = document.createElement("button");
+  gear.type = "button";
   gear.className = "brush-gear";
   gear.title = title;
+  gear.setAttribute("aria-label", title);
   gear.innerHTML = GEAR_SVG;
   gear.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -851,6 +846,10 @@ function makeConnectingCombo(control: ConnectingControl): {
   const pill = document.createElement("span");
   pill.className = "pill brush-pill connect-pill";
 
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "brush-pill-trigger";
+
   const iconEl = document.createElement("span");
   iconEl.className = "brush-icon";
 
@@ -860,15 +859,19 @@ function makeConnectingCombo(control: ConnectingControl): {
   const chevron = document.createElement("span");
   chevron.className = "chevron";
   chevron.textContent = "⌄";
+  chevron.setAttribute("aria-hidden", "true");
 
-  pill.appendChild(iconEl);
-  pill.appendChild(labelEl);
+  trigger.appendChild(iconEl);
+  trigger.appendChild(labelEl);
+  pill.appendChild(trigger);
   pill.appendChild(makeGear("Connecting settings", control.onSettings));
   pill.appendChild(chevron);
 
   const popover = document.createElement("div");
   popover.className = "brush-popover";
   pill.appendChild(popover);
+
+  const menu = attachMenu({ trigger, menu: popover, container: pill });
 
   let groups = control.groups;
   const optionEls = new Map<string, HTMLElement>();
@@ -881,8 +884,13 @@ function makeConnectingCombo(control: ConnectingControl): {
     // Show the selected style's glyph, falling back to the generic web mark.
     setIcon(iconEl, opt?.icon, CONNECT_ICON);
     labelEl.textContent = opt ? opt.label : v;
-    pill.title = opt?.title ?? "";
-    for (const [k, el] of optionEls) el.classList.toggle("active", k === v);
+    const name = opt ? `Connecting: ${opt.label}` : "Connecting";
+    trigger.title = opt?.title ?? name;
+    trigger.setAttribute("aria-label", name);
+    for (const [k, el] of optionEls) {
+      el.classList.toggle("active", k === v);
+      el.setAttribute("aria-checked", String(k === v));
+    }
   };
 
   const renderOptions = () => {
@@ -903,11 +911,13 @@ function makeConnectingCombo(control: ConnectingControl): {
           b.type = "button";
           b.className = "group-action";
           b.title = title;
+          b.setAttribute("aria-label", title);
+          b.setAttribute("role", "menuitem");
           b.innerHTML = icon;
           b.disabled = disabled;
           b.addEventListener("click", (e) => {
             e.stopPropagation();
-            popover.classList.remove("open");
+            menu.close();
             fn?.();
           });
           return b;
@@ -922,6 +932,7 @@ function makeConnectingCombo(control: ConnectingControl): {
       for (const opt of g.items) {
         const optEl = document.createElement("div");
         optEl.className = "brush-option in-group";
+        optEl.setAttribute("role", "menuitemradio");
         if (opt.title) optEl.title = opt.title;
         const optIcon = document.createElement("span");
         optIcon.className = "opt-icon";
@@ -930,24 +941,40 @@ function makeConnectingCombo(control: ConnectingControl): {
         optLabel.className = "opt-label";
         optLabel.textContent = opt.label;
         optEl.append(optIcon, optLabel);
-        // User presets get a delete (×).
+        // User presets get a delete (×). Mouse: the × button. Keyboard: the
+        // Delete/Backspace key while the row is focused (the × itself stays out
+        // of the arrow-key order so each preset is a single stop).
         if (opt.custom && control.onDeleteCustom) {
+          optEl.setAttribute(
+            "aria-label",
+            `${opt.label} (press Delete to remove)`,
+          );
+          optEl.setAttribute("aria-keyshortcuts", "Delete");
           const del = document.createElement("button");
           del.type = "button";
           del.className = "opt-remove";
           del.textContent = "×";
           del.title = "Delete preset";
+          del.setAttribute("aria-label", `Delete preset ${opt.label}`);
+          del.tabIndex = -1;
           del.addEventListener("click", (e) => {
             e.stopPropagation();
             control.onDeleteCustom?.(opt.value);
           });
           optEl.appendChild(del);
+          optEl.addEventListener("keydown", (e) => {
+            if (e.key === "Delete" || e.key === "Backspace") {
+              e.preventDefault();
+              e.stopPropagation();
+              control.onDeleteCustom?.(opt.value);
+            }
+          });
         }
         optEl.addEventListener("click", (e) => {
           e.stopPropagation();
           setValue(opt.value);
           control.onChange(opt.value);
-          popover.classList.remove("open");
+          menu.close();
         });
         popover.appendChild(optEl);
         optionEls.set(opt.value, optEl);
@@ -956,13 +983,13 @@ function makeConnectingCombo(control: ConnectingControl): {
     setValue(current); // refresh active highlight against the new list
   };
 
+  // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
-    if (e.target instanceof HTMLElement && e.target.closest(".brush-option")) {
-      return;
-    }
-    popover.classList.toggle("open");
+    const t = e.target as HTMLElement;
+    if (t.closest(".brush-pill-trigger") || t.closest(".brush-gear")) return;
+    if (t.closest("[role='menu']")) return;
+    menu.toggle();
   });
-  closeOnOutsidePointer(pill, popover);
 
   renderOptions();
 
