@@ -98,7 +98,9 @@
         "grainAngle": 0,
         "grainCross": false
       }
-    },
+    }
+  ],
+  "More": [
     {
       "name": "bloom",
       "webWeight": { "light": { "strands": 1, "density": 60, "links": 0 }, "heavy": { "strands": 1, "density": 100, "links": 0 } },
@@ -133,9 +135,7 @@
         "bloom": 48,
         "bloomRadius": 170
       }
-    }
-  ],
-  "More": [
+    },
     {
       "name": "fur",
       "webWeight": { "light": { "strands": 4, "density": 35, "links": 20 }, "heavy": { "strands": 11, "density": 85, "links": 0 } },
