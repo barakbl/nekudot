@@ -85,8 +85,8 @@ export class ConnectionBase {
   protected connectDensity = 10; // %
   protected connectMaxLinks = 0; // 0 = connect to all in range; N = the N nearest
   protected searchRadius = 40;
-  // PROTOTYPE (M3 bloom): scatter extra points around each deposit so the user's
-  // OWN stroke blooms (point-multiplier, no pre-seed). 0 = off.
+  // Bloom dials: target local density (points within reach) and the scatter
+  // radius for the top-up. 0 = off. See bloomTopUp().
   protected connectBloom = 0;
   protected connectBloomRadius = 60;
   protected minConnectDist = 0;
@@ -227,12 +227,10 @@ export class ConnectionBase {
   }
 
   // Bloom: a density-targeted point multiplier. After a real deposit, top the
-  // local neighbourhood up to `connectBloom` points by scattering jittered points
-  // where it's sparse - little or none where it's already dense - then weave
-  // them. So the user's OWN stroke blooms into a full web (a tap -> a cluster ->
-  // a mandala), with an even fullness everywhere they draw. Self-limiting: a long
-  // or repeated stroke adds nothing in areas already at target, so it bounds its
-  // own point growth without a global cap. No-op when the dial is 0.
+  // local neighbourhood up to `connectBloom` points - scattering where it's
+  // sparse, nothing where it's already dense - then weave them, so the user's own
+  // stroke blooms into a full web. Self-limiting: an already-full area adds
+  // nothing, so point growth is bounded by area drawn, not time. No-op when 0.
   bloomTopUp(current: Pixel): void {
     const target = this.connectBloom;
     if (target <= 0) return;
