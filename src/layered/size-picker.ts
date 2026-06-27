@@ -4,6 +4,7 @@ import {
   squareOfScreen,
   type CanvasSize,
 } from "../canvas-size";
+import { trapFocus, type FocusTrap } from "../ui/focus-trap";
 
 export type SizePickerOptions = {
   getScreenMax: () => CanvasSize;
@@ -27,10 +28,15 @@ export function createSizePicker(opts: SizePickerOptions): {
 
   const card = document.createElement("div");
   card.className = "size-picker-card";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.tabIndex = -1;
   overlay.appendChild(card);
 
   const title = document.createElement("h3");
+  title.id = "size-picker-title";
   title.textContent = "New art";
+  card.setAttribute("aria-labelledby", title.id);
   card.appendChild(title);
 
   const grid = document.createElement("div");
@@ -119,8 +125,21 @@ export function createSizePicker(opts: SizePickerOptions): {
   actions.appendChild(createBtn);
   card.appendChild(actions);
 
+  let trap: FocusTrap | null = null;
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  };
+
   const close = () => {
     overlay.style.display = "none";
+    document.removeEventListener("keydown", onKeyDown);
+    if (trap) {
+      trap.release();
+      trap = null;
+    }
   };
   cancelBtn.addEventListener("click", close);
 
@@ -160,6 +179,8 @@ export function createSizePicker(opts: SizePickerOptions): {
     select("full");
     renderPreviews();
     overlay.style.display = "flex";
+    document.addEventListener("keydown", onKeyDown);
+    trap = trapFocus(card);
   };
 
   return { el: overlay, open, close };

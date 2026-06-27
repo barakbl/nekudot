@@ -12,6 +12,7 @@ import { sizeCanvasForDpr } from "./canvas-size";
 import { createBareHost, type PaintHost } from "./paint-host";
 import { createNeighborFinder } from "./neighbor-finder";
 import { makeCloseButton } from "./settings-panel";
+import { trapFocus, type FocusTrap } from "./ui/focus-trap";
 import type { BrushBase } from "./base";
 import type { Store } from "./store/base";
 import tipsData from "./brush-preview-tips.json";
@@ -66,6 +67,7 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
   let brush: BrushBase | null = null;
   let drawing = false;
   let hintTip: HTMLElement | null = null;
+  let trap: FocusTrap | null = null;
 
   const side = (): number => Math.round(0.8 * Math.min(window.innerWidth, window.innerHeight));
 
@@ -279,11 +281,16 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
     // `app-modal` makes bindShortcuts treat the open window as a modal, so app
     // shortcuts (undo/redo, brush keys…) don't fire while you're previewing.
     win.className = "brush-preview-window app-modal";
+    win.setAttribute("role", "dialog");
+    win.setAttribute("aria-modal", "true");
+    win.tabIndex = -1;
 
     const head = document.createElement("div");
     head.className = "brush-preview-head";
     const title = document.createElement("h3");
+    title.id = "brush-preview-title";
     title.textContent = "Brush preview";
+    win.setAttribute("aria-labelledby", title.id);
     // Paper-colour selector: Canvas (match the artwork, default) / Light / Dark.
     const bgSeg = document.createElement("div");
     bgSeg.className = "brush-preview-bgseg";
@@ -356,8 +363,20 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
     return true;
   };
 
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    }
+  };
+
   function close(): void {
     hideHint();
+    document.removeEventListener("keydown", onKeyDown);
+    if (trap) {
+      trap.release();
+      trap = null;
+    }
     if (win) win.style.display = "none";
   }
 
@@ -374,6 +393,8 @@ export function createBrushPreview(opts: BrushPreviewOpts): BrushPreview {
     applyBg(); // keep the "Canvas" option in sync with the live artwork paper
     syncBg();
     refreshInfo();
+    document.addEventListener("keydown", onKeyDown);
+    trap = trapFocus(win);
   };
 
   const onSettingChanged = (change?: PreviewChange): void => {
