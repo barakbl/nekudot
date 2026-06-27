@@ -18,6 +18,10 @@ export function createPanel(opts: {
   const panel = document.createElement("div");
   panel.className = opts.className;
   panel.style.display = "none";
+  // Opt this panel into the window-stack's open-cascade + on-screen clamp (see
+  // window-stack.ts). Marks only the corner-anchored draggable boxes, not the
+  // centered brush-preview window, which positions itself.
+  panel.dataset.cascade = "1";
 
   const header = document.createElement("div");
   header.className = "panel-header";
