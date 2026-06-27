@@ -2366,7 +2366,9 @@ body.help-mode .help-icon {
    re-anchor to the bottom edge, full width, with a grab handle. They stay
    non-modal (no backdrop) so you can still draw; the drag header becomes a
    swipe-down-to-dismiss gesture (see drag.ts). */
-@media (max-width: 640px) {
+/* Panels dock as a bottom sheet on small screens AND on any touch device, so a
+   tablet gets the touch layout instead of the desktop floating windows. */
+@media (max-width: 640px), (pointer: coarse) {
   .settings-panel,
   .shortcuts-panel,
   .layers-box {
@@ -2397,7 +2399,10 @@ body.help-mode .help-icon {
     background: var(--border-stronger);
     pointer-events: none;
   }
+}
 
+/* Phone-only navbar slimming (width-gated - a tablet has room for these). */
+@media (max-width: 640px) {
   /* Full-width app-bar on phones: edge to edge, using all the width. */
   .toolbar {
     top: 0;
@@ -3071,7 +3076,7 @@ body.help-mode .help-icon {
   background: transparent;
 }
 /* On phones, drop the anchored popover for a bottom sheet (room for the grid). */
-@media (max-width: 640px) {
+@media (max-width: 640px), (pointer: coarse) {
   .color-palette-popover {
     top: auto;
     bottom: 0;
@@ -3849,5 +3854,18 @@ body.help-mode .help-icon {
   .brush-option .opt-remove {
     min-width: 28px;
     min-height: 28px;
+  }
+  /* Pill gears + toolbar colour swatches: grow the hit area, glyph unchanged. */
+  .toolbar .brush-gear {
+    padding: 8px;
+  }
+  .toolbar .swatch-wrap {
+    width: 30px;
+    height: 30px;
+  }
+  .toolbar .swatch-back,
+  .toolbar .swatch-front {
+    width: 18px;
+    height: 18px;
   }
 }
