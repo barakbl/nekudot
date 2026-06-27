@@ -38,6 +38,8 @@ export function createStage({ store }: { store: Store }) {
   // 0,0 with transform-origin 0,0 so the camera matrix maps canvas px -> screen.
   const viewportEl = document.createElement("div");
   viewportEl.className = "viewport";
+  viewportEl.setAttribute("role", "main");
+  viewportEl.setAttribute("aria-label", "Drawing canvas");
   viewportEl.style.position = "fixed";
   viewportEl.style.inset = "0";
   viewportEl.style.overflow = "hidden";
@@ -46,6 +48,9 @@ export function createStage({ store }: { store: Store }) {
 
   const stage = document.createElement("div");
   stage.className = "stage";
+  // The layer + overlay canvases inside are graphical pixels with nothing for a
+  // screen reader to read; the viewport above carries the accessible name.
+  stage.setAttribute("aria-hidden", "true");
   stage.style.position = "absolute";
   stage.style.left = "0";
   stage.style.top = "0";

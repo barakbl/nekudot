@@ -261,6 +261,7 @@ type AppState = {
   pixelLogEnabled: boolean; // pixel-log writing (future features); off by default
   diagnosticsEnabled: boolean; // opt-in field diagnostics
   smoothGradients: boolean; // OKLCH "smooth" gradient blend space vs sRGB; default on
+  singleKeyShortcuts: boolean; // bare-key shortcuts (b/c/y/1-9…); off disables them (WCAG 2.1.4)
 };
 const appState: AppState = {
   brush: brushes[initialBrushKey],
@@ -269,6 +270,7 @@ const appState: AppState = {
   pixelLogEnabled: store.get<boolean>("app.pixelLog") ?? false,
   diagnosticsEnabled: store.get<boolean>("app.diag") ?? false,
   smoothGradients: store.get<boolean>("app.gradient.oklch") ?? true,
+  singleKeyShortcuts: store.get<boolean>("app.shortcuts.singleKey") ?? true,
 };
 
 // Apply the persisted pixel-log setting (App settings; off by default - it is
@@ -729,6 +731,11 @@ const appSettingsBox = createAppSettingsBox({
     store.set("app.penEnabled", on);
     settingsPanel.render(appState.brush); // show/hide the Pen section live
   },
+  singleKeyShortcuts: appState.singleKeyShortcuts,
+  onToggleSingleKeyShortcuts: (on) => {
+    appState.singleKeyShortcuts = on;
+    store.set("app.shortcuts.singleKey", on);
+  },
   pixelLog: appState.pixelLogEnabled,
   onTogglePixelLog: (on) => {
     appState.pixelLogEnabled = on;
@@ -1079,7 +1086,7 @@ showShortcuts = () => {
   if (shortcutsPanel.el.style.display === "none") showWindow(shortcutsPanel.el);
   else shortcutsPanel.el.style.display = "none";
 };
-bindShortcuts(shortcuts);
+bindShortcuts(shortcuts, { singleKeyEnabled: () => appState.singleKeyShortcuts });
 
 // ---- help hints (press ? to toggle visibility) ---------------------------------------
 

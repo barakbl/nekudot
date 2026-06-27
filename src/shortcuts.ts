@@ -58,7 +58,10 @@ function blockingModalOpen(): boolean {
   );
 }
 
-export function bindShortcuts(shortcuts: Shortcut[]): () => void {
+export function bindShortcuts(
+  shortcuts: Shortcut[],
+  opts: { singleKeyEnabled?: () => boolean } = {},
+): () => void {
   const onKey = (e: KeyboardEvent) => {
     // A modal owns the keyboard until it's dismissed.
     if (blockingModalOpen()) return;
@@ -67,6 +70,9 @@ export function bindShortcuts(shortcuts: Shortcut[]): () => void {
     if (isTextEntry(e.target)) return;
     if (e.altKey) return;
     const hasMod = e.metaKey || e.ctrlKey;
+    // WCAG 2.1.4: character-key shortcuts can be turned off. Cmd/Ctrl combos are
+    // exempt, so they keep working; gestures (handled below) are unaffected.
+    if (!hasMod && opts.singleKeyEnabled?.() === false) return;
     for (const s of shortcuts) {
       if (s.fingers !== undefined) continue;
       const wantsMod = s.cmdOrCtrl === true;
