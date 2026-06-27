@@ -1,35 +1,29 @@
 import type { LayerManager } from "../layered/manager";
 import { LocalStorageStore } from "../store/local_storage";
-import { LocalDirVault } from "../sync/local-dir-vault";
+import { selectVault } from "../sync/select-vault";
 import type { FileVault } from "../sync/file-vault";
 import { buildArtworkBlob } from "../save-artwork";
+import { timestamp } from "../export";
+import { NEKUDOT_ARTWORK_SUFFIX } from "../nekudot-schema";
 import { buildSettingsBundleText, importSettingsFromText } from "./settings-io";
-import { MAX_SETTINGS_BYTES } from "../settings-file";
+import { MAX_SETTINGS_BYTES, SETTINGS_FILE_SUFFIX } from "../settings-file";
 import { showChip } from "../chip";
 import { showError } from "../confirm";
 
 // Folder sync (Chrome only): connect a local folder once, then save/load the
-// settings bundle and sync the current artwork there - no download/upload dialog
-// each time. The controller wires the generic FileVault to the app's build/parse
-// helpers; swapping LocalDirVault for a cloud vault later changes nothing here.
+// settings bundle and the current artwork there - no download/upload dialog each
+// time. The controller wires the generic FileVault (chosen by selectVault) to the
+// app's build/parse helpers; a different backend later changes nothing here.
 
-const SETTINGS_FILE = "app.nekudotapp";
-// The current artwork's filename in the folder, so re-syncing overwrites the same
+const SETTINGS_FILE = `app${SETTINGS_FILE_SUFFIX}`;
+// The current artwork's filename in the folder, so re-saving overwrites the same
 // file. Reset when the drawing is replaced (new/blank/mandala/load) so the next
-// sync starts a fresh file instead of clobbering the previous drawing.
+// save starts a fresh file instead of clobbering the previous drawing. Per-device
+// state - intentionally NOT part of the exported settings bundle.
 const ART_FILE_KEY = "app.sync.artFile";
 
-// Filename-safe timestamp: YYYYMMDD_HHMMSS, no colons (illegal on Windows).
-function stamp(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  const date = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
-  const time = `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-  return `${date}_${time}`;
-}
-
 // Normalize an uploaded file's name into a safe in-folder name: basename only (no
-// path separators, no control chars) with a .nekudot extension. Returns null if
+// path separators, no control chars) with the artwork extension. Returns null if
 // nothing usable remains. Keeps writes scoped to a single entry in the folder.
 function toArtFileName(name: string): string | null {
   const base = (name.split(/[/\\]/).pop() ?? "")
@@ -38,9 +32,9 @@ function toArtFileName(name: string): string | null {
     .join("")
     .trim();
   if (!base || base === "." || base === "..") return null;
-  return /\.nekudot$/i.test(base)
+  return new RegExp(`\\${NEKUDOT_ARTWORK_SUFFIX}$`, "i").test(base)
     ? base
-    : `${base.replace(/\.[^.]*$/, "")}.nekudot`;
+    : `${base.replace(/\.[^.]*$/, "")}${NEKUDOT_ARTWORK_SUFFIX}`;
 }
 
 export type FolderSync = ReturnType<typeof createFolderSync>;
@@ -56,7 +50,7 @@ export function createFolderSync(deps: {
   buildSettingsText?: () => Promise<string>;
   applySettingsText?: (text: string) => void;
 }) {
-  const vault = deps.vault ?? new LocalDirVault();
+  const vault = deps.vault ?? selectVault();
   const buildArtwork = deps.buildArtwork ?? (() => buildArtworkBlob(deps.manager));
   const buildSettingsText = deps.buildSettingsText ?? buildSettingsBundleText;
   const applySettingsText = deps.applySettingsText ?? importSettingsFromText;
@@ -69,7 +63,8 @@ export function createFolderSync(deps: {
     if (vault.isConnected()) return true;
     const ok = await vault.connect();
     if (ok) {
-      showChip(`Connected ${vault.label()}`);
+      const name = vault.label();
+      showChip(name ? `Connected ${name}` : "Folder connected");
       notify();
     }
     return ok;
@@ -153,11 +148,13 @@ export function createFolderSync(deps: {
       try {
         if (!(await ensureConnected())) return;
         const blob = await buildArtwork();
-        const name = store.get<string>(ART_FILE_KEY) ?? `art_${stamp()}.nekudot`;
+        const name =
+          store.get<string>(ART_FILE_KEY) ??
+          `art_${timestamp()}${NEKUDOT_ARTWORK_SUFFIX}`;
         await vault.write(name, blob);
         // Only remember the name once the write actually succeeded.
         store.set(ART_FILE_KEY, name);
-        showChip(`Synced ${name}`);
+        showChip(`Saved ${name}`);
         notify();
       } catch (e) {
         console.error("sync artwork to folder failed", e);

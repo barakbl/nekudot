@@ -5,23 +5,7 @@ import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../d
 import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
 
-export type AppSettingsBox = {
-  el: HTMLElement;
-  toggle: () => void;
-  // Re-render the Local folder section after its connection state changes.
-  refreshFolder: () => void;
-};
-
-// Chrome folder-sync controls, wired by the app. Omitted when unsupported, so the
-// whole Local folder section is then hidden.
-export type FolderControls = {
-  isConnected: () => boolean;
-  folderName: () => string | null;
-  onConnect: () => void;
-  onDisconnect: () => void;
-  onSaveSettings: () => void;
-  onLoadSettings: () => void;
-};
+export type AppSettingsBox = { el: HTMLElement; toggle: () => void };
 
 const THEMES: Theme[] = ["auto", "light", "dark"];
 const THEME_GLYPH: Record<Theme, string> = { auto: "◐", light: "☀", dark: "☾" };
@@ -46,8 +30,6 @@ export function createAppSettingsBox(opts: {
   onExportSettings: () => void;
   // Pick a settings file and import it (replaces config, then reloads).
   onImportSettings: () => void;
-  // Chrome folder sync. Omitted on unsupported browsers -> section hidden.
-  folder?: FolderControls;
 }): AppSettingsBox {
   const { panel } = createPanel({
     className: "layers-box app-settings-box",
@@ -82,25 +64,6 @@ export function createAppSettingsBox(opts: {
     if (help) attachHelp(l, help);
     return r;
   };
-  // A small pill button + a row of them (the neutral Backup / folder controls).
-  const ioBtn = (label: string, onClick: () => void) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "appset-io-btn";
-    b.textContent = label;
-    b.addEventListener("click", (e) => {
-      e.stopPropagation();
-      onClick();
-    });
-    return b;
-  };
-  const ioActionsRow = (buttons: HTMLButtonElement[]) => {
-    const wrap = document.createElement("div");
-    wrap.className = "appset-io-actions";
-    wrap.append(...buttons);
-    return wrap;
-  };
-
   // Appearance: a small segmented Auto / Light / Dark picker.
   let activeTheme = opts.theme.initial;
   const seg = document.createElement("div");
@@ -215,49 +178,6 @@ export function createAppSettingsBox(opts: {
   whatsNew.rel = "noopener";
   whatsNew.textContent = "What's new →";
 
-  // Local folder (Chrome folder sync). A dynamic block - [Connect folder] when
-  // idle, the folder name + Disconnect + Save/Load settings once connected -
-  // re-rendered via refreshFolder when the connection state changes. Hidden
-  // entirely when unsupported (opts.folder omitted).
-  const folderBox = document.createElement("div");
-  const renderFolder = () => {
-    const f = opts.folder;
-    if (!f) return;
-    folderBox.replaceChildren();
-    if (f.isConnected()) {
-      const head = document.createElement("div");
-      head.className = "appset-io-actions";
-      const name = document.createElement("span");
-      name.className = "appset-folder-name";
-      name.textContent = f.folderName() ?? "Connected";
-      head.append(name, ioBtn("Disconnect", f.onDisconnect));
-      folderBox.append(
-        row("Folder", head),
-        row(
-          "Settings",
-          ioActionsRow([
-            ioBtn("Save", f.onSaveSettings),
-            ioBtn("Load", f.onLoadSettings),
-          ]),
-        ),
-      );
-    } else {
-      folderBox.append(
-        row("Local folder", ioActionsRow([ioBtn("Connect folder", f.onConnect)])),
-      );
-    }
-  };
-  renderFolder();
-  const folderNodes = opts.folder
-    ? [
-        sub("Local folder"),
-        desc(
-          'Sync your settings and artwork to a folder on this computer - no download each time. Sync artwork from the "..." menu.',
-        ),
-        folderBox,
-      ]
-    : [];
-
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -297,7 +217,6 @@ export function createAppSettingsBox(opts: {
       ioActions,
       "Export downloads a .nekudotapp file with your app settings, custom connection presets and saved colour palettes. Import loads one back, replacing your current settings, presets and palettes (your artwork is not affected), then reloads.",
     ),
-    ...folderNodes,
     sub("Reset"),
     row(
       "Erase all data",
@@ -312,5 +231,5 @@ export function createAppSettingsBox(opts: {
   const toggle = () => {
     panel.style.display = panel.style.display === "none" ? "" : "none";
   };
-  return { el: panel, toggle, refreshFolder: renderFolder };
+  return { el: panel, toggle };
 }

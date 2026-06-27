@@ -43,10 +43,6 @@ export type CanvasMenuOptions = {
   onRecordClip: () => void;
   onSaveArtwork: () => void;
   onLoadArtwork: () => void;
-  // Chrome folder sync: write the current artwork to the connected folder
-  // (remembered filename). Present only when the File System Access API is
-  // available, so the item is hidden everywhere else.
-  onSyncArtworkToFolder?: () => void;
 };
 
 // A panel the "Windows" menu can open (revealing it on top), shown with its
@@ -513,31 +509,6 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
     popover.classList.remove("open");
   });
   popover.appendChild(dl);
-
-  // Sync artwork to folder (Chrome only) - write the .nekudot straight into the
-  // connected local folder under its remembered name. Shown only when supported.
-  if (opts.onSyncArtworkToFolder) {
-    const sync = document.createElement("div");
-    sync.className = "brush-option";
-    const syncIc = document.createElement("span");
-    syncIc.className = "opt-icon";
-    syncIc.innerHTML =
-      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-      '<path d="M3 7 a2 2 0 0 1 2-2 h4 l2 2 h8 a2 2 0 0 1 2 2 v8 a2 2 0 0 1 -2 2 H5 a2 2 0 0 1 -2 -2 Z"/>' +
-      '<path d="M12 10 v5 M9.5 12.5 L12 15 l2.5 -2.5"/>' +
-      "</svg>";
-    sync.appendChild(syncIc);
-    const syncLbl = document.createElement("span");
-    syncLbl.className = "opt-label";
-    syncLbl.textContent = "Sync artwork to folder";
-    sync.appendChild(syncLbl);
-    sync.addEventListener("click", (e) => {
-      e.stopPropagation();
-      opts.onSyncArtworkToFolder?.();
-      popover.classList.remove("open");
-    });
-    popover.appendChild(sync);
-  }
 
   // Load artwork (.nekudot) — upload + verify an existing archive.
   const ld = document.createElement("div");

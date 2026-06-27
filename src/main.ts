@@ -20,6 +20,7 @@ import { createLayersBox } from "./layered/box";
 import { createMapsBox } from "./layered/maps-box";
 import { createSizePicker } from "./layered/size-picker";
 import { saveArtwork } from "./save-artwork";
+import { NEKUDOT_ARTWORK_SUFFIX } from "./nekudot-schema";
 import { pixelLog } from "./pixel-log";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./ui/window-stack";
@@ -32,6 +33,7 @@ import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
 import { createFolderSync } from "./app/folder-sync";
+import { createFolderBox } from "./app/folder-box";
 import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
@@ -115,8 +117,8 @@ const appOpacity = createOpacityController({
 });
 
 // Folder sync (Chrome only): connect a local folder once, then save/load the
-// settings file and sync the current artwork there without download dialogs.
-// refreshFolderUI is wired to the App settings box once it exists; restore()
+// settings file and save the current artwork there without download dialogs.
+// refreshFolderUI is wired to the Folder panel once it exists; restore()
 // re-attaches a previously chosen folder at boot (see below).
 let refreshFolderUI = (): void => {};
 const folderSync = createFolderSync({
@@ -597,7 +599,7 @@ const resetArtState = () => {
 
 const loadFileInput = document.createElement("input");
 loadFileInput.type = "file";
-loadFileInput.accept = ".nekudot,application/zip";
+loadFileInput.accept = `${NEKUDOT_ARTWORK_SUFFIX},application/zip`;
 loadFileInput.style.display = "none";
 document.body.appendChild(loadFileInput);
 
@@ -690,11 +692,6 @@ const canvasMenuOptions = {
     });
   },
   onLoadArtwork: promptLoadArtwork,
-  // Chrome only: write the .nekudot straight into the connected folder. Omitted
-  // (item hidden) where the File System Access API isn't available.
-  onSyncArtworkToFolder: folderSync.supported
-    ? () => void folderSync.syncArtwork()
-    : undefined,
 };
 
 // The global Application settings panel (theme / input / advanced) - the
@@ -765,21 +762,7 @@ const appSettingsBox = createAppSettingsBox({
   },
   onExportSettings: () => void exportSettings(),
   onImportSettings: () => importSettings(),
-  folder: folderSync.supported
-    ? {
-        isConnected: () => folderSync.isConnected(),
-        folderName: () => folderSync.folderName(),
-        onConnect: () => void folderSync.connect(),
-        onDisconnect: () => void folderSync.disconnect(),
-        onSaveSettings: () => void folderSync.saveSettings(),
-        onLoadSettings: () => void folderSync.loadSettings(),
-      }
-    : undefined,
 });
-// Now that the box exists, route folder-state changes to its Local folder
-// section, and re-attach a previously connected folder (silent if still granted).
-refreshFolderUI = appSettingsBox.refreshFolder;
-void folderSync.restore();
 
 // Wipe every local data store + settings, then reload to the fresh (onboarding)
 // app. See src/app/reset.ts for the orchestration (and its tests).
@@ -798,6 +781,34 @@ const resetToDefault = () =>
 document.body.appendChild(appSettingsBox.el);
 registerWindow(appSettingsBox.el);
 const showAppSettings = () => showWindow(appSettingsBox.el);
+
+// The Local folder panel (Chrome folder sync). Built only when supported; its
+// refresh is driven by folder-sync's onChange, and showFolder is fed to the
+// navbar's Windows menu (the entry is hidden when unsupported).
+const folderBox = folderSync.supported
+  ? createFolderBox({
+      isConnected: () => folderSync.isConnected(),
+      folderName: () => folderSync.folderName(),
+      currentFile: () => folderSync.currentArtworkFile(),
+      onConnect: () => void folderSync.connect(),
+      onDisconnect: () => void folderSync.disconnect(),
+      onSaveArtwork: () => void folderSync.syncArtwork(),
+      onSaveSettings: () => void folderSync.saveSettings(),
+      onLoadSettings: () => void folderSync.loadSettings(),
+    })
+  : null;
+let showFolder: (() => void) | undefined;
+if (folderBox) {
+  document.body.appendChild(folderBox.el);
+  registerWindow(folderBox.el);
+  showFolder = () => {
+    folderBox.refresh();
+    showWindow(folderBox.el);
+  };
+  refreshFolderUI = folderBox.refresh;
+}
+// Re-attach a previously connected folder at boot (silent if still permitted).
+void folderSync.restore();
 
 // ---- brush selection + navbar -----------------------------------------------------
 
@@ -885,6 +896,8 @@ const menu = buildNavbar({
   showMaps,
   showSymmetry,
   showAppSettings,
+  showFolder,
+  folderSupported: folderSync.supported,
   showConnecting,
   // Late-bound: read the current `showShortcuts` at click time (it's reassigned
   // once the Shortcuts panel - which itself needs `menu` - is wired below).

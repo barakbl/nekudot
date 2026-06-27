@@ -43,7 +43,7 @@ export interface FileVault {
   // Read a file by name, or null if it doesn't exist.
   read(name: string): Promise<Blob | null>;
 
-  // List the vault's .nekudot files (newest first) - the seam the future gallery
-  // builds on. Not surfaced in the v1 UI yet.
+  // List the vault's files (newest first) - format-agnostic; the app layer filters
+  // to artworks. The seam the future gallery builds on; not in the v1 UI yet.
   list(): Promise<VaultEntry[]>;
 }

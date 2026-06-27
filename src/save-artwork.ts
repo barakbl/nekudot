@@ -5,6 +5,7 @@ import { createOffscreenRenderer } from "./renderer";
 import { pixelLog } from "./pixel-log";
 import {
   NEKUDOT_SCHEMA_VERSION,
+  NEKUDOT_ARTWORK_SUFFIX,
   ManifestSchema,
   type LayerFiles,
   type NeighborsMapFile,
@@ -13,7 +14,7 @@ import {
 // Save the artwork as a downloaded .nekudot file.
 export async function saveArtwork(manager: LayerManager): Promise<void> {
   const blob = await buildArtworkBlob(manager);
-  triggerDownload(blob, `art_${timestamp()}.nekudot`);
+  triggerDownload(blob, `art_${timestamp()}${NEKUDOT_ARTWORK_SUFFIX}`);
 }
 
 // Build the .nekudot archive Blob (zip of layers + maps + preview + manifest)

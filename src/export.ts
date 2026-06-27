@@ -97,11 +97,14 @@ export async function shareArt(
   return "downloaded";
 }
 
+// A filename-safe timestamp (YYMMDD_HHMMSS): no colon - it's illegal in Windows
+// filenames - and seconds make repeated saves in the same minute unique. Shared
+// by every download + the folder sync, so names stay consistent across both.
 export function timestamp(): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const d = new Date();
   const date = `${pad(d.getFullYear() % 100)}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const time = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   return `${date}_${time}`;
 }
 

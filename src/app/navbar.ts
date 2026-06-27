@@ -69,6 +69,10 @@ export type NavbarDeps = {
   showMaps: () => void;
   showSymmetry: () => void;
   showAppSettings: () => void;
+  // Chrome folder sync: opens the Local folder panel. Omitted/false where the
+  // File System Access API isn't available, so the menu entry is hidden.
+  showFolder?: () => void;
+  folderSupported?: boolean;
   showConnecting: () => void;
   // Late-bound in main (the Shortcuts panel needs `menu` to be built first), so
   // it's passed as a wrapper that reads the current value at click time.
@@ -108,6 +112,8 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     showMaps,
     showSymmetry,
     showAppSettings,
+    showFolder,
+    folderSupported,
     showConnecting,
     showShortcuts,
     initialMainColor,
@@ -201,6 +207,9 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
       { label: "Layers", shortcut: "l", open: showLayers },
       { label: "Maps", shortcut: "m", open: showMaps },
       { label: "Symmetry", shortcut: "y", open: showSymmetry },
+      ...(folderSupported && showFolder
+        ? [{ label: "Folder", shortcut: "f", open: showFolder }]
+        : []),
       { label: "Settings", shortcut: ",", open: showAppSettings },
       { label: "Shortcuts", shortcut: "/", open: () => showShortcuts() },
     ],

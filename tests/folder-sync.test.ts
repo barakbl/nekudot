@@ -45,7 +45,7 @@ class FakeVault implements FileVault {
   }
 }
 
-const ART_RE = /^art_\d{8}_\d{6}\.nekudot$/;
+const ART_RE = /^art_\d{6}_\d{6}\.nekudot$/;
 
 function make(vault: FakeVault, applied: string[] = []) {
   return createFolderSync({

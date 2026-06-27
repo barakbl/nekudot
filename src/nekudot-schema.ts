@@ -4,6 +4,10 @@ import { LayersConfigSchema } from "./layered/schema";
 
 export const NEKUDOT_SCHEMA_VERSION = 2 as const;
 
+// The artwork file extension. One home for the literal so save/load/sync/accept
+// can't drift (mirrors SETTINGS_FILE_SUFFIX for the .nekudotapp settings file).
+export const NEKUDOT_ARTWORK_SUFFIX = ".nekudot";
+
 export const LayerFilesSchema = z.object({
   layerIndex: z.number().int().nonnegative(),
   baseFile: z.string().min(1),

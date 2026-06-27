@@ -112,8 +112,10 @@ export class LocalDirVault implements FileVault {
   async list(): Promise<VaultEntry[]> {
     const dir = this.requireDir();
     const out: VaultEntry[] = [];
+    // Format-agnostic: list every file and let the app layer decide what's an
+    // artwork - the vault stays ignorant of the .nekudot convention.
     for await (const handle of dir.values()) {
-      if (handle.kind === "file" && handle.name.endsWith(".nekudot")) {
+      if (handle.kind === "file") {
         const file = await (handle as FileSystemFileHandle).getFile();
         // id == name for a local folder; a cloud backend would use its own id.
         out.push({ id: handle.name, name: handle.name, lastModified: file.lastModified });
