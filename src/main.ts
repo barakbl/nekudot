@@ -20,6 +20,7 @@ import { createLayersBox } from "./layered/box";
 import { createMapsBox } from "./layered/maps-box";
 import { createSizePicker } from "./layered/size-picker";
 import { saveArtwork } from "./save-artwork";
+import { NEKUDOT_ARTWORK_SUFFIX } from "./nekudot-schema";
 import { pixelLog } from "./pixel-log";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./ui/window-stack";
@@ -31,6 +32,8 @@ import { Viewport } from "./app/viewport";
 import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
+import { createFolderSync } from "./app/folder-sync";
+import { createFolderBox } from "./app/folder-box";
 import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
@@ -111,6 +114,16 @@ const appOpacity = createOpacityController({
   layerManager,
   store,
   defaultAlpha: initialAlpha,
+});
+
+// Folder sync (Chrome only): connect a local folder once, then save/load the
+// settings file and save the current artwork there without download dialogs.
+// refreshFolderUI is wired to the Folder panel once it exists; restore()
+// re-attaches a previously chosen folder at boot (see below).
+let refreshFolderUI = (): void => {};
+const folderSync = createFolderSync({
+  manager: layerManager,
+  onChange: () => refreshFolderUI(),
 });
 
 // Migrate the legacy app.canvas.bg color into the manager's background slot
@@ -197,6 +210,15 @@ const { invisibleOverlay, mapHighlighter, applyNewCanvasSize } = createDrawingCo
     viewport,
   },
 );
+
+// Every "the drawing was replaced" path (load / new / mandala / blank) goes
+// through here, so the remembered folder-sync filename is forgotten by default -
+// the next sync then starts a fresh file instead of overwriting the previous
+// drawing's. loadArtwork re-adopts the uploaded name right after.
+const replaceArtwork = (size: Parameters<typeof applyNewCanvasSize>[0]): void => {
+  applyNewCanvasSize(size);
+  folderSync.forgetArtworkFile();
+};
 
 // The symmetry proxy wraps the LayerManager as the brushes' host (mode None
 // forwards untouched). Kept in main so it's constructed right before the brush
@@ -577,13 +599,13 @@ const resetArtState = () => {
 
 const loadFileInput = document.createElement("input");
 loadFileInput.type = "file";
-loadFileInput.accept = ".nekudot,application/zip";
+loadFileInput.accept = `${NEKUDOT_ARTWORK_SUFFIX},application/zip`;
 loadFileInput.style.display = "none";
 document.body.appendChild(loadFileInput);
 
 // Parse + apply a .nekudot file onto the canvas (shared by the file picker and
 // the onboarding "open a saved piece" cards).
-const loadArtwork = async (file: File): Promise<void> => {
+const loadArtwork = async (file: File, rememberName = false): Promise<void> => {
   const result = await loadArtworkFile(file);
   if (!result.ok) {
     showError(result.error);
@@ -598,20 +620,24 @@ const loadArtwork = async (file: File): Promise<void> => {
   }
 
   const { size } = result.artwork;
-  applyNewCanvasSize(size);
+  replaceArtwork(size);
   applyStageBackground();
   layersBox.refreshPreviews();
   renderActiveBrush();
   store.set(CANVAS_SIZE_KEY, size);
   void history.clear();
   pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
+  // An uploaded file keeps its name, so a later folder sync overwrites the same
+  // file instead of making a duplicate. (replaceArtwork already forgot it for the
+  // bundled-sample / non-remember case.)
+  if (rememberName) folderSync.setArtworkFile(file.name);
   showChip("Artwork loaded");
 };
 
 loadFileInput.addEventListener("change", async () => {
   const file = loadFileInput.files?.[0];
   loadFileInput.value = ""; // allow re-picking the same file later
-  if (file) await loadArtwork(file);
+  if (file) await loadArtwork(file, true); // remember the uploaded name for sync
 });
 
 const promptLoadArtwork = () => {
@@ -636,7 +662,7 @@ const sizePicker = createSizePicker({
       destructive: true,
       onConfirm: () => {
         layerManager.reset(size);
-        applyNewCanvasSize(size);
+        replaceArtwork(size);
         clearArtContent(); // new canvas clears content; keeps connection tools
         store.set(CANVAS_SIZE_KEY, size);
         void history.clear();
@@ -747,6 +773,7 @@ const resetToDefault = () =>
       () => pixelLog.clear(),
       () => saveCustomPresets([]), // custom connection presets
       () => clearColorsStore(), // palettes + seeded flag, so gradients re-onboard
+      () => folderSync.disconnect(), // forget the connected folder handle too
     ],
     storage: localStorage,
     reload: () => location.reload(),
@@ -754,6 +781,34 @@ const resetToDefault = () =>
 document.body.appendChild(appSettingsBox.el);
 registerWindow(appSettingsBox.el);
 const showAppSettings = () => showWindow(appSettingsBox.el);
+
+// The Local folder panel (Chrome folder sync). Built only when supported; its
+// refresh is driven by folder-sync's onChange, and showFolder is fed to the
+// navbar's Windows menu (the entry is hidden when unsupported).
+const folderBox = folderSync.supported
+  ? createFolderBox({
+      isConnected: () => folderSync.isConnected(),
+      folderName: () => folderSync.folderName(),
+      currentFile: () => folderSync.currentArtworkFile(),
+      onConnect: () => void folderSync.connect(),
+      onDisconnect: () => void folderSync.disconnect(),
+      onSaveArtwork: () => void folderSync.syncArtwork(),
+      onSaveSettings: () => void folderSync.saveSettings(),
+      onLoadSettings: () => void folderSync.loadSettings(),
+    })
+  : null;
+let showFolder: (() => void) | undefined;
+if (folderBox) {
+  document.body.appendChild(folderBox.el);
+  registerWindow(folderBox.el);
+  showFolder = () => {
+    folderBox.refresh();
+    showWindow(folderBox.el);
+  };
+  refreshFolderUI = folderBox.refresh;
+}
+// Re-attach a previously connected folder at boot (silent if still permitted).
+void folderSync.restore();
 
 // ---- brush selection + navbar -----------------------------------------------------
 
@@ -841,6 +896,8 @@ const menu = buildNavbar({
   showMaps,
   showSymmetry,
   showAppSettings,
+  showFolder,
+  folderSupported: folderSync.supported,
   showConnecting,
   // Late-bound: read the current `showShortcuts` at click time (it's reassigned
   // once the Shortcuts panel - which itself needs `menu` - is wired below).
@@ -890,7 +947,7 @@ const onboarding = createOnboarding({
       const max = screenMax();
       const size = squareOfScreen(max.width, max.height);
       layerManager.reset(size);
-      applyNewCanvasSize(size);
+      replaceArtwork(size);
       resetArtState();
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
@@ -911,7 +968,7 @@ const onboarding = createOnboarding({
           ? squareOfScreen(max.width, max.height)
           : fullScreenSize(max.width, max.height);
       layerManager.reset(size);
-      applyNewCanvasSize(size);
+      replaceArtwork(size);
       resetArtState();
       layerManager.setBackground({ color: "#ffffff", transparent: false });
       applyStageBackground();
@@ -983,6 +1040,7 @@ const shortcuts = buildAppShortcuts({
     symmetryBox.el,
     mapsBox.el,
     appSettingsBox.el,
+    ...(folderBox ? [folderBox.el] : []),
     shortcutsPanel.el,
   ],
   showMaps,
@@ -997,6 +1055,12 @@ const shortcuts = buildAppShortcuts({
   selectBrush,
   undo: doUndo,
   redo: doRedo,
+  // Cmd/Ctrl+S: save to the connected folder if there is one, otherwise fall
+  // back to the regular .nekudot download so Save works everywhere.
+  save: () => {
+    if (folderSync.isConnected()) void folderSync.syncArtwork();
+    else saveArtwork(layerManager).catch((e) => console.error("saveArtwork failed", e));
+  },
   recordClip,
 });
 const shortcutsPanel = createShortcutsPanel(shortcuts);

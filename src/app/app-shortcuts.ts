@@ -19,6 +19,7 @@ export type ShortcutActions = {
   selectBrush: (name: string) => void;
   undo: () => void;
   redo: () => void;
+  save: () => void; // Cmd/Ctrl+S: save to the connected folder, else download
   recordClip: () => void; // start a GIF recording (arms on first stroke)
 };
 
@@ -150,6 +151,15 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       group: "Edit",
       description: "Redo",
       onPress: () => actions.redo(),
+    },
+    {
+      key: "s",
+      cmdOrCtrl: true,
+      shift: false,
+      label: "S",
+      group: "Edit",
+      description: "Save artwork (to the folder if connected, else download)",
+      onPress: () => actions.save(),
     },
     {
       // Display-only: the actual paste is handled by the native clipboard

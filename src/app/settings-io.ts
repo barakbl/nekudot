@@ -26,17 +26,23 @@ import {
 // the validation + app-key mapping in settings-file.ts; the panels call
 // exportSettings / importSettings as callbacks so they stay free of the stores.
 
-// Gather the whole config and download it as one .nekudotapp file.
-export async function exportSettings(): Promise<void> {
+// Gather the whole config into the .nekudotapp bundle text. Shared by the
+// download path and folder-sync.
+export async function buildSettingsBundleText(): Promise<string> {
   const store = new LocalStorageStore();
   const [presets, palettes] = await Promise.all([
     loadCustomPresets(),
     loadCustomPalettes(),
   ]);
-  const text = serializeSettingsBundle(
+  return serializeSettingsBundle(
     { app: readAppSettings(store), presets, palettes },
     new Date().toISOString(),
   );
+}
+
+// Gather the whole config and download it as one .nekudotapp file.
+export async function exportSettings(): Promise<void> {
+  const text = await buildSettingsBundleText();
   triggerDownload(
     new Blob([text], { type: "application/json" }),
     `nekudot-settings_${timestamp()}${SETTINGS_FILE_SUFFIX}`,
@@ -62,9 +68,32 @@ async function applyBundle(bundle: SettingsBundle): Promise<void> {
   location.reload();
 }
 
+// Validate bundle text, confirm the (destructive) replace, then apply + reload.
+// Shared by the file-picker import and the folder load; the reload (on confirm)
+// dismisses whichever surface opened it.
+export function importSettingsFromText(text: string): void {
+  const res = parseSettingsBundle(text);
+  if (!res.ok) {
+    showError(res.error, "Couldn't import settings");
+    return;
+  }
+  const { app, presets, palettes } = res.bundle;
+  if (!app && !presets && !palettes) {
+    showError("This file has no settings to import.", "Couldn't import settings");
+    return;
+  }
+  showConfirm({
+    title: "Import settings?",
+    message:
+      "This replaces your current app settings, custom presets and palettes with the ones in this file, then reloads. Your artwork is not affected.",
+    confirmLabel: "Import and reload",
+    destructive: true,
+    onConfirm: () => void applyBundle(res.bundle),
+  });
+}
+
 // Pick a .nekudotapp file, validate it, confirm the (destructive) replace, then
-// apply + reload. Works from both the App settings panel and onboarding; the
-// reload (on confirm) is what dismisses whichever opened it.
+// apply + reload. Works from both the App settings panel and onboarding.
 export function importSettings(): void {
   const input = document.createElement("input");
   input.type = "file";
@@ -82,24 +111,7 @@ export function importSettings(): void {
       showError("That file is too large to be a settings file.", "Couldn't import settings");
       return;
     }
-    const res = parseSettingsBundle(await file.text());
-    if (!res.ok) {
-      showError(res.error, "Couldn't import settings");
-      return;
-    }
-    const { app, presets, palettes } = res.bundle;
-    if (!app && !presets && !palettes) {
-      showError("This file has no settings to import.", "Couldn't import settings");
-      return;
-    }
-    showConfirm({
-      title: "Import settings?",
-      message:
-        "This replaces your current app settings, custom presets and palettes with the ones in this file, then reloads. Your artwork is not affected.",
-      confirmLabel: "Import and reload",
-      destructive: true,
-      onConfirm: () => void applyBundle(res.bundle),
-    });
+    importSettingsFromText(await file.text());
   });
   input.click();
 }

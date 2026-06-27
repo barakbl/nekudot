@@ -64,7 +64,6 @@ export function createAppSettingsBox(opts: {
     if (help) attachHelp(l, help);
     return r;
   };
-
   // Appearance: a small segmented Auto / Light / Dark picker.
   let activeTheme = opts.theme.initial;
   const seg = document.createElement("div");

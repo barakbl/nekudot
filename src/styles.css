@@ -1522,6 +1522,29 @@ body {
   border-color: var(--accent);
   color: var(--text-primary);
 }
+/* Connected folder name shown beside the Disconnect button. */
+.appset-folder-name {
+  align-self: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Touch devices (incl. touch-enabled desktops/Chromebooks that have the folder
+   feature): the small App-settings / folder pills are hard to tap, so give them
+   a finger-friendly minimum height. */
+@media (pointer: coarse) {
+  .appset-io-btn,
+  .appset-diag-btn,
+  .appset-reset-btn,
+  .appset-seg-btn {
+    min-height: 40px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
 .appset-seg-ic {
   font-size: 13px;
   line-height: 1;
