@@ -209,6 +209,15 @@ const { invisibleOverlay, mapHighlighter, applyNewCanvasSize } = createDrawingCo
   },
 );
 
+// Every "the drawing was replaced" path (load / new / mandala / blank) goes
+// through here, so the remembered folder-sync filename is forgotten by default -
+// the next sync then starts a fresh file instead of overwriting the previous
+// drawing's. loadArtwork re-adopts the uploaded name right after.
+const replaceArtwork = (size: Parameters<typeof applyNewCanvasSize>[0]): void => {
+  applyNewCanvasSize(size);
+  folderSync.forgetArtworkFile();
+};
+
 // The symmetry proxy wraps the LayerManager as the brushes' host (mode None
 // forwards untouched). Kept in main so it's constructed right before the brush
 // loop that consumes it.
@@ -609,7 +618,7 @@ const loadArtwork = async (file: File, rememberName = false): Promise<void> => {
   }
 
   const { size } = result.artwork;
-  applyNewCanvasSize(size);
+  replaceArtwork(size);
   applyStageBackground();
   layersBox.refreshPreviews();
   renderActiveBrush();
@@ -617,9 +626,9 @@ const loadArtwork = async (file: File, rememberName = false): Promise<void> => {
   void history.clear();
   pushUndo("Load artwork"); // also persists the loaded paint (the new pointer row)
   // An uploaded file keeps its name, so a later folder sync overwrites the same
-  // file instead of making a duplicate. Bundled onboarding samples start fresh.
+  // file instead of making a duplicate. (replaceArtwork already forgot it for the
+  // bundled-sample / non-remember case.)
   if (rememberName) folderSync.setArtworkFile(file.name);
-  else folderSync.forgetArtworkFile();
   showChip("Artwork loaded");
 };
 
@@ -651,12 +660,11 @@ const sizePicker = createSizePicker({
       destructive: true,
       onConfirm: () => {
         layerManager.reset(size);
-        applyNewCanvasSize(size);
+        replaceArtwork(size);
         clearArtContent(); // new canvas clears content; keeps connection tools
         store.set(CANVAS_SIZE_KEY, size);
         void history.clear();
         pushUndo("New art");
-        folderSync.forgetArtworkFile();
       },
     });
   },
@@ -782,6 +790,7 @@ const resetToDefault = () =>
       () => pixelLog.clear(),
       () => saveCustomPresets([]), // custom connection presets
       () => clearColorsStore(), // palettes + seeded flag, so gradients re-onboard
+      () => folderSync.disconnect(), // forget the connected folder handle too
     ],
     storage: localStorage,
     reload: () => location.reload(),
@@ -925,7 +934,7 @@ const onboarding = createOnboarding({
       const max = screenMax();
       const size = squareOfScreen(max.width, max.height);
       layerManager.reset(size);
-      applyNewCanvasSize(size);
+      replaceArtwork(size);
       resetArtState();
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
@@ -937,7 +946,6 @@ const onboarding = createOnboarding({
       store.set(CANVAS_SIZE_KEY, size);
       void history.clear();
       pushUndo("Mandala");
-      folderSync.forgetArtworkFile();
       showSymmetry(); // open the symmetry (mandala) panel
     },
     startBlank: (variant) => {
@@ -947,7 +955,7 @@ const onboarding = createOnboarding({
           ? squareOfScreen(max.width, max.height)
           : fullScreenSize(max.width, max.height);
       layerManager.reset(size);
-      applyNewCanvasSize(size);
+      replaceArtwork(size);
       resetArtState();
       layerManager.setBackground({ color: "#ffffff", transparent: false });
       applyStageBackground();
@@ -956,7 +964,6 @@ const onboarding = createOnboarding({
       store.set(CANVAS_SIZE_KEY, size);
       void history.clear();
       pushUndo("New art");
-      folderSync.forgetArtworkFile();
     },
     loadArtworkFile: (file) => loadArtwork(file),
   },

@@ -4,6 +4,7 @@ import { LocalDirVault } from "../sync/local-dir-vault";
 import type { FileVault } from "../sync/file-vault";
 import { buildArtworkBlob } from "../save-artwork";
 import { buildSettingsBundleText, importSettingsFromText } from "./settings-io";
+import { MAX_SETTINGS_BYTES } from "../settings-file";
 import { showChip } from "../chip";
 import { showError } from "../confirm";
 
@@ -137,6 +138,10 @@ export function createFolderSync(deps: {
           showError(`No ${SETTINGS_FILE} in that folder yet.`, "Folder");
           return;
         }
+        if (blob.size > MAX_SETTINGS_BYTES) {
+          showError("That settings file is too large.", "Folder");
+          return;
+        }
         applySettingsText(await blob.text()); // validates, confirms, reloads
       } catch (e) {
         console.error("load settings from folder failed", e);
@@ -148,12 +153,10 @@ export function createFolderSync(deps: {
       try {
         if (!(await ensureConnected())) return;
         const blob = await buildArtwork();
-        let name = store.get<string>(ART_FILE_KEY);
-        if (!name) {
-          name = `art_${stamp()}.nekudot`;
-          store.set(ART_FILE_KEY, name); // remember it for the next sync
-        }
+        const name = store.get<string>(ART_FILE_KEY) ?? `art_${stamp()}.nekudot`;
         await vault.write(name, blob);
+        // Only remember the name once the write actually succeeded.
+        store.set(ART_FILE_KEY, name);
         showChip(`Synced ${name}`);
         notify();
       } catch (e) {

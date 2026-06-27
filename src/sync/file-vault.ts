@@ -7,6 +7,9 @@
 // call it - only on an explicit user action, never autosave/background sync.
 
 export type VaultEntry = {
+  // Stable identity. For a local folder id == name; a cloud backend (Drive) would
+  // use its own opaque id, since names there aren't unique and can be renamed.
+  id: string;
   name: string;
   lastModified: number; // epoch ms; for sorting a future gallery
 };

@@ -13,6 +13,7 @@ class FakeVault implements FileVault {
   supported = true;
   connected = false;
   connectResult = true;
+  failWrite = false;
   files = new Map<string, string>();
 
   label() {
@@ -32,6 +33,7 @@ class FakeVault implements FileVault {
     return false;
   }
   async write(name: string, blob: Blob) {
+    if (this.failWrite) throw new Error("write failed");
     this.files.set(name, await blob.text());
   }
   async read(name: string) {
@@ -39,7 +41,7 @@ class FakeVault implements FileVault {
     return t === undefined ? null : new Blob([t]);
   }
   async list(): Promise<VaultEntry[]> {
-    return [...this.files.keys()].map((name) => ({ name, lastModified: 0 }));
+    return [...this.files.keys()].map((name) => ({ id: name, name, lastModified: 0 }));
   }
 }
 
@@ -175,5 +177,34 @@ describe("folder sync controller", () => {
     fs.setArtworkFile("keep.nekudot");
     fs.setArtworkFile(""); // unusable -> forget
     expect(fs.currentArtworkFile()).toBeNull();
+  });
+
+  it("doesn't remember the name when the write fails", async () => {
+    const vault = new FakeVault();
+    vault.failWrite = true;
+    const fs = make(vault);
+    await fs.connect();
+    await fs.syncArtwork(); // write throws -> caught, surfaced as an error
+    expect(fs.currentArtworkFile()).toBeNull(); // not remembered
+    expect(vault.files.size).toBe(0);
+  });
+
+  it("notifies on connect, sync, setArtworkFile, forget and disconnect", async () => {
+    const vault = new FakeVault();
+    let n = 0;
+    const fs = createFolderSync({
+      manager: {} as LayerManager,
+      vault,
+      onChange: () => n++,
+      buildArtwork: async () => new Blob(["ART"]),
+      buildSettingsText: async () => "{}",
+      applySettingsText: () => {},
+    });
+    await fs.connect();
+    fs.setArtworkFile("a.nekudot");
+    await fs.syncArtwork();
+    fs.forgetArtworkFile();
+    await fs.disconnect();
+    expect(n).toBeGreaterThanOrEqual(5);
   });
 });

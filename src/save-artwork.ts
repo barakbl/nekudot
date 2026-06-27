@@ -64,7 +64,7 @@ export async function buildArtworkBlob(manager: LayerManager): Promise<Blob> {
   ManifestSchema.parse(manifest);
   filesU8["manifest.json"] = strToU8(JSON.stringify(manifest, null, 2));
 
-  // 6. Zip (STORE — payloads are already compressed).
+  // 6. Zip (STORE - payloads are already compressed).
   const zipped = zipSync(filesU8, { level: 0 });
   return new Blob([zipped as BlobPart], { type: "application/zip" });
 }

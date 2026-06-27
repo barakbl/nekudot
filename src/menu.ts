@@ -514,7 +514,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   });
   popover.appendChild(dl);
 
-  // Sync artwork to folder (Chrome only) — write the .nekudot straight into the
+  // Sync artwork to folder (Chrome only) - write the .nekudot straight into the
   // connected local folder under its remembered name. Shown only when supported.
   if (opts.onSyncArtworkToFolder) {
     const sync = document.createElement("div");

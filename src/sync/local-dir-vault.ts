@@ -20,7 +20,7 @@ export class LocalDirVault implements FileVault {
     typeof window.showDirectoryPicker === "function";
 
   label(): string | null {
-    return this.dir?.name ?? null;
+    return this.dir?.name || null; // some handles report an empty name
   }
 
   isConnected(): boolean {
@@ -59,8 +59,11 @@ export class LocalDirVault implements FileVault {
     let handle: FileSystemDirectoryHandle;
     try {
       handle = await window.showDirectoryPicker({ id: "nekudot", mode: "readwrite" });
-    } catch {
-      return false; // user dismissed the OS dialog (AbortError)
+    } catch (e) {
+      // Cancelling the OS dialog is a normal "no", not a failure; surface anything
+      // else (so a cloud backend's real auth/network errors aren't swallowed).
+      if (e instanceof DOMException && e.name === "AbortError") return false;
+      throw e;
     }
     await safePut(handle);
     this.dir = handle;
@@ -78,13 +81,20 @@ export class LocalDirVault implements FileVault {
   }
 
   async write(name: string, blob: Blob): Promise<void> {
+    // Backend chokepoint: reject a traversal/separator name regardless of what
+    // the caller sanitized, so a write can't escape the chosen folder.
+    if (!isSafeEntryName(name)) throw new Error(`Unsafe file name: ${name}`);
     const dir = await this.ensureWritable();
     const fh = await dir.getFileHandle(name, { create: true });
     const w = await fh.createWritable();
     try {
       await w.write(blob);
-    } finally {
-      await w.close();
+      await w.close(); // commits the swap file atomically
+    } catch (e) {
+      // A partial write must be discarded, not committed - abort() drops the swap
+      // and leaves the previous file intact (close() would commit the partial).
+      await w.abort().catch(() => {});
+      throw e;
     }
   }
 
@@ -93,8 +103,9 @@ export class LocalDirVault implements FileVault {
     try {
       const fh = await dir.getFileHandle(name);
       return await fh.getFile();
-    } catch {
-      return null; // not found (NotFoundError) or unreadable
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "NotFoundError") return null;
+      throw e; // a permission/IO error must not masquerade as "missing"
     }
   }
 
@@ -104,7 +115,8 @@ export class LocalDirVault implements FileVault {
     for await (const handle of dir.values()) {
       if (handle.kind === "file" && handle.name.endsWith(".nekudot")) {
         const file = await (handle as FileSystemFileHandle).getFile();
-        out.push({ name: handle.name, lastModified: file.lastModified });
+        // id == name for a local folder; a cloud backend would use its own id.
+        out.push({ id: handle.name, name: handle.name, lastModified: file.lastModified });
       }
     }
     return out.sort((a, b) => b.lastModified - a.lastModified);
@@ -129,11 +141,24 @@ export class LocalDirVault implements FileVault {
   }
 }
 
-// Permission helpers. A handle without the (non-standard) permission methods -
-// e.g. an origin-private handle - isn't gated by them, so treat absence as
-// "granted" rather than blocking.
+// A single safe folder entry name: no path separators or traversal, so it can't
+// escape the chosen directory however the caller derived it.
+function isSafeEntryName(name: string): boolean {
+  return (
+    name.length > 0 &&
+    name !== "." &&
+    name !== ".." &&
+    !name.includes("/") &&
+    !name.includes("\\")
+  );
+}
+
+// Permission helpers. Query defaults to "prompt" when the (non-standard) method
+// is absent, so a re-attach can't be assumed granted without going through the
+// gesture-bound connect() path. Request defaults to "granted" because a handle
+// lacking the methods (e.g. an origin-private one) isn't gated by them.
 async function queryPerm(h: FileSystemHandle): Promise<PermissionState> {
-  return (await h.queryPermission?.({ mode: "readwrite" })) ?? "granted";
+  return (await h.queryPermission?.({ mode: "readwrite" })) ?? "prompt";
 }
 async function requestPerm(h: FileSystemHandle): Promise<PermissionState> {
   return (await h.requestPermission?.({ mode: "readwrite" })) ?? "granted";
