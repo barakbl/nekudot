@@ -14,16 +14,23 @@ class FakeVault implements FileVault {
   connected = false;
   connectResult = true;
   failWrite = false;
+  pendingName: string | null = null;
   files = new Map<string, string>();
 
   label() {
     return this.connected ? "Test Folder" : null;
   }
+  pendingLabel() {
+    return this.pendingName;
+  }
   isConnected() {
     return this.connected;
   }
   async connect() {
-    if (this.connectResult) this.connected = true;
+    if (this.connectResult) {
+      this.connected = true;
+      this.pendingName = null; // a successful (re)connect clears the lapsed handle
+    }
     return this.connectResult;
   }
   async disconnect() {
@@ -206,5 +213,31 @@ describe("folder sync controller", () => {
     fs.forgetArtworkFile();
     await fs.disconnect();
     expect(n).toBeGreaterThanOrEqual(5);
+  });
+
+  it("surfaces a lapsed folder as pending, then reconnects in one step", async () => {
+    const vault = new FakeVault();
+    vault.pendingName = "Test Folder"; // a remembered folder whose grant lapsed
+    let n = 0;
+    const fs = createFolderSync({
+      manager: {} as LayerManager,
+      vault,
+      onChange: () => n++,
+      buildArtwork: async () => new Blob(["ART"]),
+      buildSettingsText: async () => "{}",
+      applySettingsText: () => {},
+    });
+
+    // restore() finds the lapsed handle: still not connected, but surfaced so the
+    // panel can offer "Reconnect <name>" instead of a blank connect.
+    await fs.restore();
+    expect(fs.isConnected()).toBe(false);
+    expect(fs.pendingFolderName()).toBe("Test Folder");
+    expect(n).toBe(1); // UI told to re-render
+
+    // The one-click reconnect re-grants the stored handle (no fresh pick).
+    await fs.connect();
+    expect(fs.isConnected()).toBe(true);
+    expect(fs.pendingFolderName()).toBeNull();
   });
 });
