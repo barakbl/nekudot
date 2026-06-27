@@ -1,5 +1,6 @@
 import settings from "./settings.json";
 import { makeToggle } from "../ui/toggle";
+import { trapFocus, type FocusTrap } from "../ui/focus-trap";
 import type { Theme } from "../menu";
 
 // The Start page (a.k.a. onboarding): a full-screen takeover shown on first run
@@ -107,11 +108,22 @@ export function createOnboarding(opts: {
 
   const card = document.createElement("div");
   card.className = "onboarding-card";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.tabIndex = -1;
   el.appendChild(card);
 
   const finish = () => {
     opts.onDismiss();
     hide();
+  };
+
+  let trap: FocusTrap | null = null;
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      finish();
+    }
   };
 
   // Close (dismiss without choosing -> reveals the underlying canvas).
@@ -128,7 +140,9 @@ export function createOnboarding(opts: {
   header.className = "onboarding-header";
   const h1 = document.createElement("h1");
   h1.className = "onboarding-title";
+  h1.id = "onboarding-title";
   h1.textContent = SETTINGS.title;
+  card.setAttribute("aria-labelledby", h1.id);
   header.appendChild(h1);
   if (SETTINGS.subtitle) {
     const sub = document.createElement("p");
@@ -347,9 +361,16 @@ export function createOnboarding(opts: {
 
   function show(): void {
     el.style.display = "";
+    document.addEventListener("keydown", onKeyDown);
+    trap = trapFocus(card);
   }
   function hide(): void {
     el.style.display = "none";
+    document.removeEventListener("keydown", onKeyDown);
+    if (trap) {
+      trap.release();
+      trap = null;
+    }
   }
 
   return { el, show, hide, isOpen: () => el.style.display !== "none" };
