@@ -19,6 +19,9 @@ export function showChip(text: string): void {
 
   const chip = document.createElement("div");
   chip.className = "undo-chip";
+  // role="status" is an implicit polite live region, so screen readers announce
+  // the toast (Save confirmations, undo hints, etc.) when it appears.
+  chip.setAttribute("role", "status");
   chip.textContent = text;
   chip.addEventListener("click", () => dismiss(chip));
   document.body.appendChild(chip);

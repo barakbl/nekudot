@@ -682,15 +682,22 @@ const { exportImage, shareImage } = createExportActions({
   showError,
 });
 
+// Download the artwork as a .nekudot, with the same success/error feedback the
+// folder save gives (it was previously silent on both success and failure).
+const downloadArtwork = (): Promise<void> =>
+  saveArtwork(layerManager).then(
+    () => showChip("Artwork saved"),
+    (err) => {
+      console.error("saveArtwork failed", err);
+      showError("Couldn't save the artwork.", "Save failed");
+    },
+  );
+
 const canvasMenuOptions = {
   onShareImage: shareImage,
   onExportImage: exportImage,
   onRecordClip: recordClip,
-  onSaveArtwork: () => {
-    saveArtwork(layerManager).catch((err) => {
-      console.error("saveArtwork failed", err);
-    });
-  },
+  onSaveArtwork: () => void downloadArtwork(),
   onLoadArtwork: promptLoadArtwork,
 };
 
@@ -1059,7 +1066,7 @@ const shortcuts = buildAppShortcuts({
   // back to the regular .nekudot download so Save works everywhere.
   save: () => {
     if (folderSync.isConnected()) void folderSync.syncArtwork();
-    else saveArtwork(layerManager).catch((e) => console.error("saveArtwork failed", e));
+    else void downloadArtwork();
   },
   recordClip,
 });
