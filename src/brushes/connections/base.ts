@@ -85,6 +85,10 @@ export class ConnectionBase {
   protected connectDensity = 10; // %
   protected connectMaxLinks = 0; // 0 = connect to all in range; N = the N nearest
   protected searchRadius = 40;
+  // Bloom dials: target local density (points within reach) and the scatter
+  // radius for the top-up. 0 = off. See bloomTopUp().
+  protected connectBloom = 0;
+  protected connectBloomRadius = 60;
   protected minConnectDist = 0;
   protected connectSampleSpacing = 0; // px between web samples; 0 = off (see sampleSpacing)
   protected connectionStyle: LineStyle = { alpha: 0.2, width: 1 };
@@ -220,6 +224,33 @@ export class ConnectionBase {
 
   resetStroke(): void {
     this.strokeCutoffId = null;
+  }
+
+  // Bloom: a density-targeted point multiplier. After a real deposit, top the
+  // local neighbourhood up to `connectBloom` points - scattering where it's
+  // sparse, nothing where it's already dense - then weave them, so the user's own
+  // stroke blooms into a full web. Self-limiting: an already-full area adds
+  // nothing, so point growth is bounded by area drawn, not time. No-op when 0.
+  bloomTopUp(current: Pixel): void {
+    const target = this.connectBloom;
+    if (target <= 0) return;
+    const radius = this.searchRadius * this.penRadiusFactor;
+    const MAX_PER_DEPOSIT = 64; // safety: never add more than this in one go
+    const need = Math.min(
+      target - this.searchNeighbors(current, radius).length,
+      MAX_PER_DEPOSIT,
+    );
+    if (need <= 0) return;
+    const jr = this.connectBloomRadius;
+    const added: Pixel[] = [];
+    for (let i = 0; i < need; i++) {
+      const a = this.random() * Math.PI * 2;
+      const rr = Math.sqrt(this.random()) * jr; // uniform over the disc
+      added.push(
+        this.deposit(current.x + Math.cos(a) * rr, current.y + Math.sin(a) * rr).px,
+      );
+    }
+    for (const p of added) this.connect(p);
   }
 
   // --- the connecting engine (moved verbatim from BrushBase) -----------------
@@ -405,6 +436,8 @@ export class ConnectionBase {
       density: this.connectDensity,
       links: this.connectMaxLinks,
       radius: this.searchRadius,
+      bloom: this.connectBloom,
+      bloomRadius: this.connectBloomRadius,
       minDist: this.minConnectDist,
       inset: this.connectInset,
       fade: this.connectAlphaFade,
@@ -472,6 +505,8 @@ export class ConnectionBase {
         break;
       case "density": if (typeof v === "number") this.connectDensity = v; break;
       case "links": if (typeof v === "number") this.connectMaxLinks = v; break;
+      case "bloom": if (typeof v === "number") this.connectBloom = v; break;
+      case "bloomRadius": if (typeof v === "number") this.connectBloomRadius = v; break;
       case "radius":
         if (typeof v === "number") {
           this.searchRadius = v;
@@ -534,7 +569,7 @@ export class ConnectionBase {
   // surfaces only when it's "in use" (its value differs from its neutral).
   // Subclasses may override to open more of their own.
   defaultOpenKeys(): readonly string[] {
-    return ["strands", "spread", "alpha", "density", "radius", "links", "dash", "color"];
+    return ["strands", "spread", "alpha", "density", "radius", "bloom", "links", "dash", "color"];
   }
 
   private num(
@@ -576,6 +611,8 @@ export class ConnectionBase {
       case "density": return this.connectDensity;
       case "links": return this.connectMaxLinks;
       case "radius": return this.searchRadius;
+      case "bloom": return this.connectBloom;
+      case "bloomRadius": return this.connectBloomRadius;
       case "minDist": return this.minConnectDist;
       case "sampleSpacing": return this.connectSampleSpacing;
       case "inset": return this.connectInset;
@@ -646,6 +683,7 @@ export class ConnectionBase {
       this.num("alpha", "Opacity", 0, 1, 0.05, this.styleValue("alpha")),
       this.num("density", "Density", 0, 100, 1, this.connectDensity),
       this.num("radius", "Reach", 5, 1000, 1, this.searchRadius),
+      this.num("bloom", "Bloom", 0, 100, 1, this.connectBloom),
       this.num("links", "Links", 0, 20, 1, this.connectMaxLinks),
       this.num("sampleSpacing", "Stipple", 0, 20, 1, this.connectSampleSpacing),
       this.num("fade", "Fade", 0, 1, 0.05, this.connectAlphaFade),

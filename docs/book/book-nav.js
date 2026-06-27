@@ -64,6 +64,8 @@
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path d="M3 13 Q4 7 5 4 M6 13 Q7 7 8 4 M9 13 Q10 7 11 4 M12 13 Q12.5 8 13 5"/></svg>',
     lace:
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path d="M2 8 A2 2 0 0 1 6 8 A2 2 0 0 1 10 8 A2 2 0 0 1 14 8"/><circle cx="2" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="6" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="0.9" fill="currentColor" stroke="none"/></svg>',
+    bloom:
+      '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 1 V4 M8 12 V15 M1 8 H4 M12 8 H15 M3.2 3.2 L5.3 5.3 M10.7 10.7 L12.8 12.8 M12.8 3.2 L10.7 5.3 M5.3 10.7 L3.2 12.8"/></svg>',
   };
 
   const TREE = [
@@ -127,6 +129,7 @@
             {
               label: "More",
               children: [
+                { label: "Bloom", href: "/book/connections.html#bloom", icon: I.bloom },
                 { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
                 { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
                 { label: "Arc", href: "/book/connections.html#arc", icon: I.arc },

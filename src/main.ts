@@ -967,6 +967,9 @@ const onboarding = createOnboarding({
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
       selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
+      // Use the Bloom art style so the user's first stroke fills out into a full
+      // mandala (the "bloom" preset in connections.json).
+      setArtStyle("bloom");
       menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
       symmetry.setMode("radial");
       const round = brushes["Round"];
