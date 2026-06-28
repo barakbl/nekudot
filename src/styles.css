@@ -112,6 +112,61 @@ body {
   background: var(--app-bg);
 }
 
+/* Stop iOS Safari flashing the native selection/callout over the canvas during
+   touch draws (touch-action alone doesn't). Scoped so panel text stays selectable. */
+.viewport,
+.stage {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide/show-menus button: docked = plain navbar icon; .floating = draggable
+   circle above the panels (z 100+) so it's tappable while they're hidden. */
+.hide-ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-icon);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hide-ui-btn:hover {
+  background: var(--hover-bg);
+}
+.hide-ui-btn.floating {
+  position: fixed;
+  z-index: 200;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-stronger);
+  border-radius: 50%;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-toolbar);
+  cursor: grab;
+  opacity: 0.9;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.hide-ui-btn.floating:active {
+  cursor: grabbing;
+}
+/* Hidden during the onboarding takeover. */
+body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
+  display: none;
+}
+
 .toolbar {
   position: fixed;
   top: 10px;
@@ -2409,6 +2464,21 @@ body.help-mode .help-icon {
   }
 }
 
+/* Tablet (iPad): base centring (left:50% only) shrink-to-fits to ~50% of the
+   viewport, so the bar was half-width and wrapped. Span full width, one row.
+   No overflow here - it forces overflow-y:auto, which clips the pills' popovers. */
+@media (pointer: coarse) and (min-width: 641px) {
+  .toolbar {
+    left: 10px;
+    right: auto;
+    transform: none;
+    width: calc(100vw - 20px);
+    max-width: none;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+}
+
 /* ---- GIF recording: REC pill + preview/edit modal -------------------------- */
 .clip-rec-pill {
   position: absolute;
@@ -3045,8 +3115,9 @@ body.help-mode .help-icon {
 .color-palette-popover > .palette-body::-webkit-scrollbar-track {
   background: transparent;
 }
-/* On phones, drop the anchored popover for a bottom sheet (room for the grid). */
-@media (max-width: 640px), (pointer: coarse) {
+/* Phones: bottom sheet. Width-gated (NOT pointer:coarse) to match positionNear
+   in colors/panel.ts - coarse made it full-width on iPads while JS anchored it. */
+@media (max-width: 640px) {
   .color-palette-popover {
     top: auto;
     bottom: 0;
@@ -3057,6 +3128,12 @@ body.help-mode .help-icon {
     border-radius: 16px 16px 0 0;
     max-height: 80vh;
     padding: 16px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* Tablet: keep the compact anchored popover, a touch wider for finger dragging. */
+@media (pointer: coarse) and (min-width: 641px) {
+  .color-palette-popover {
+    width: 320px;
   }
 }
 .palette-body {
@@ -3805,7 +3882,8 @@ body.help-mode .help-icon {
    Desktop (fine pointer) is unaffected. Dense layer/maps rows and the in-pill
    gears/swatches need a layout rework - tracked separately. */
 @media (pointer: coarse) {
-  .toolbar .icon-btn {
+  .toolbar .icon-btn,
+  .toolbar .hide-ui-btn {
     min-width: 40px;
     min-height: 40px;
   }

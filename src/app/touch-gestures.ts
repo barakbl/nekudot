@@ -27,6 +27,13 @@ export function bindTouchGestures(opts: {
   };
 
   const onStart = (e: TouchEvent) => {
+    // 3+ fingers is a menu/system gesture, not a camera move. Disengage so a
+    // 4-finger swipe (which starts as 2 touches) doesn't latch the camera.
+    if (e.touches.length >= 3) {
+      active = false;
+      prev = null;
+      return;
+    }
     if (e.touches.length < 2) return;
     if (!active) {
       active = true;

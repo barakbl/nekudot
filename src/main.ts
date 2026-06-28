@@ -43,6 +43,8 @@ import { createOpacityController } from "./app/opacity-controller";
 import { opacityStorageKey, recalledOpacity } from "./app/opacity-store";
 import { createPresetsController } from "./app/presets";
 import { buildAppShortcuts } from "./app/app-shortcuts";
+import { createUiVisibility } from "./app/ui-visibility";
+import { createHideUiButton } from "./app/hide-ui-button";
 import { registerHelpHints } from "./app/help-hints";
 import { bindDurability } from "./app/durability";
 import { createStage } from "./app/stage";
@@ -1050,19 +1052,21 @@ const showStartPage = () => {
 
 // ---- panels visibility + shortcuts --------------------------------------------------
 
+// Lazy: shortcutsPanel.el isn't built yet, and the navbar must lead the list so
+// the default restore shows only it.
+const uiVisibility = createUiVisibility(() => [
+  menu.el,
+  settingsPanel.el,
+  layersBox.el,
+  symmetryBox.el,
+  mapsBox.el,
+  appSettingsBox.el,
+  ...(folderBox ? [folderBox.el] : []),
+  shortcutsPanel.el,
+]);
+
 const shortcuts = buildAppShortcuts({
-  // Lazy: the Shortcuts panel below is itself built from this table. The list
-  // leads with the navbar — the default restore state shows only it.
-  panels: () => [
-    menu.el,
-    settingsPanel.el,
-    layersBox.el,
-    symmetryBox.el,
-    mapsBox.el,
-    appSettingsBox.el,
-    ...(folderBox ? [folderBox.el] : []),
-    shortcutsPanel.el,
-  ],
+  togglePanels: (source) => uiVisibility.toggle(source),
   showMaps,
   showLayers,
   showSymmetry,
@@ -1092,6 +1096,8 @@ showShortcuts = () => {
   else shortcutsPanel.el.style.display = "none";
 };
 bindShortcuts(shortcuts, { singleKeyEnabled: () => appState.singleKeyShortcuts });
+
+createHideUiButton({ uiVisibility, store, navbar: menu.el });
 
 // ---- help hints (press ? to toggle visibility) ---------------------------------------
 

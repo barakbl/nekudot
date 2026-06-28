@@ -6,7 +6,8 @@ import { showChip } from "../chip";
 // Everything the global shortcut table triggers. The panel list is read lazily
 // because the Shortcuts panel itself is built from the table this returns.
 export type ShortcutActions = {
-  panels: () => HTMLElement[]; // hidden/restored by `h` + the 4-finger swipe
+  // Hide / show every panel (H key, 4-finger swipe, floating button). See ui-visibility.
+  togglePanels: (source: "key" | "touch") => void;
   showMaps: () => void;
   showLayers: () => void;
   showSymmetry: () => void;
@@ -26,37 +27,12 @@ export type ShortcutActions = {
 // The app's shortcut table (keyboard + multi-finger gestures). The Brushes
 // group is generated from the registry (e.g. shortcut "1" → Digit1).
 export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
-  let savedPanelState: boolean[] | null = null;
-
-  // Shared by the `h` key and the 4-finger swipe-up gesture. Hides every panel
-  // (remembering which were open) or restores them; flashes a hint when hiding.
-  const toggleAllPanels = (source: "key" | "touch") => {
-    const panels = actions.panels();
-    const isVisible = (el: HTMLElement) => el.style.display !== "none";
-    if (panels.some(isVisible)) {
-      savedPanelState = panels.map(isVisible);
-      for (const el of panels) el.style.display = "none";
-      showChip(
-        source === "touch"
-          ? "Menus hidden · 4-finger swipe up to show"
-          : "Menus hidden · press H to show",
-      );
-    } else {
-      // Default restore: just the navbar (the panels list leads with it).
-      const restore = savedPanelState ?? panels.map((_, i) => i === 0);
-      panels.forEach((el, i) => {
-        el.style.display = restore[i] ? "" : "none";
-      });
-      savedPanelState = null;
-    }
-  };
-
   return [
     {
       key: "h",
       group: "Panels",
       description: "Hide/show all panels",
-      onPress: () => toggleAllPanels("key"),
+      onPress: () => actions.togglePanels("key"),
     },
     {
       key: "m",
@@ -191,7 +167,7 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       swipe: "up",
       group: "Panels",
       description: "Hide/show all panels",
-      onPress: () => toggleAllPanels("touch"),
+      onPress: () => actions.togglePanels("touch"),
     },
   ];
 }
