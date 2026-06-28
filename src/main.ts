@@ -52,6 +52,7 @@ import { createExportActions, applyTheme } from "./app/export-actions";
 import { bindCameraInput } from "./app/camera-input";
 import { createDrawingCore } from "./app/drawing-core";
 import { createUndoWiring } from "./app/undo-wiring";
+import { createResetGate } from "./app/reset-gate";
 import { buildNavbar } from "./app/navbar";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
 import {
@@ -603,6 +604,30 @@ const resetArtState = () => {
   renderActiveBrush();
 };
 
+// One gate for every soft reset (New art / Delete canvas / mandala / blank) so no
+// path can forget a piece of the wipe (layers, content, sync file, size, undo
+// baseline). Undo stays out of it: Delete passes clearHistory:false to remain
+// undoable, per the UX/art review.
+const resetDrawing = createResetGate({
+  resetLayers: (size) => layerManager.reset(size),
+  resizeCanvas: applyNewCanvasSize,
+  forgetSyncFile: () => folderSync.forgetArtworkFile(),
+  clearContent: clearArtContent,
+  resetArtStyle: resetArtState,
+  persistSize: (size) => store.set(CANVAS_SIZE_KEY, size),
+  clearHistory: () => void history.clear(),
+  pushUndo,
+});
+
+const deleteCanvas = (): void =>
+  resetDrawing({
+    size: layerManager.currentSize,
+    undoLabel: "Delete canvas",
+    clearHistory: false,
+    resetArtStyle: false,
+    resize: false,
+  });
+
 const loadFileInput = document.createElement("input");
 loadFileInput.type = "file";
 loadFileInput.accept = `${NEKUDOT_ARTWORK_SUFFIX},application/zip`;
@@ -666,14 +691,14 @@ const sizePicker = createSizePicker({
       message: "Creating a new art will erase all layers.",
       confirmLabel: "Create",
       destructive: true,
-      onConfirm: () => {
-        layerManager.reset(size);
-        replaceArtwork(size);
-        clearArtContent(); // new canvas clears content; keeps connection tools
-        store.set(CANVAS_SIZE_KEY, size);
-        void history.clear();
-        pushUndo("New art");
-      },
+      onConfirm: () =>
+        resetDrawing({
+          size,
+          undoLabel: "New art",
+          clearHistory: true,
+          resetArtStyle: false,
+          resize: true,
+        }),
     });
   },
 });
@@ -902,8 +927,7 @@ const menu = buildNavbar({
   sizePicker,
   store,
   selectBrush,
-  clearArtContent,
-  pushUndo,
+  deleteCanvas,
   doUndo,
   doRedo,
   refreshSettingsColors,
@@ -963,20 +987,23 @@ const MANDALA_BG = "#0d0e12"; // deep, near-black canvas for the mandala start
 const startMandala = (color?: string): void => {
   const max = screenMax();
   const size = squareOfScreen(max.width, max.height);
-  layerManager.reset(size);
-  replaceArtwork(size);
-  resetArtState();
-  layerManager.setBackground({ color: MANDALA_BG, transparent: false });
-  applyStageBackground();
-  selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
-  setArtStyle("bloom"); // first stroke fills into a full mandala
-  menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
-  symmetry.setMode("radial");
-  const round = brushes["Round"];
-  if (round) applyConnectionColor(round, mandalaConnectionColor(color));
-  store.set(CANVAS_SIZE_KEY, size);
-  void history.clear();
-  pushUndo("Mandala");
+  resetDrawing({
+    size,
+    undoLabel: "Mandala",
+    clearHistory: true,
+    resetArtStyle: true,
+    resize: true,
+    beforeUndo: () => {
+      layerManager.setBackground({ color: MANDALA_BG, transparent: false });
+      applyStageBackground();
+      selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
+      setArtStyle("bloom"); // first stroke fills into a full mandala
+      menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
+      symmetry.setMode("radial");
+      const round = brushes["Round"];
+      if (round) applyConnectionColor(round, mandalaConnectionColor(color));
+    },
+  });
 };
 
 const onboarding = createOnboarding({
@@ -988,17 +1015,20 @@ const onboarding = createOnboarding({
         variant === "square"
           ? squareOfScreen(max.width, max.height)
           : fullScreenSize(max.width, max.height);
-      layerManager.reset(size);
-      replaceArtwork(size);
-      resetArtState();
-      const { background, ink } = neutralCanvasDefaults();
-      layerManager.setBackground({ color: background, transparent: false });
-      applyStageBackground();
-      menu.setMainColor(ink);
-      symmetry.setMode("none");
-      store.set(CANVAS_SIZE_KEY, size);
-      void history.clear();
-      pushUndo("New art");
+      resetDrawing({
+        size,
+        undoLabel: "New art",
+        clearHistory: true,
+        resetArtStyle: true,
+        resize: true,
+        beforeUndo: () => {
+          const { background, ink } = neutralCanvasDefaults();
+          layerManager.setBackground({ color: background, transparent: false });
+          applyStageBackground();
+          menu.setMainColor(ink);
+          symmetry.setMode("none");
+        },
+      });
     },
     loadArtworkFile: (file) => loadArtwork(file),
   },
