@@ -589,6 +589,7 @@ const clearArtContent = () => {
     b.applyRoutingPreset("classic"); // routing follows the canvas
   }
   void pixelLog.clear();
+  folderSync.forgetArtworkFile(); // fresh canvas -> next folder sync starts a new file
   renderActiveBrush();
 };
 
