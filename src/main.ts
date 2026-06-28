@@ -536,8 +536,8 @@ const mapsControl = createMapsControl(
 );
 // The routing "Connection" group lives in the Maps box now; build it for the
 // current brush (re-read on each render, so it tracks the active brush + maps).
-const mapsBox = createMapsBox(mapsControl, (rerender) =>
-  buildRoutingControls(appState.brush, rerender),
+const mapsBox = createMapsBox(mapsControl, () =>
+  buildRoutingControls(appState.brush),
 );
 document.body.appendChild(mapsBox.el);
 registerWindow(mapsBox.el);

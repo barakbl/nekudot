@@ -639,10 +639,15 @@ export class ConnectionBase {
       {
         kind: "select",
         key: "connecting_mode",
-        label: "Connect to stroke or map?",
+        label: "Connect to",
         section: ROUTE_SECTION,
         options: ConnectModeSchema.options,
-        optionLabels: { both: "Both", stroke: "Stroke", map: "Map", none: "None" },
+        optionLabels: {
+          both: "Both map and stroke",
+          stroke: "Stroke",
+          map: "Map",
+          none: "Nothing",
+        },
         value: this.connectMode,
         onChange: (v) => this.setKey("connecting_mode", v),
       },

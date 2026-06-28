@@ -84,7 +84,9 @@ async function main() {
     const mapsText = await E("document.querySelector('.maps-box').textContent");
     check("no 'Memory Map From'", !mapsText.includes("Memory Map From"));
     check("no 'Memory Map trail'", !mapsText.includes("Memory Map trail"));
-    check("keeps 'Connect to stroke or map?'", mapsText.includes("Connect to stroke or map"));
+    check("no Classic/No-connect preset buttons", !mapsText.includes("No connect"));
+    check("keeps the 'Connect to' control", mapsText.includes("Connect to"));
+    check("default is 'Both map and stroke'", mapsText.includes("Both map and stroke"));
 
     await send("Target.closeTarget", { targetId });
     if (fails.length) { console.log(`\n✗ ${fails.length} check(s) failed: ${fails.join(", ")}`); return 1; }
