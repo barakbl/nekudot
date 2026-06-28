@@ -2843,9 +2843,30 @@ body.help-mode .help-icon {
 .onboarding-seg-btn:hover {
   color: var(--text-primary);
 }
-.onboarding-seg-btn.active {
+.onboarding-seg-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* Selected radio: accent fill PLUS a non-colour cue (bold + an inset ring) so the
+   choice is perceivable without relying on hue. */
+.onboarding-seg-btn[aria-checked="true"] {
   background: var(--accent);
   color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 2px var(--accent-text);
+}
+
+/* Visually hidden, still read by screen readers (aria-live region, SR-only text). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* Optional "Import a settings file" link under the quick prefs. */
