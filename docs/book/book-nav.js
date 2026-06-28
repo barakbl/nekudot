@@ -39,6 +39,8 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.6-3.6M8.5 11h5M11 8.5v5"/></svg>',
     start:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 9v6M9 12h6"/></svg>',
+    folder:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>',
     // brushes - the app's own glyphs
     round: "●",
     squares: "▭",
@@ -84,6 +86,7 @@
         { label: "Toolbar", href: "/book/ui/toolbar.html", icon: I.toolbar },
         { label: "Navigating the canvas", href: "/book/ui/canvas-view.html", icon: I.view },
         { label: "Paste an image", href: "/book/ui/paste-image.html", icon: I.image },
+        { label: "Save to a folder", href: "/book/save-to-folder.html", icon: I.folder },
         {
           label: "Panels",
           children: [

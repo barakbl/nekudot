@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Save to a folder - Nekudot book</title>
+    <link rel="stylesheet" href="/docs.css" />
+    <script src="/book/book-nav.js" defer></script>
+    <!-- Privacy-friendly, cookieless analytics (Umami Cloud, EU-hosted; GDPR-compliant) -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="746f900c-0c69-4bf7-a88b-842b65ff790d"></script>
+  </head>
+  <body>
+    <nav class="topnav">
+      <a class="brand" href="/">Neku<span>dot</span></a>
+      <a class="cta" href="/app/">Open the app →</a>
+      <a class="nav" href="/book/">Book</a>
+      <span class="spacer"></span>
+    </nav>
+
+    <main>
+      <p class="crumbs"><a href="/book/">Book</a> › Save to a folder</p>
+      <h1>Save to a folder</h1>
+      <p class="lead">
+        Connect a folder once and Nekudot saves your artwork and settings
+        straight into it - no download dialog each time, and your work lives as
+        real files on your own computer. Available in Chrome, Edge and other
+        Chromium browsers.
+      </p>
+
+      <div class="note">
+        This needs the browser's File System Access feature, so it's available in
+        <strong>Chromium browsers</strong> - Chrome, Edge, Brave, Opera and the
+        like. In Firefox and Safari the Local folder panel simply doesn't appear;
+        there, use the normal <code>.nekudot</code> save/export instead (see below).
+      </div>
+
+      <img class="book-shot" src="/book/img/panel-folder.png" alt="The Local folder panel, before connecting" />
+
+      <h2>Connect a folder</h2>
+      <p>
+        Open the <strong>Local folder</strong> panel from the Windows menu (or
+        press <span class="kbd">f</span>), then click <strong>Connect folder</strong>
+        and pick any folder on your machine. The browser asks once for permission
+        to write there. Nekudot remembers the folder and reconnects to it on your
+        next visit - if the browser ever drops that permission, the panel offers a
+        one-click <strong>Reconnect</strong>.
+      </p>
+
+      <h2>Saving your work</h2>
+      <p>Once a folder is connected the panel gives you:</p>
+      <dl class="settings">
+        <dt>This drawing - Save to folder</dt>
+        <dd>Writes the current canvas as a <code>.nekudot</code> file in your folder. The panel shows which file this drawing is bound to, so later saves overwrite that same file instead of piling up copies.</dd>
+        <dt>Settings - Back up / Restore</dt>
+        <dd>Saves (or reloads) a <code>.nekudotapp</code> bundle with your app settings, custom presets and colour palettes - the same bundle you can carry between devices.</dd>
+        <dt>Disconnect</dt>
+        <dd>Forgets the folder. Your files stay exactly where they are; only the link is removed.</dd>
+      </dl>
+
+      <div class="tip">
+        <span class="tip-label">Quick save</span>
+        <span class="kbd">Cmd/Ctrl</span> + <span class="kbd">S</span> saves the
+        current drawing to your connected folder. With no folder connected it
+        falls back to downloading a <code>.nekudot</code> file, so Save works in
+        every browser.
+      </div>
+
+      <h2>Back up - and work across your devices</h2>
+      <p>
+        Because saves are just files in a normal folder, you can point Nekudot at
+        a folder that a cloud service already syncs - <strong>Dropbox</strong>,
+        <strong>Google Drive</strong>, <strong>iCloud Drive</strong> or
+        <strong>OneDrive</strong>. Every save then mirrors up to your own cloud,
+        giving you an off-device copy and history of your art without any extra
+        step. Nekudot never talks to those services itself; it only writes the
+        files, and your own sync app carries them.
+      </p>
+      <p>
+        That same synced folder lets you carry one drawing - and one setup -
+        across your computer, tablet and phone. On another desktop (Chrome or
+        Edge) just connect the same folder and saves flow both ways. On an iPad or
+        Android tablet, where connecting a folder isn't available, your cloud app
+        still holds the files: open a synced <code>.nekudot</code> to keep
+        drawing and import the <code>.nekudotapp</code> to match your settings,
+        then export back to the folder when you're done.
+      </p>
+
+      <h2>Local-first by design</h2>
+      <p>
+        This is a deliberate choice: Nekudot has <strong>no server, no account
+        and no tokens</strong>, and nothing you draw is ever uploaded. Your
+        artwork and settings stay on your device as plain
+        <code>.nekudot</code> / <code>.nekudotapp</code> files that you fully own
+        and can move, back up or delete yourself. Cloud backup stays entirely your
+        call, through a folder you already trust - not a service you have to sign
+        in to.
+      </p>
+    </main>
+
+    <footer>Nekudot usage book · GPL v2 · <a href="https://github.com/barakbl/nekudot" target="_blank" rel="noopener">GitHub</a> · <a href="/book/">back to book</a></footer>
+  </body>
+</html>

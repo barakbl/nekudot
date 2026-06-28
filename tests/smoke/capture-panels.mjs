@@ -98,6 +98,20 @@ try {
   await shot(".maps-box", "panel-maps.png");
   await key("m", "KeyM", 77);
 
+  // Local folder panel (Chrome folder sync) - shown directly; the connect view
+  // needs no real folder pick (which can't run headless). Skipped where the
+  // browser lacks the File System Access API (then the panel isn't built).
+  if (await E("!!document.querySelector('.folder-box')")) {
+    // Hide any other floating panels first so the clip captures the folder box
+    // alone (it's short, and was raised by display only, not the window stack).
+    await E("(()=>{ for (const p of document.querySelectorAll('.layers-box, .settings-panel, .app-settings-box')) p.style.display='none'; document.querySelector('.folder-box').style.display=''; })()");
+    await sleep(120);
+    await shot(".folder-box", "panel-folder.png");
+    await E("(()=>{document.querySelector('.folder-box').style.display='none';})()");
+  } else {
+    console.log("• Local folder panel unavailable (no File System Access) - skipped panel-folder.png");
+  }
+
   // Application settings panel (global: theme / input / advanced).
   await key(",", "Comma", 188);
   await shot(".app-settings-box", "panel-app-settings.png");
