@@ -106,6 +106,13 @@ export function createOnboarding(opts: {
   el.className = "onboarding";
   el.style.display = "none";
 
+  // Polite live region, kept in the body (outside the hidden takeover) so a
+  // screen reader announces the handoff to the canvas when the page is dismissed.
+  const liveRegion = document.createElement("div");
+  liveRegion.className = "sr-only";
+  liveRegion.setAttribute("aria-live", "polite");
+  document.body.appendChild(liveRegion);
+
   const card = document.createElement("div");
   card.className = "onboarding-card";
   card.setAttribute("role", "dialog");
@@ -113,8 +120,36 @@ export function createOnboarding(opts: {
   card.tabIndex = -1;
   el.appendChild(card);
 
+  // APG modal: inert everything outside the dialog while it's open, so AT and the
+  // keyboard can't reach the canvas/chrome behind it.
+  let inerted: HTMLElement[] = [];
+  const setBackgroundInert = (on: boolean) => {
+    if (!on) {
+      for (const s of inerted) {
+        s.inert = false;
+        s.removeAttribute("aria-hidden");
+      }
+      inerted = [];
+      return;
+    }
+    let node: HTMLElement | null = el;
+    while (node && node !== document.body) {
+      const up: HTMLElement | null = node.parentElement;
+      if (!up) break;
+      for (const sib of Array.from(up.children)) {
+        if (sib === node || sib === liveRegion || !(sib instanceof HTMLElement) || sib.inert)
+          continue;
+        sib.inert = true;
+        sib.setAttribute("aria-hidden", "true");
+        inerted.push(sib);
+      }
+      node = up;
+    }
+  };
+
   const finish = () => {
     opts.onDismiss();
+    liveRegion.textContent = "Canvas ready"; // announce the handoff once
     hide();
   };
 
@@ -160,23 +195,45 @@ export function createOnboarding(opts: {
   themeWrap.className = "onboarding-pref";
   const themeLabel = document.createElement("span");
   themeLabel.className = "onboarding-pref-label";
+  themeLabel.id = "onboarding-theme-label";
   themeLabel.textContent = "Theme";
   const seg = document.createElement("div");
   seg.className = "onboarding-seg";
+  seg.setAttribute("role", "radiogroup");
+  seg.setAttribute("aria-labelledby", themeLabel.id);
   const THEMES: Theme[] = ["auto", "light", "dark"];
   let activeTheme = opts.prefs.theme.initial;
   const segBtns = new Map<Theme, HTMLButtonElement>();
   const syncTheme = () => {
-    for (const [t, b] of segBtns) b.classList.toggle("active", t === activeTheme);
+    for (const [t, b] of segBtns) {
+      const on = t === activeTheme;
+      b.setAttribute("aria-checked", String(on));
+      b.tabIndex = on ? 0 : -1; // roving tabindex: the group is one tab stop
+    }
+  };
+  const pickTheme = (t: Theme, focus: boolean) => {
+    activeTheme = t;
+    syncTheme();
+    if (focus) segBtns.get(t)?.focus();
+    opts.prefs.theme.onChange(t);
   };
   for (const t of THEMES) {
     const b = document.createElement("button");
     b.className = "onboarding-seg-btn";
+    b.type = "button";
+    b.setAttribute("role", "radio");
     b.textContent = t[0].toUpperCase() + t.slice(1);
-    b.addEventListener("click", () => {
-      activeTheme = t;
-      syncTheme();
-      opts.prefs.theme.onChange(t);
+    b.addEventListener("click", () => pickTheme(t, false));
+    b.addEventListener("keydown", (e) => {
+      // Arrow keys move selection (and focus) within the radiogroup.
+      const i = THEMES.indexOf(activeTheme);
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        pickTheme(THEMES[(i + 1) % THEMES.length], true);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        pickTheme(THEMES[(i - 1 + THEMES.length) % THEMES.length], true);
+      }
     });
     segBtns.set(t, b);
     seg.appendChild(b);
@@ -368,12 +425,15 @@ export function createOnboarding(opts: {
   }
 
   function show(): void {
+    liveRegion.textContent = ""; // reset so the next handoff re-announces
     el.style.display = "";
+    setBackgroundInert(true);
     document.addEventListener("keydown", onKeyDown);
     trap = trapFocus(card);
   }
   function hide(): void {
     el.style.display = "none";
+    setBackgroundInert(false);
     document.removeEventListener("keydown", onKeyDown);
     if (trap) {
       trap.release();
