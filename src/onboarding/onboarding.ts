@@ -291,6 +291,14 @@ export function createOnboarding(opts: {
       note.textContent = opt.note;
       body.appendChild(note);
     }
+    // Show the default web colours as a swatch rather than describing them.
+    if (opt.action.type === "mandala" && opt.action.color === "rainbow") {
+      const swatch = document.createElement("span");
+      swatch.className = "onboarding-swatch onboarding-swatch-rainbow";
+      swatch.setAttribute("role", "img");
+      swatch.setAttribute("aria-label", "Default colours: rainbow gradient");
+      body.appendChild(swatch);
+    }
     cardEl.appendChild(body);
 
     if (opt.action.type === "blank") {
