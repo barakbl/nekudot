@@ -18,12 +18,20 @@ export function createStage({ store }: { store: Store }) {
   document.body.style.margin = "0";
   document.body.style.overflow = "hidden";
   document.body.style.minHeight = "100vh";
+  document.body.style.minHeight = "100dvh"; // overrides on browsers that support dvh
 
   const dpr = window.devicePixelRatio || 1;
-  const screenMax = (): CanvasSize => ({
-    width: Math.max(1, window.innerWidth - BORDER * 2),
-    height: Math.max(1, window.innerHeight - BORDER * 2),
-  });
+  // visualViewport, not window.inner*: the latter is unstable on iOS Safari as
+  // the toolbar chrome animates, giving an inconsistent new-art canvas size.
+  const screenMax = (): CanvasSize => {
+    const vv = window.visualViewport;
+    const w = vv?.width ?? window.innerWidth;
+    const h = vv?.height ?? window.innerHeight;
+    return {
+      width: Math.max(1, w - BORDER * 2),
+      height: Math.max(1, h - BORDER * 2),
+    };
+  };
 
   const persistedSize = safeLoadSize(store.get<unknown>(CANVAS_SIZE_KEY));
   const initialCanvasSize: CanvasSize = (() => {
