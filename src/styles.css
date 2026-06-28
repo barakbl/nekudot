@@ -1698,32 +1698,6 @@ body {
   opacity: 0.35;
   cursor: not-allowed;
 }
-/* Connection-layer marker. Idle = faint, desaturated and thin so it recedes;
-   active = bold accent with thicker strokes so the current connection layer is
-   unmistakable (and reads distinctly from the selected-row outline). */
-.layer-conn-btn {
-  color: var(--text-faint);
-  opacity: 0.6;
-}
-.layer-conn-btn svg {
-  stroke-width: 1.8;
-}
-.layer-conn-btn:hover:not(:disabled) {
-  color: var(--text-primary);
-  opacity: 1;
-  background: var(--hover-bg-strong);
-}
-.layer-conn-btn.active {
-  color: var(--accent);
-  opacity: 1;
-}
-.layer-conn-btn.active svg {
-  stroke-width: 2.4;
-}
-.layer-conn-btn.active:hover:not(:disabled) {
-  color: var(--accent-hover);
-  background: transparent;
-}
 .layer-name {
   white-space: nowrap;
   overflow: hidden;

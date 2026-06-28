@@ -15,6 +15,7 @@ import { NeighborsMap } from "./neighbors-map";
 import { WetStrokeBuffer } from "./wet-stroke";
 import {
   LayersConfigSchema,
+  MAX_LAYERS_DEFAULT,
   defaultLayer,
   defaultLayersConfig,
   defaultNeighborsMap,
@@ -63,7 +64,6 @@ const shiftAfterRemoval = (
 export class LayerManager implements PaintHost {
   private layers: Layer[] = [];
   private activeIndex = 0;
-  private activeConnectionIndex = 0;
   private neighborsMaps: NeighborsMap[] = [];
   private selectedNeighborsMapIndex = 0;
   private background: BackgroundConfig = { color: "#ffffff", transparent: false };
@@ -87,7 +87,9 @@ export class LayerManager implements PaintHost {
     this.applyContainerSize();
 
     const persisted = this.loadPersisted();
-    this.maxLayers = persisted?.maxLayers ?? opts.maxLayers ?? 5;
+    // The cap is app policy, not user data: prefer the code-provided value so a
+    // bump reaches returning users (whose persisted config pinned the old cap).
+    this.maxLayers = opts.maxLayers ?? persisted?.maxLayers ?? MAX_LAYERS_DEFAULT;
 
     const config = persisted ?? defaultLayersConfig(this.maxLayers);
     // Ensure at least one top-level NeighborsMap exists.
@@ -109,10 +111,6 @@ export class LayerManager implements PaintHost {
     this.renumberLayers();
     for (const nmCfg of config.neighborsMaps) this.spawnNeighborsMap(nmCfg);
     this.activeIndex = clampIndex(config.activeIndex, this.layers.length);
-    this.activeConnectionIndex = clampIndex(
-      config.activeConnectionIndex ?? 0,
-      this.layers.length,
-    );
     this.selectedNeighborsMapIndex = clampIndex(
       config.selectedNeighborsMapIndex ?? 0,
       this.neighborsMaps.length,
@@ -146,13 +144,11 @@ export class LayerManager implements PaintHost {
     this.size = { ...newSize };
     this.applyContainerSize();
     this.removeAll();
-    // Two-layer default: layer-2 selected for painting, layer-1 the connection
-    // layer (matches defaultLayersConfig).
+    // Two-layer default: layer-2 selected for painting (matches defaultLayersConfig).
     this.spawnLayer(defaultLayer(0));
     this.spawnLayer(defaultLayer(1));
     this.spawnNeighborsMap(defaultNeighborsMap([]));
     this.activeIndex = 1;
-    this.activeConnectionIndex = 0;
     this.selectedNeighborsMapIndex = 0;
     this.persist();
     this.emit();
@@ -201,12 +197,6 @@ export class LayerManager implements PaintHost {
     return this.activeIndex;
   }
 
-  // The layer currently showing the connecting-line visual (always exactly one,
-  // independent of the selected/active layer).
-  get activeConnectionIdx(): number {
-    return this.activeConnectionIndex;
-  }
-
   canAddMore(): boolean {
     return this.layers.length < this.maxLayers;
   }
@@ -223,13 +213,9 @@ export class LayerManager implements PaintHost {
 
   addLayer(): Layer | null {
     if (!this.canAddMore()) return null;
-    // If the connection layer is the one currently selected, keep them together
-    // by moving the connection to the new layer (which becomes selected).
-    const connectionFollows = this.activeConnectionIndex === this.activeIndex;
     const idx = this.layers.length;
     const layer = this.spawnLayer(defaultLayer(idx));
     this.activeIndex = idx;
-    if (connectionFollows) this.activeConnectionIndex = idx;
     this.persist();
     this.emit();
     return layer;
@@ -244,16 +230,6 @@ export class LayerManager implements PaintHost {
     this.emit();
   }
 
-  // Move the connecting-line visual to another layer. Visualization-only state,
-  // so (like setActive) it's not an undo step.
-  setActiveConnection(index: number): void {
-    if (index < 0 || index >= this.layers.length) return;
-    if (index === this.activeConnectionIndex) return;
-    this.activeConnectionIndex = index;
-    this.persist();
-    this.emit();
-  }
-
   duplicateLayer(index: number): Layer | null {
     if (!this.canAddMore()) return null;
     const orig = this.layers[index];
@@ -263,13 +239,9 @@ export class LayerManager implements PaintHost {
     newConfig.id = genId();
     newConfig.index = newIdx;
     newConfig.name = `${orig.config.name} copy`;
-    // Duplicating the connection layer carries the connection to the new copy;
-    // duplicating any other layer leaves it where it is.
-    const duplicatingConnection = index === this.activeConnectionIndex;
     const newLayer = this.spawnLayer(newConfig);
     newLayer.renderer.drawSource(orig.renderer); // copy pixel content
     this.activeIndex = newIdx;
-    if (duplicatingConnection) this.activeConnectionIndex = newIdx;
     this.persist();
     this.emit();
     return newLayer;
@@ -283,21 +255,14 @@ export class LayerManager implements PaintHost {
     this.layers.splice(index, 1);
     this.renumberLayers(); // reassign 0..n-1 indices + refresh z-indices
     this.activeIndex = shiftAfterRemoval(this.activeIndex, index, this.layers.length);
-    // Same shift for the connection layer; deleting it hands the connection to
-    // the layer directly under it (index - 1, clamped).
-    this.activeConnectionIndex = shiftAfterRemoval(
-      this.activeConnectionIndex,
-      index,
-      this.layers.length,
-    );
     this.persist();
     this.emit();
     return true;
   }
 
   // Reorder layers to match `idsBottomToTop` (array order = bottom → top, i.e.
-  // config.index 0..n-1). Renumbers indices + z-index and keeps the selected and
-  // connection markers on their original layers. Returns false if unchanged.
+  // config.index 0..n-1). Renumbers indices + z-index and keeps the selected
+  // marker on its original layer. Returns false if unchanged.
   reorderByIds(idsBottomToTop: string[]): boolean {
     if (idsBottomToTop.length !== this.layers.length) return false;
     const byId = new Map(this.layers.map((l) => [l.config.id, l] as const));
@@ -309,12 +274,10 @@ export class LayerManager implements PaintHost {
     }
     if (next.every((l, i) => l === this.layers[i])) return false; // no-op
     const activeLayer = this.layers[this.activeIndex];
-    const connLayer = this.layers[this.activeConnectionIndex];
     this.layers = next;
     this.renumberLayers();
-    // Markers follow their layers to the new positions.
+    // The selection follows its layer to the new position.
     this.activeIndex = Math.max(0, this.layers.indexOf(activeLayer));
-    this.activeConnectionIndex = Math.max(0, this.layers.indexOf(connLayer));
     this.persist();
     this.emit();
     return true;
@@ -483,9 +446,8 @@ export class LayerManager implements PaintHost {
     return this.active.config.id;
   }
   activeConnectionLayerId(): string {
-    return (
-      this.layers[this.activeConnectionIndex]?.config.id ?? this.active.config.id
-    );
+    // Connections bake onto the active layer (no separate connection layer).
+    return this.active.config.id;
   }
   selectedMapId(): string {
     return this.selectedMap?.config.id ?? "";
@@ -675,7 +637,6 @@ export class LayerManager implements PaintHost {
     return {
       maxLayers: this.maxLayers,
       activeIndex: this.activeIndex,
-      activeConnectionIndex: this.activeConnectionIndex,
       layers: this.layers.map((l) => l.config),
       neighborsMaps: this.neighborsMaps.map((nm) => nm.config),
       selectedNeighborsMapIndex: this.selectedNeighborsMapIndex,

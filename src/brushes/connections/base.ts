@@ -8,7 +8,6 @@ import {
   DASH_PATTERNS,
   DASH_ICONS,
   ConnectModeSchema,
-  encodeConnectMap,
   decodeConnectMap,
   // Slider section labels (shared source of truth): the routing group + the
   // art-style group.
@@ -634,32 +633,9 @@ export class ConnectionBase {
   }
 
   private routingSliders(): BrushSetting[] {
-    const maps = this.host.listMaps(); // [] on a bare host
-    const fromOptions = ["selected", ...maps.map((m) => m.id)];
-    const trailOptions = [...fromOptions, "none"];
-    const mapLabels: Record<string, string> = { selected: "Active map", none: "No trail" };
-    for (const m of maps) mapLabels[m.id] = m.name;
+    // The web reads + trails from the active map automatically (connectFromMap /
+    // connectToMap stay "selected"); only the connect mode is user-facing.
     return [
-      {
-        kind: "select",
-        key: "connecting_from_map",
-        label: "Memory Map From",
-        section: ROUTE_SECTION,
-        options: fromOptions,
-        optionLabels: mapLabels,
-        value: encodeConnectMap(this.connectFromMap),
-        onChange: (v) => this.setKey("connecting_from_map", v),
-      },
-      {
-        kind: "select",
-        key: "connecting_to_map",
-        label: "Memory Map trail",
-        section: ROUTE_SECTION,
-        options: trailOptions,
-        optionLabels: mapLabels,
-        value: encodeConnectMap(this.connectToMap),
-        onChange: (v) => this.setKey("connecting_to_map", v),
-      },
       {
         kind: "select",
         key: "connecting_mode",

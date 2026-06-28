@@ -60,7 +60,7 @@ import { neutralCanvasDefaults } from "./onboarding/canvas-defaults";
 
 const store = new LocalStorageStore();
 
-const MAX_LAYERS = 5;
+const MAX_LAYERS = 10;
 const MAX_UNDO = 10;
 
 // ---- stage + canvas size ----------------------------------------------------

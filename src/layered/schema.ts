@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const MAX_LAYERS_DEFAULT = 5;
+export const MAX_LAYERS_DEFAULT = 10;
 
 // Stable identity for layers and neighbors maps so connecting-brush pins
 // survive add/remove/reorder (indices don't). Legacy configs missing an id
@@ -42,10 +42,6 @@ export type BackgroundConfig = z.infer<typeof BackgroundSchema>;
 export const LayersConfigSchema = z.object({
   maxLayers: z.number().int().positive().default(MAX_LAYERS_DEFAULT),
   activeIndex: z.number().int().nonnegative().default(0),
-  // The single layer that currently shows the connecting-line visual. Always
-  // exactly one; independent of activeIndex. (Visualization only for now —
-  // not wired to the brush.)
-  activeConnectionIndex: z.number().int().nonnegative().default(0),
   layers: z.array(LayerSchema).min(1),
   neighborsMaps: z
     .array(NeighborsMapSchema)
@@ -77,10 +73,8 @@ export function defaultLayersConfig(
 ): LayersConfig {
   return {
     maxLayers,
-    // Start with two layers: layer-2 selected for painting, layer-1 as the
-    // connection layer (so connecting lines bake under the paint by default).
+    // Start with two layers: layer-2 selected for painting.
     activeIndex: 1,
-    activeConnectionIndex: 0,
     layers: [defaultLayer(0), defaultLayer(1)],
     neighborsMaps: [defaultNeighborsMap([])],
     selectedNeighborsMapIndex: 0,

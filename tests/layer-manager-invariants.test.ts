@@ -171,21 +171,19 @@ describe("LayerManager: applyConfig round-trips by index; getPaintData keyed by 
     expect(b.activeIdx).toBe(cfg.activeIndex);
   });
 
-  it("carries non-layer state across applyConfig (connection / maps / background)", () => {
+  it("carries non-layer state across applyConfig (maps / background)", () => {
     const a = newManager();
-    a.addLayer(); // 3 layers -> connection index 2 is valid
-    a.setActiveConnection(2);
+    a.addLayer(); // 3 layers
     a.addNeighborsMap(); // 2 maps
     a.selectNeighborsMap(1);
     a.setBackground({ color: "#abcdef", transparent: true });
     const cfg = a.getConfig();
 
-    const b = newManager(); // fresh defaults: connection 0, 1 map, white bg
+    const b = newManager(); // fresh defaults: 1 map, white bg
     b.applyConfig(cfg);
 
     // Each is non-default, so these only pass if applyConfig actually round-trips
     // the non-layer state (not just the layers array).
-    expect(b.activeConnectionIdx).toBe(cfg.activeConnectionIndex);
     expect(b.allNeighborsMaps.length).toBe(a.allNeighborsMaps.length);
     expect(b.selectedNeighborsMapIdx).toBe(cfg.selectedNeighborsMapIndex);
     expect(b.getBackground().color).toBe("#abcdef");
