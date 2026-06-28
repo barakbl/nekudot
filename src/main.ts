@@ -955,11 +955,8 @@ void presets.restore().then((loaded) => {
 const ONBOARDED_KEY = "app.onboarded";
 const MANDALA_BG = "#0d0e12"; // deep, near-black canvas for the mandala start
 
-// The mandala start: a 1:1 dark canvas, the connecting brush in a vivid colour,
-// radial symmetry, the Bloom art style. Used by the Start page's Mandala tile AND
-// auto-run on first launch (the recommended first experience). The symmetry panel
-// is deliberately NOT opened - the sliders stay hidden by default; the always-
-// visible navbar Symmetry control reaches them.
+// Shared by the Start-page Mandala tile and the first-run boot. Deliberately
+// leaves the symmetry panel closed (sliders hidden by default).
 const startMandala = (color?: string): void => {
   const max = screenMax();
   const size = squareOfScreen(max.width, max.height);
@@ -969,9 +966,7 @@ const startMandala = (color?: string): void => {
   layerManager.setBackground({ color: MANDALA_BG, transparent: false });
   applyStageBackground();
   selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
-  // Use the Bloom art style so the user's first stroke fills out into a full
-  // mandala (the "bloom" preset in connections.json).
-  setArtStyle("bloom");
+  setArtStyle("bloom"); // first stroke fills into a full mandala
   menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
   symmetry.setMode("radial");
   const round = brushes["Round"];
@@ -993,8 +988,6 @@ const onboarding = createOnboarding({
       layerManager.reset(size);
       replaceArtwork(size);
       resetArtState();
-      // Contrast-safe defaults: a dark canvas + light ink, never white + black,
-      // so the first stroke and its connecting web are clearly visible (G1).
       const { background, ink } = neutralCanvasDefaults();
       layerManager.setBackground({ color: background, transparent: false });
       applyStageBackground();
@@ -1030,11 +1023,8 @@ const onboarding = createOnboarding({
 // stay above it), not the whole page.
 viewportEl.appendChild(onboarding.el);
 
-// First run (or right after a data reset): nothing is stored, so open straight
-// into the mandala - the recommended first experience - as if the Mandala tile
-// were picked, rather than showing the Start page. The Start page stays available
-// any time via the G shortcut (showStartPage). An existing user with prior data
-// is treated as already onboarded so we never disturb their canvas.
+// First run: open straight into the mandala instead of the Start page (still
+// reachable via the G shortcut). Returning users keep their canvas.
 {
   const onboarded = store.get<boolean>(ONBOARDED_KEY) === true;
   const hasPriorUse =

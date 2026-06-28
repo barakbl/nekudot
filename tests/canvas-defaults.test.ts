@@ -6,8 +6,6 @@ import {
   NEUTRAL_CANVAS_INK,
 } from "../src/onboarding/canvas-defaults";
 
-// WCAG relative luminance + contrast ratio, so the guard is a real perceptual
-// bound rather than a hardcoded-string check.
 function luminance(hex: string): number {
   const n = parseInt(hex.slice(1), 16);
   const lin = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
@@ -30,13 +28,11 @@ describe("neutral canvas defaults (G1: kill the hostile blank)", () => {
   });
 
   it("is a dark canvas with light ink", () => {
-    expect(luminance(NEUTRAL_CANVAS_BG)).toBeLessThan(0.05); // dark surface
-    expect(luminance(NEUTRAL_CANVAS_INK)).toBeGreaterThan(0.6); // light stroke
+    expect(luminance(NEUTRAL_CANVAS_BG)).toBeLessThan(0.05);
+    expect(luminance(NEUTRAL_CANVAS_INK)).toBeGreaterThan(0.6);
   });
 
-  it("clears WCAG AAA contrast between background and ink", () => {
-    // The first stroke (and its faint connecting web) must read clearly; AAA for
-    // normal text is 7:1, a comfortable floor for a stroke on the canvas.
+  it("clears WCAG AAA contrast (7:1) between background and ink", () => {
     expect(contrastRatio(NEUTRAL_CANVAS_BG, NEUTRAL_CANVAS_INK)).toBeGreaterThanOrEqual(7);
   });
 

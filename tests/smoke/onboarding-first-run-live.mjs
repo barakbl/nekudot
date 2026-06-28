@@ -1,15 +1,7 @@
-// Live smoke for the first-run experience + contrast-safe blank.
-// Boots the REAL app fresh and checks:
-//   1) First run opens STRAIGHT into the mandala (no Start page), on the deep
-//      near-black canvas, with the symmetry sliders panel HIDDEN by default; a
-//      real pointer stroke blooms into a colourful kaleidoscope.
-//   2) The Start page is still reachable via the G shortcut, and picking "Blank"
-//      there lands on the contrast-safe neutral dark canvas where a first stroke
-//      deposits LIGHT, clearly-visible ink (never the hostile white + black).
-//
+// Live smoke (manual, needs Chrome): first run opens straight into the mandala
+// with the symmetry panel hidden + one stroke blooms; G -> Start page -> Blank
+// lands on the contrast-safe dark canvas with a visible light stroke.
 //   node tests/smoke/onboarding-first-run-live.mjs
-//
-// Needs Chrome; manual (not in CI), like the other live smokes.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -55,8 +47,6 @@ async function main() {
     await S("Emulation.setDeviceMetricsOverride", { width: 1100, height: 720, deviceScaleFactor: 1, mobile: false });
     const E = async (expr) => { const r = await S("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 
-    // Read stage bg, whether the onboarding/symmetry panels are visible, and the
-    // painted ink across the layer canvases (count, how much is LIGHT, hue spread).
     const measure = `(() => {
       const stage = document.querySelector('.stage');
       const bg = getComputedStyle(stage).backgroundColor;
@@ -104,8 +94,7 @@ async function main() {
     check("Start page NOT shown on first run", m0.onboardingShown === false);
     check("lands on the mandala canvas", m0.bg === MANDALA, m0.bg);
     check("symmetry sliders panel hidden by default", m0.symPanelShown === false);
-    // Baseline before drawing isn't 0: radial symmetry paints faint guide spokes
-    // on a stage overlay canvas. Measure the bloom as the delta the stroke adds.
+    // Baseline isn't 0: radial symmetry guides paint a stage overlay - measure the delta.
     console.log(`   · baseline before drawing: painted=${m0.painted} (radial symmetry guides)`);
     await drawStroke();
     const m1 = await E(measure);
@@ -117,7 +106,6 @@ async function main() {
 
     // ---- Path 2: G → Start page → Blank → contrast-safe dark -----------------
     console.log("\n■ G → Start page → Blank → first stroke");
-    // Open the Start page via the G shortcut, then confirm the "start over" dialog.
     await S("Input.dispatchKeyEvent", { type: "keyDown", key: "g", code: "KeyG", windowsVirtualKeyCode: 71 });
     await S("Input.dispatchKeyEvent", { type: "keyUp", key: "g", code: "KeyG", windowsVirtualKeyCode: 71 });
     await waitFor(() => E("!!document.querySelector('.confirm-card')"));
