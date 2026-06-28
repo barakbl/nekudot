@@ -955,31 +955,35 @@ void presets.restore().then((loaded) => {
 const ONBOARDED_KEY = "app.onboarded";
 const MANDALA_BG = "#0d0e12"; // deep, near-black canvas for the mandala start
 
+// The mandala start: a 1:1 dark canvas, the connecting brush in a vivid colour,
+// radial symmetry, the Bloom art style. Used by the Start page's Mandala tile AND
+// auto-run on first launch (the recommended first experience). The symmetry panel
+// is deliberately NOT opened - the sliders stay hidden by default; the always-
+// visible navbar Symmetry control reaches them.
+const startMandala = (color?: string): void => {
+  const max = screenMax();
+  const size = squareOfScreen(max.width, max.height);
+  layerManager.reset(size);
+  replaceArtwork(size);
+  resetArtState();
+  layerManager.setBackground({ color: MANDALA_BG, transparent: false });
+  applyStageBackground();
+  selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
+  // Use the Bloom art style so the user's first stroke fills out into a full
+  // mandala (the "bloom" preset in connections.json).
+  setArtStyle("bloom");
+  menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
+  symmetry.setMode("radial");
+  const round = brushes["Round"];
+  if (round) applyConnectionColor(round, mandalaConnectionColor(color));
+  store.set(CANVAS_SIZE_KEY, size);
+  void history.clear();
+  pushUndo("Mandala");
+};
+
 const onboarding = createOnboarding({
   actions: {
-    // 1:1 dark canvas + radial symmetry, the connecting brush in a vivid colour,
-    // and the symmetry (mandala) panel open - the recommended first run.
-    startMandala: (color) => {
-      const max = screenMax();
-      const size = squareOfScreen(max.width, max.height);
-      layerManager.reset(size);
-      replaceArtwork(size);
-      resetArtState();
-      layerManager.setBackground({ color: MANDALA_BG, transparent: false });
-      applyStageBackground();
-      selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
-      // Use the Bloom art style so the user's first stroke fills out into a full
-      // mandala (the "bloom" preset in connections.json).
-      setArtStyle("bloom");
-      menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
-      symmetry.setMode("radial");
-      const round = brushes["Round"];
-      if (round) applyConnectionColor(round, mandalaConnectionColor(color));
-      store.set(CANVAS_SIZE_KEY, size);
-      void history.clear();
-      pushUndo("Mandala");
-      showSymmetry(); // open the symmetry (mandala) panel
-    },
+    startMandala,
     startBlank: (variant) => {
       const max = screenMax();
       const size =
@@ -1026,23 +1030,19 @@ const onboarding = createOnboarding({
 // stay above it), not the whole page.
 viewportEl.appendChild(onboarding.el);
 
-// First run (or right after a data reset): nothing is stored, so show the Start
-// page. An existing user with prior data is treated as already onboarded so we
-// never hide their canvas behind it.
+// First run (or right after a data reset): nothing is stored, so open straight
+// into the mandala - the recommended first experience - as if the Mandala tile
+// were picked, rather than showing the Start page. The Start page stays available
+// any time via the G shortcut (showStartPage). An existing user with prior data
+// is treated as already onboarded so we never disturb their canvas.
 {
   const onboarded = store.get<boolean>(ONBOARDED_KEY) === true;
   const hasPriorUse =
     store.get<unknown>("app.brush.selected") !== undefined ||
     store.get<unknown>(CANVAS_SIZE_KEY) !== undefined;
   if (shouldShowOnboarding({ onboarded, hasPriorUse })) {
-    // A first-run user who dismisses the Start page (X / Escape) lands on this
-    // underlying canvas, so make it contrast-safe too - never reveal the hostile
-    // white + black blank. Picking Mandala/Blank overrides these.
-    const { background, ink } = neutralCanvasDefaults();
-    layerManager.setBackground({ color: background, transparent: false });
-    applyStageBackground();
-    menu.setMainColor(ink);
-    onboarding.show();
+    startMandala();
+    store.set(ONBOARDED_KEY, true);
   } else if (!onboarded && hasPriorUse) store.set(ONBOARDED_KEY, true);
 }
 // Opening the Start page mid-session is a deliberate "start over", so confirm
