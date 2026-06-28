@@ -2392,22 +2392,18 @@ body.help-mode .help-icon {
     padding: 6px 8px calc(6px + env(safe-area-inset-top, 0px));
   }
 
-  /* Slim the toolbar so it needs fewer rows on a phone: brush + connecting pills
-     show icon only (drop the name), the maps pill drops its point count, and
-     undo/redo go away (use the 2/3-finger tap gestures instead). */
+  /* Slim the toolbar so it needs fewer rows on a phone: the brush + connecting
+     pills show icon only (drop the name) and the maps pill drops its point count. */
   .toolbar .brush-label {
     display: none;
   }
   .toolbar .maps-pill-label {
     display: none;
   }
-  .toolbar .history-btn,
-  .toolbar .history-divider {
-    display: none;
-  }
-  /* Drop the symmetry combo (use the Symmetry panel) and the Delete-canvas
-     button (rare + destructive) from the phone navbar to free space. */
-  .toolbar .sym-combo-pill,
+  /* Keep undo/redo and the Symmetry combo on phones: a touch user needs a visible
+     undo to recover a stroke, and Symmetry is the WOW lever with no keyboard
+     fallback. The toolbar wraps to a second row when they don't all fit. Only the
+     Delete-canvas button stays hidden (rare + destructive). */
   .toolbar .nav-action-delete {
     display: none;
   }
