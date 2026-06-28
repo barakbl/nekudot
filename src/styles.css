@@ -2891,7 +2891,18 @@ body.help-mode .help-icon {
   line-height: 1.4;
   font-weight: 700;
   white-space: pre-line; /* render the \n in the note as a line break */
-  /* Rainbow text to match the mandala's colourful web, and to stand out. */
+  color: var(--text-primary);
+}
+
+/* A rainbow gradient bar on the mandala tile - the default web colours, shown
+   rather than described. */
+.onboarding-swatch {
+  display: block;
+  height: 10px;
+  margin-top: 10px;
+  border-radius: 999px;
+}
+.onboarding-swatch-rainbow {
   background: linear-gradient(
     90deg,
     #f43f5e,
@@ -2900,9 +2911,6 @@ body.help-mode .help-icon {
     #3b82f6 76%,
     #a855f7
   );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 .onboarding-option-actions {
   display: flex;
