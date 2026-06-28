@@ -9,7 +9,6 @@ import {
 import { makeDraggable } from "./ui/drag";
 import { makeToggle } from "./ui/toggle";
 import { attachHelp } from "./help";
-import { ROUTING_PRESETS, flattenRouting } from "./brushes/connections/routing";
 import {
   ROUTING_SECTION,
   STYLE_SECTION,
@@ -450,50 +449,11 @@ function brushControlSetting(
   };
 }
 
-// A row of preset pills for a group, driven by a preset map + its flattener.
-function makePresetRow<T>(
-  items: BrushSetting[],
-  presets: Record<string, T>,
-  flatten: (p: T) => ConnectingFlat,
-  rerender: () => void,
-  persist: PersistFn,
-  // Preset names that should wrap onto a fresh line (e.g. the texture presets
-  // sit on a line after the Harmony-derived ones).
-  newLineBefore?: Set<string>,
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "settings-presets";
-  const current = currentValues(items);
-  for (const [name, preset] of Object.entries(presets)) {
-    if (newLineBefore?.has(name)) {
-      const br = document.createElement("span");
-      br.className = "settings-preset-break";
-      row.appendChild(br);
-    }
-    const flat = flatten(preset);
-    const pretty = name.replace(/_/g, " ");
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "settings-preset-btn";
-    btn.textContent = pretty.charAt(0).toUpperCase() + pretty.slice(1);
-    if (presetMatches(flat, current)) btn.classList.add("active");
-    btn.addEventListener("click", () => {
-      applyPreset(items, flat, persist);
-      rerender();
-    });
-    row.appendChild(btn);
-  }
-  return row;
-}
-
 // The routing "Connection" group, built for the Maps panel: which map a
 // connecting brush reads from / writes to, and whether it connects at all.
 // Returns null for non-connecting brushes (or when there's nothing to route).
 // rerender is called after a change so the group reflects the new value.
-export function buildRoutingControls(
-  brush: BrushBase,
-  rerender: () => void,
-): HTMLElement | null {
+export function buildRoutingControls(brush: BrushBase): HTMLElement | null {
   if (!brush.supportsConnecting()) return null;
   const items = brush
     .getSettings()
@@ -501,14 +461,12 @@ export function buildRoutingControls(
     .filter((s) => s.section === ROUTING_SECTION);
   if (items.length === 0) return null;
   const persist: PersistFn = (s, v) => brush.persistSetting(s, v);
-  return buildRoutingGroup(items, rerender, persist);
+  return buildRoutingGroup(items, persist);
 }
 
-// Routing group: where connections are baked into and which maps feed/store
-// them. Always visible, with its own presets.
+// Routing group: the single "Connect to" control. Always visible.
 function buildRoutingGroup(
   items: BrushSetting[],
-  rerender: () => void,
   persist: PersistFn,
 ): HTMLElement {
   const box = document.createElement("div");
@@ -517,9 +475,6 @@ function buildRoutingGroup(
   title.className = "settings-group-title";
   title.textContent = "Web routing";
   box.appendChild(title);
-  box.appendChild(
-    makePresetRow(items, ROUTING_PRESETS, flattenRouting, rerender, persist),
-  );
   for (const s of items) box.appendChild(makeRow(s, persist));
   return box;
 }

@@ -52,8 +52,13 @@ try {
     console.log("✓", out, `${Math.round(rect.w)}×${Math.round(rect.h)} @2x`);
   };
 
-  // Start page (onboarding) - it's showing now because we just cleared storage
-  // (first run). Capture the content card, then dismiss it for the panel shots.
+  // Start page (onboarding): first run opens the mandala directly now, so reach
+  // the Start page via the G shortcut, then confirm the "start over" dialog.
+  await key("g", "KeyG", 71);
+  await waitFor(() => E("!!document.querySelector('.confirm-card')"));
+  await E(`[...document.querySelectorAll('.confirm-card button')].find(b=>b.textContent.trim()==='Start page')?.click()`);
+  await waitFor(() => E("!!document.querySelector('.onboarding') && getComputedStyle(document.querySelector('.onboarding')).display !== 'none'"));
+  await sleep(200);
   await shot(".onboarding-card", "start-page.png", 20, false);
   await E("(()=>{const b=document.querySelector('.onboarding-close'); if(b) b.click();})()");
   await sleep(150);

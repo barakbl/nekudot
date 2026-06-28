@@ -28,22 +28,9 @@ export const DASH_ICONS: Record<DashStyle, string> = {
 
 // --- connection routing -----------------------------------------------------
 
-// Connection lines always bake onto the connection layer (the link-marked
-// layer in the Layers panel), resolved per stroke via
+// Connection lines bake onto the active layer, resolved per stroke via
 // ConnectRouter.activeConnectionLayerId(). Whether to connect at all is the
 // ConnectMode below ("none" = off).
-
-// Connection-layer glyph: a filled centre dot (the layer) with lines angling
-// into it (connections landing there). Shared by the Layers-panel marker
-// (box.ts) and any UI that hints at the connection layer, so the icon visibly
-// ties them together. stroke-width is a sensible default; the panel button
-// overrides it via CSS to sharpen the active/idle states.
-export const CONNECTION_LAYER_ICON =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">' +
-  '<line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/>' +
-  '<circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/>' +
-  '<circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/>' +
-  "</svg>";
 
 // Which neighbors map (point cloud) the stroke stores into and searches.
 // "selected" follows the currently-selected map; "map" pins one by stable id;

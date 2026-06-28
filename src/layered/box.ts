@@ -1,6 +1,5 @@
 import { createPanel } from "../ui/panel";
 import { makeToggle } from "../ui/toggle";
-import { CONNECTION_LAYER_ICON } from "../connecting-types";
 import { sizeCanvasForDpr } from "../canvas-size";
 import type { LayerManager } from "./manager";
 
@@ -284,24 +283,6 @@ function makeRow(
   pct.className = "layer-opacity-value";
   pct.textContent = `${layer.config.opacity}%`;
   row.appendChild(pct);
-
-  // Connection-layer marker: exactly one layer carries the connecting-line
-  // visual. Accent when active; click a dim one to move it here.
-  const isConnection = index === manager.activeConnectionIdx;
-  const conn = document.createElement("button");
-  conn.type = "button";
-  conn.className = "layer-action-btn layer-conn-btn";
-  if (isConnection) conn.classList.add("active");
-  conn.setAttribute("aria-pressed", String(isConnection));
-  conn.title = isConnection
-    ? "Connection layer (baked connections land here)"
-    : "Make this the connection layer";
-  conn.innerHTML = CONNECTION_LAYER_ICON;
-  conn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    manager.setActiveConnection(index);
-  });
-  row.appendChild(conn);
 
   const dup = document.createElement("button");
   dup.type = "button";

@@ -25,31 +25,15 @@
       <h2>The layers panel</h2>
       <p>
         Open it from the <strong>Windows</strong> menu or with <span class="kbd">l</span>.
-        Each layer is its own canvas. Strokes land on the <strong>active</strong>
-        layer - click a layer row to make it active. Connecting lines land on the
-        <strong>connection layer</strong> instead (see below), which can
-        be a different layer. The panel lists layers top-down in the same order
-        they stack on screen - drag a row by its grip handle to reorder them
-        (see below).
+        Each layer is its own canvas. Strokes - and the connecting web they weave -
+        land on the <strong>active</strong> layer; click a layer row to make it
+        active. The panel lists layers top-down in the same order they stack on
+        screen - drag a row by its grip handle to reorder them (see below).
       </p>
       <div class="note">
-        New artwork starts with two layers: <strong>layer-2</strong> active for
-        painting on top, and <strong>layer-1</strong> as the connection layer
-        beneath - so the web builds under your strokes by default.
+        New artwork starts with two layers, with <strong>layer-2</strong> active
+        for painting on top.
       </div>
-
-      <h2>The connection layer</h2>
-      <p>
-        Exactly one layer is always the connection layer, marked by the link
-        button
-        <span class="conn-glyph"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="8.7" y1="15.3" x2="15.3" y2="8.7"/><circle cx="6.3" cy="17.7" r="3" fill="currentColor" stroke="none"/><circle cx="17.7" cy="6.3" r="3" fill="currentColor" stroke="none"/></svg></span>
-        on its row. It's the layer connecting brushes lay their web onto.
-        Click another row's link to move it there; it's independent of the
-        active layer, so you can paint on one layer while the web accumulates on
-        another. Whether a brush connects at all is its
-        <em>Connect to stroke or map?</em> setting - see
-        <a href="/book/map.html">connecting</a>.
-      </p>
 
       <h2>Reordering layers</h2>
       <p>
@@ -62,10 +46,8 @@
       </p>
       <p>
         When you drop, the stack renumbers cleanly and the
-        <strong>selected layer</strong> and the
-        <strong>connection-layer marker</strong> stay with their layers (so the
-        same layer is still active, just at its new height). A reorder is a single
-        undo step.
+        <strong>selected layer</strong> stays with its layer (so the same layer is
+        still active, just at its new height). A reorder is a single undo step.
       </p>
 
       <h2>Per-layer controls</h2>
@@ -76,12 +58,10 @@
         <dd>Double-click to rename.</dd>
         <dt>Opacity</dt>
         <dd>Blend the whole layer over the ones beneath it (0–100%).</dd>
-        <dt>Connection layer (link button)</dt>
-        <dd>Make this the connection layer - where connecting lines are drawn. Always exactly one; click to move it here.</dd>
         <dt>Duplicate</dt>
-        <dd>Copy the layer and its pixels into a new layer above. Duplicating the connection layer hands the marker to the copy.</dd>
+        <dd>Copy the layer and its pixels into a new layer above.</dd>
         <dt>Delete</dt>
-        <dd>Remove the layer (at least one must remain). Deleting the connection layer passes the connection to the layer beneath it.</dd>
+        <dd>Remove the layer (at least one must remain).</dd>
         <dt>Background</dt>
         <dd>The bottom row sets the canvas background colour, or tick <strong>Transparent</strong> for no background - the canvas shows a checkerboard and exports to a transparent PNG. (Picking a colour turns transparency back off.)</dd>
       </dl>
@@ -95,7 +75,7 @@
 
       <h2>Tips</h2>
       <ul>
-        <li>Keep the connecting web on its own layer (the default connection layer) so you can fade or delete it without touching the strokes.</li>
+        <li>Add a fresh layer before a new pass so you can blend or remove it without touching the work beneath.</li>
         <li>Duplicate a layer before a risky pass - it's a cheap snapshot.</li>
         <li>Reorder by the grip, not the row - dragging elsewhere selects or edits the layer instead.</li>
         <li>Drag any panel by its title bar to get it out of the way.</li>
@@ -103,10 +83,9 @@
 
       <div class="tip">
         <span class="tip-label">Try this</span>
-        Paint your strokes on the top layer and let the web pile up on the
-        connection layer beneath. When you're done, drop that layer's
-        <em>Opacity</em> until the web is just a whisper behind your marks - or
-        hide it entirely - all without disturbing a single stroke.
+        Duplicate a finished layer, then drop the copy's <em>Opacity</em> and blend
+        it back over the original for a soft, layered glow - all without disturbing
+        the strokes beneath.
       </div>
     </main>
 
