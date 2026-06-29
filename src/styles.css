@@ -1192,6 +1192,58 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   font-size: 11px;
   flex-shrink: 0;
 }
+/* A brush-supplied widget row (the Color Pen direction wheel): full width, label above. */
+.settings-row.settings-row-custom {
+  flex-direction: column;
+  align-items: stretch;
+}
+.colorpen-wheel-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  width: 100%;
+}
+.colorpen-wheel-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.colorpen-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+.colorpen-wheel-disc {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1px solid var(--border-stronger);
+}
+.colorpen-wheel-slider {
+  width: 100%;
+}
+.colorpen-wheel-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.colorpen-wheel-slider-label {
+  flex: 0 0 44px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.colorpen-wheel-caption {
+  margin: 0;
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1.3;
+}
 .settings-number {
   display: flex;
   align-items: center;

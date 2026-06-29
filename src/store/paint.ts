@@ -10,7 +10,9 @@ export type LayerPaint = {
 
 export type NeighborsMapPaint = {
   index: number;
-  pixels: { x: number; y: number }[];
+  // `color` carries the hue painted at the point's deposit (the "From mark" web
+  // source reads it). Optional: uncoloured points and older snapshots omit it.
+  pixels: { x: number; y: number; color?: string }[];
 };
 
 export type PaintSnapshot = {

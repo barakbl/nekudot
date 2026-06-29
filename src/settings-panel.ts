@@ -90,7 +90,13 @@ const SETTING_HELP: Record<string, string> = {
     "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
   dash: "Solid, dashed, or dotted connection lines.",
   color:
-    "How the web is coloured. Primary/Secondary use your toolbar colours; Gradient blends Primary to Secondary; Complement pairs Primary with its opposite hue; Rainbow and the palettes (Sunset/Ocean/Neon/Fire) cycle the spectrum. Everything past Secondary colours each line by its angle.",
+    "How the web takes its colour. Primary/Secondary draw one solid hue. The rest pull a living, varied run of colour from a gradient or palette as the web draws - not one flat tint: Gradient (Primary to Secondary), Complement (Primary and its opposite), Rainbow, and the curated palettes (Fire/Ocean/Sunset/Neon). 'From mark' inherits the colour your strokes already painted into the cloud. Steer the mapping with the Colour direction wheel below.",
+  colorSource:
+    "Where the pen's colour comes from. Pick a gradient, palette, Rainbow or Complement and the pen lays a living, varied run of colour as it travels - the heading walks the gradient - instead of one flat hue. Primary/Secondary draw a single solid colour. Best for lively, harmonious colour and texture, not for picking one exact shade.",
+  colorWheel:
+    "Steer how direction maps to colour. Rotate spins which heading shows which colour; Range sets how much of the palette a full turn covers (low keeps a curving stroke inside a colour arc); Relative anchors the colour to the stroke's start, so the same gesture gives the same colour run whichever way you draw it.",
+  colorDirection:
+    "Steer how the gradient colours the web. 'Colour follows stroke' colours the whole web by the way your hand travels (instead of each line's own angle). Rotate spins the map; Range limits how much of the palette a turn covers; Relative anchors to the stroke's start.",
 };
 
 // "Web weight" group: how heavy the connecting web reads (how many lines go out).
@@ -715,6 +721,9 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
       persist(s, v);
     });
     row.appendChild(toggle.el);
+  } else if (s.kind === "custom") {
+    row.classList.add("settings-row-custom");
+    row.appendChild(s.el);
   } else if (s.kind === "range") {
     // One two-handle slider for a [low, high] pair (e.g. Squares/Circles size).
     const wrap = document.createElement("div");

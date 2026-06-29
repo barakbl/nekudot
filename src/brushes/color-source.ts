@@ -265,3 +265,77 @@ export function colorSourceIcons(store?: Store): Record<string, string> {
   for (const p of gradientPalettes) icons[p.id] = paletteSwatch(p.colors);
   return icons;
 }
+
+// --- direction -> colour mapping (shared by the Color Pen + the web) ---------
+// The headless connection engine and the DOM colour-wheel both drive colour by a
+// 0..1 heading, so this maths lives here (the shared, DOM-free colour seam) and
+// the wheel widget stays DOM-only.
+
+// Wrap a value into [0,1).
+export function wrap01(x: number): number {
+  return ((x % 1) + 1) % 1;
+}
+
+// Heading (0..1) -> palette position, applying Range (how much of the palette a
+// full turn covers) then Rotate (offset, in degrees). The single source of truth
+// so the disc preview matches what gets drawn.
+export function headingToT(heading: number, range: number, angleDeg: number): number {
+  return wrap01(heading * range + angleDeg / 360);
+}
+
+// A directional source has colours to map by direction; a solid Primary /
+// Secondary - or the web's "points" inherit source - has none, so the wheel
+// hides for those.
+export function isDirectionalSource(source: string): boolean {
+  return source !== "main" && source !== "secondary" && source !== "points";
+}
+
+// Tracks a stroke's direction of travel as a 0..1 heading (the same normalisation
+// the wheel uses), plus the heading relative to the stroke's start. Shared by the
+// Color Pen and the connecting web so their direction->colour mapping can't drift.
+// Holds the last heading when a sample doesn't move; reset() re-anchors per stroke.
+export interface TravelHeading {
+  reset(): void;
+  push(x: number, y: number): void;
+  absolute(): number; // heading of the last moving segment, 0..1
+  relative(): number; // heading relative to the stroke's start, 0..1
+}
+
+export function createTravelHeading(): TravelHeading {
+  let lastX = 0;
+  let lastY = 0;
+  let has = false;
+  let dirT = 0;
+  let startT = 0;
+  let started = false;
+  return {
+    reset() {
+      has = false;
+      started = false;
+      dirT = 0;
+      startT = 0;
+    },
+    push(x: number, y: number) {
+      if (has) {
+        const dx = x - lastX;
+        const dy = y - lastY;
+        if (dx !== 0 || dy !== 0) {
+          dirT = (Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2);
+          if (!started) {
+            startT = dirT;
+            started = true;
+          }
+        }
+      }
+      lastX = x;
+      lastY = y;
+      has = true;
+    },
+    absolute() {
+      return dirT;
+    },
+    relative() {
+      return wrap01(dirT - startT);
+    },
+  };
+}

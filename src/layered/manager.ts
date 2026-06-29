@@ -543,7 +543,11 @@ export class LayerManager implements PaintHost {
   collectMapPixels(): NeighborsMapPaint[] {
     return this.neighborsMaps.map((nm, index) => ({
       index,
-      pixels: nm.finder.allPixels().map((p) => ({ x: p.x, y: p.y })),
+      // Carry each point's colour when set (the "From mark" web source reads it),
+      // omitting it on uncoloured points to keep the snapshot compact.
+      pixels: nm.finder
+        .allPixels()
+        .map((p) => (p.color ? { x: p.x, y: p.y, color: p.color } : { x: p.x, y: p.y })),
     }));
   }
 
@@ -573,7 +577,10 @@ export class LayerManager implements PaintHost {
       const nm = this.neighborsMaps[M.index];
       if (!nm) continue;
       nm.finder.clear();
-      for (const p of M.pixels) nm.finder.addPixel(p.x, p.y);
+      for (const p of M.pixels) {
+        const px = nm.finder.addPixel(p.x, p.y);
+        if (p.color) px.color = p.color; // restore the deposited hue (From mark)
+      }
     }
     this.emit();
   }

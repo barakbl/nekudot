@@ -84,10 +84,10 @@ const {
 // If present, route it into the new LayersConfig.background defaults below.
 const legacyBgColor = store.get<string>("app.canvas.bg");
 
-// Default stroke width (1–10); the value Reset returns Size to.
+// Default stroke width; Size ranges 1-40, the value Reset returns Size to.
 const DEFAULT_BRUSH_SIZE = 1;
 const initialSize = Math.min(
-  10,
+  40,
   Math.max(1, store.get<number>("app.size") ?? DEFAULT_BRUSH_SIZE),
 );
 const initialAlpha = store.get<number>("app.opacity") ?? 1;
@@ -368,7 +368,7 @@ const settingsPanel = createSettingsPanel({
     size: {
       get: () => store.get<number>("app.size") ?? initialSize,
       min: 1,
-      max: 10,
+      max: 40,
       step: 1,
       onChange: (size) => {
         layerManager.setLineWidth(size);
