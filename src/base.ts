@@ -79,6 +79,13 @@ export type BrushSetting =
       step?: number;
       value: [number, number];
       onChange: (low: number, high: number) => void;
+    })
+  | (BrushSettingCommon & {
+      // A brush-supplied widget (e.g. the Color Pen direction wheel) - no value
+      // to persist; the brush owns its own state.
+      kind: "custom";
+      value: string;
+      el: HTMLElement;
     });
 
 // The value a brush setting carries, by kind: a number, a colour/option string,
@@ -177,6 +184,11 @@ export abstract class BrushBase {
 
   private penSmoother = new PenSmoother();
   private pen: PenSample = MOUSE_SAMPLE;
+  // The toolbar Primary, latched once per sampled stroke (it can't change
+  // mid-stroke). Tagged onto every deposited point so a connecting brush set to
+  // "From mark" inherits the painted hue - read here once, not per deposit (a
+  // Spray frame deposits many points; store.get is an uncached localStorage read).
+  private strokeColor: string | undefined;
 
   // Position smoothing ("Streamline"), opt-in per brush via streamlines(). Off
   // by default so every existing brush — and the connecting web sampler — stays
@@ -246,6 +258,7 @@ export abstract class BrushBase {
     // Smooth and latch this sample's pen state first: onStroke and connect()
     // below both read it (via penStyle()/the connection factors).
     this.pen = this.penSmoother.smooth(pen, this.penSmoothStep());
+    this.strokeColor = this.store?.get<string>("app.color.main");
     // Streamline the path (opt-in): replace the raw point so draw, deposit and
     // the web all use the same smoothed coordinate. Runs on every sample
     // (including coalesced sub-frames) so the trajectory uses all the data.
@@ -549,6 +562,11 @@ export abstract class BrushBase {
       px = this.host.addPixel(x, y);
       mapId = this.host.selectedMapId();
     }
+    // Tag every deposited point with the colour being painted (the per-stroke
+    // Primary latch), so a connecting brush set to "From mark" inherits the
+    // colour actually laid here - in a single pass, with any brush, not just
+    // after a Color Pen run. The Color Pen's onStroke overrides this per segment.
+    if (this.strokeColor) px.color = this.strokeColor;
     if (log) this.logPixel(x, y, mapId);
     return px;
   }
@@ -613,6 +631,8 @@ export abstract class BrushBase {
       // Share the brush's seeded RNG so the connecting engine consumes it in the
       // same order as when this logic lived on the brush — output is identical.
       random: () => this.random(),
+      // Let self-managed connection widgets persist the style on change.
+      persistStyle: () => this.persistConnectionStyle(),
     };
   }
 

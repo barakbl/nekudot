@@ -24,8 +24,25 @@ import {
   connectionColorLabels,
   connectionColorOptions,
   connectionLineColor,
+  createTravelHeading,
+  headingToT,
+  isDirectionalSource,
+  mixHex,
   normalizeColorSource,
 } from "../color-source";
+
+// The "From mark" web colour source: each line takes the hue stored on the
+// points it bridges (e.g. Color Pen anchors), so colour laid into the cloud
+// flows out along the web. Listed only on the connecting Color dial (not the
+// shared colour-source list, which also feeds solid-fill pickers).
+import { createColorWheel } from "../color-wheel";
+
+const POINTS_COLOR_SOURCE = "points";
+const POINTS_SOURCE_ICON =
+  '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">' +
+  '<rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="rgba(128,128,128,0.55)" stroke-width="1"/>' +
+  '<line x1="5" y1="11" x2="11" y2="5" stroke="#34c759" stroke-width="1.4"/>' +
+  '<circle cx="5" cy="11" r="2" fill="#ff3b30"/><circle cx="11" cy="5" r="2" fill="#00b8d4"/></svg>';
 
 // Cap how many hairs a single connection fans into (perf guard).
 const MAX_CONNECT_STRANDS = 12;
@@ -42,6 +59,10 @@ export type ConnectionDeps = {
   host: () => PaintHost;
   store?: Store;
   random: () => number;
+  // Persist the active style's dials now (the owning brush's
+  // persistConnectionStyle). Called by self-managed widgets - the colour
+  // direction wheel - that don't flow through the settings panel's persist path.
+  persistStyle?: () => void;
 };
 
 // A connection's connections.json entry. A data-only style (Classic, Web, Arc,
@@ -109,6 +130,24 @@ export class ConnectionBase {
   protected connectGrainAngle = 0;
   protected connectGrainStrength = 0;
   protected connectGrainCross = false;
+  // Colour-direction wheel state (used by the directional colour sources).
+  // colorByTravel: false = colour each web line by its own angle (the original
+  // behaviour); true = colour by the hand's direction of travel, so the gradient
+  // walks as the stroke moves/curves (like the Color Pen). colorAngle rotates the
+  // direction -> colour map (0..359).
+  protected connectColorByTravel = false;
+  protected connectColorAngle = 0;
+  // How much of the palette a full turn covers (0..1); < 1 keeps a curving stroke
+  // inside an arc instead of snapping to the complement on every reversal.
+  protected connectColorRange = 1;
+  // Measure the travel heading relative to the stroke's start (colorByTravel only)
+  // so the same gesture gives the same colour run whichever way it's drawn.
+  protected connectColorRelative = false;
+  // Live hand heading (shared tracker, identical to the Color Pen's mapping).
+  private travel = createTravelHeading();
+  // Repaint/hide the colour-direction wheel when the colour source changes (set
+  // when the widget builds).
+  private redrawColorDir: () => void = () => {};
 
   protected connectFromMap: ConnectMap = { kind: "selected" };
   protected connectToMap: ConnectMap = { kind: "selected" };
@@ -184,10 +223,16 @@ export class ConnectionBase {
   // per-sample speed for `dynamics`. Mirrors the old BrushBase.stroke() preamble.
   beforeDeposit(x: number, y: number): void {
     const firstSample = this.strokeCutoffId === null;
-    if (firstSample) this.strokeCutoffId = this.fromMapSize();
+    if (firstSample) {
+      this.strokeCutoffId = this.fromMapSize();
+      this.travel.reset(); // re-anchor relative heading at each stroke
+    }
     this.sampleSpeed = firstSample
       ? 0
       : Math.hypot(x - this.prevSampleX, y - this.prevSampleY);
+    // Track the live hand heading for `colorByTravel` (the shared tracker maps it
+    // 0..1 the same way the line angle is, so the wheel orients identically).
+    this.travel.push(x, y);
     this.prevSampleX = x;
     this.prevSampleY = y;
   }
@@ -317,7 +362,7 @@ export class ConnectionBase {
       const lineStyle: LineStyle = {
         ...this.connectionStyle,
         alpha,
-        color: this.lineColor(dx, dy),
+        color: this.lineColor(dx, dy, current, n),
         dash: DASH_PATTERNS[this.connectionDash],
         curve: this.connectCurl,
       };
@@ -410,9 +455,28 @@ export class ConnectionBase {
   // The colour for one web line, by the line's angle (0..1 around the circle).
   // main -> undefined (the renderer uses the Primary strokeStyle); everything
   // else is resolved in color-source (gradient/rainbow/complement/palettes).
-  private lineColor(dx: number, dy: number): string | undefined {
+  private lineColor(dx: number, dy: number, a: Pixel, b: Pixel): string | undefined {
+    if (this.connectionColorSource === POINTS_COLOR_SOURCE) {
+      // Inherit the hue stored on the two points this line bridges. Blend when
+      // both carry one (a Color-Pen-to-Color-Pen link); otherwise take whichever
+      // endpoint is coloured (the common case: an uncoloured stroke point
+      // weaving toward a Color Pen anchor). Neither coloured -> Primary.
+      const ca = a.color;
+      const cb = b.color;
+      if (ca && cb) return mixHex(ca, cb, 0.5);
+      return ca ?? cb ?? undefined;
+    }
     if (this.connectionColorSource === "main") return undefined;
-    const t = Math.atan2(dy, dx) / (2 * Math.PI) + 0.5;
+    // Drive the gradient by the hand's heading (colorByTravel, optionally relative
+    // to the stroke start) or by each line's own angle (default), then apply the
+    // wheel's Range + Rotate. Relative only applies to the travel heading.
+    let base: number;
+    if (this.connectColorByTravel) {
+      base = this.connectColorRelative ? this.travel.relative() : this.travel.absolute();
+    } else {
+      base = Math.atan2(dy, dx) / (2 * Math.PI) + 0.5;
+    }
+    const t = headingToT(base, this.connectColorRange, this.connectColorAngle);
     return connectionLineColor(
       this.connectionColorSource,
       t,
@@ -453,6 +517,10 @@ export class ConnectionBase {
       grainStrength: this.connectGrainStrength,
       grainAngle: this.connectGrainAngle,
       grainCross: this.connectGrainCross,
+      colorTravel: this.connectColorByTravel,
+      colorAngle: this.connectColorAngle,
+      colorRange: this.connectColorRange,
+      colorRelative: this.connectColorRelative,
       sampleSpacing: this.connectSampleSpacing,
     };
   }
@@ -529,6 +597,10 @@ export class ConnectionBase {
       case "grainStrength": if (typeof v === "number") this.connectGrainStrength = v; break;
       case "grainAngle": if (typeof v === "number") this.connectGrainAngle = v; break;
       case "grainCross": if (typeof v === "boolean") this.connectGrainCross = v; break;
+      case "colorTravel": if (typeof v === "boolean") this.connectColorByTravel = v; break;
+      case "colorAngle": if (typeof v === "number") this.connectColorAngle = v; break;
+      case "colorRange": if (typeof v === "number") this.connectColorRange = v; break;
+      case "colorRelative": if (typeof v === "boolean") this.connectColorRelative = v; break;
       case "connect": if (typeof v === "string") this.connectType = v as LineConnectType; break;
       case "dash": if (typeof v === "string") this.connectionDash = v as DashStyle; break;
       case "color":
@@ -704,14 +776,112 @@ export class ConnectionBase {
       {
         kind: "select",
         key: "color",
-        label: "Color",
+        label: "Colour",
         section: STYLE_SECTION,
-        options: connectionColorOptions(),
-        optionLabels: connectionColorLabels(),
-        icons: colorSourceIcons(this.deps.store),
+        options: [POINTS_COLOR_SOURCE, ...connectionColorOptions()],
+        optionLabels: { [POINTS_COLOR_SOURCE]: "From mark", ...connectionColorLabels() },
+        icons: { [POINTS_COLOR_SOURCE]: POINTS_SOURCE_ICON, ...colorSourceIcons(this.deps.store) },
         value: this.connectionColorSource,
-        onChange: (v) => this.setKey("color", v),
+        onChange: (v) => {
+          this.setKey("color", v);
+          this.redrawColorDir(); // show/hide + repaint the wheel for the new source
+        },
+      },
+      ...this.colorDirectionSetting(),
+    ];
+  }
+
+  // The shared direction wheel + a "follow hand" toggle, as a self-managed custom
+  // row. Hidden for solid sources (Primary/Secondary/From mark). Built only in a
+  // DOM context - headless callers (tests, render harnesses) read the dials but
+  // never the widget, so we skip the element rather than touch `document`.
+  private colorDirectionSetting(): BrushSetting[] {
+    if (typeof document === "undefined") return [];
+    return [
+      {
+        kind: "custom",
+        key: "colorDirection",
+        label: "Colour direction",
+        section: STYLE_SECTION,
+        value: "",
+        el: this.buildColorDirection(),
       },
     ];
+  }
+
+  // The connecting-web colour-direction control: a toggle to colour by the
+  // stroke's travel direction (vs each line's own angle), a "Relative" toggle,
+  // the shared Rotate/Range wheel, and a caption that says what the current mode
+  // does. Only meaningful for a directional source, so it hides itself for a
+  // solid Primary/Secondary or the "From mark" inherit source.
+  private buildColorDirection(): HTMLElement {
+    const box = document.createElement("div");
+    box.className = "colorpen-wheel-group";
+
+    const caption = document.createElement("p");
+    caption.className = "colorpen-wheel-caption";
+
+    const travel = document.createElement("label");
+    travel.className = "colorpen-wheel-check";
+    const travelCb = document.createElement("input");
+    travelCb.type = "checkbox";
+    travelCb.checked = this.connectColorByTravel;
+    const travelSpan = document.createElement("span");
+    travelSpan.textContent = "Colour follows stroke";
+    travel.append(travelCb, travelSpan);
+
+    const rel = document.createElement("label");
+    rel.className = "colorpen-wheel-check";
+    const relCb = document.createElement("input");
+    relCb.type = "checkbox";
+    relCb.checked = this.connectColorRelative;
+    const relSpan = document.createElement("span");
+    relSpan.textContent = "Relative to stroke start";
+    rel.append(relCb, relSpan);
+
+    const wheel = createColorWheel({
+      store: this.deps.store,
+      getSource: () => this.connectionColorSource,
+      getAngle: () => this.connectColorAngle,
+      onAngle: (deg) => {
+        this.connectColorAngle = deg;
+        this.deps.persistStyle?.();
+      },
+      getRange: () => this.connectColorRange,
+      onRange: (r) => {
+        this.connectColorRange = r;
+        this.deps.persistStyle?.();
+      },
+    });
+
+    const refreshCaption = () => {
+      // Relative only changes the travel heading, so it's dimmed in angle mode.
+      rel.style.opacity = this.connectColorByTravel ? "" : "0.5";
+      caption.textContent = this.connectColorByTravel
+        ? "The web's colour follows the way your stroke travels."
+        : "Each web line is coloured by the direction it points.";
+    };
+    travelCb.addEventListener("change", () => {
+      this.connectColorByTravel = travelCb.checked;
+      refreshCaption();
+      this.deps.persistStyle?.();
+    });
+    relCb.addEventListener("change", () => {
+      this.connectColorRelative = relCb.checked;
+      this.deps.persistStyle?.();
+    });
+
+    const sync = () => {
+      const directional = isDirectionalSource(this.connectionColorSource);
+      const row = box.parentElement as HTMLElement | null;
+      if (row) row.style.display = directional ? "" : "none";
+      if (directional) wheel.repaint();
+    };
+    this.redrawColorDir = sync;
+    refreshCaption();
+    queueMicrotask(sync); // hide up front if the current source is solid
+
+    box.append(travel, rel, wheel.el, caption);
+    return box;
   }
 }

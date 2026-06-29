@@ -35,6 +35,8 @@ export const ManifestSchema = z.object({
 export type Manifest = z.infer<typeof ManifestSchema>;
 
 export const NeighborsMapPixelsSchema = z.array(
-  z.object({ x: z.number(), y: z.number() }),
+  // `color` is optional: most points carry the hue painted at deposit, but older
+  // files (and uncoloured points) omit it, so it stays optional for back-compat.
+  z.object({ x: z.number(), y: z.number(), color: z.string().optional() }),
 );
 export type NeighborsMapPixels = z.infer<typeof NeighborsMapPixelsSchema>;

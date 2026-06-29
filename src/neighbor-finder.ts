@@ -1,6 +1,10 @@
 import { quadtree, type Quadtree } from "d3-quadtree";
 
-export type Pixel = { id: number; x: number; y: number };
+// `color` is optional and rarely set: a brush (the Color Pen) can tag the point
+// it deposits with the hue it drew, so a connecting brush weaving toward it can
+// inherit that colour (the "From mark" web colour source) instead of computing
+// one from the line angle. Most points leave it undefined.
+export type Pixel = { id: number; x: number; y: number; color?: string };
 
 export type FinderType = "quadtree";
 

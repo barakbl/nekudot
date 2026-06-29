@@ -60,6 +60,26 @@ describe("paint serialization: shared collectors", () => {
     expect(restored).toEqual(["1,2"]);
   });
 
+  it("round-trips per-point colour (the 'From mark' hue), omitting it on uncoloured points", async () => {
+    const finder = manager.allNeighborsMaps[0].finder;
+    finder.addPixel(1, 2).color = "#ff8800";
+    finder.addPixel(3, 4); // uncoloured
+
+    const maps = manager.collectMapPixels();
+    const byPos = Object.fromEntries(maps[0].pixels.map((p) => [`${p.x},${p.y}`, p.color]));
+    expect(byPos["1,2"]).toBe("#ff8800");
+    expect(byPos["3,4"]).toBeUndefined(); // omitted to keep snapshots compact
+
+    const snap = await manager.getPaintData();
+    const fresh = newManager();
+    await fresh.applyPaintData(snap);
+    const restored = Object.fromEntries(
+      fresh.allNeighborsMaps[0].finder.allPixels().map((p) => [`${p.x},${p.y}`, p.color]),
+    );
+    expect(restored["1,2"]).toBe("#ff8800"); // colour survived the round-trip
+    expect(restored["3,4"]).toBeUndefined();
+  });
+
   // A2: applyPaintData (undo) and applyArtwork (file load) now both route through
   // LayerManager.applyDecodedPaint. These lock the shared apply path.
   it("applyDecodedPaint writes map points to the live finders", () => {

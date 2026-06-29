@@ -43,7 +43,7 @@ export type LoadedArtwork = {
   size: CanvasSize;
   config: LayersConfig;
   layers: { index: number; bitmaps: ImageBitmap[] }[];
-  maps: { index: number; pixels: { x: number; y: number }[] }[];
+  maps: { index: number; pixels: { x: number; y: number; color?: string }[] }[];
   pixelLogText: string;
 };
 
