@@ -161,6 +161,12 @@ dl.settings dd { margin: 2px 0 0; color: var(--muted); }
   border-radius: 12px; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
 }
 .book-shot.wide { max-width: min(100%, 680px); }
+/* Animated example clips (WebM): autoplay/loop video sized like a figure image. */
+.book-clip {
+  display: block; width: 100%; height: auto;
+  max-width: min(100%, 520px); margin: 18px auto 0;
+  border-radius: 12px;
+}
 /* Book layout: sticky contents sidebar + content (injected by book-nav.js). */
 .book-shell { display: flex; gap: 34px; max-width: 1140px; margin: 0 auto; padding: 0 22px; align-items: flex-start; }
 .book-shell main { margin: 0; max-width: none; flex: 1; min-width: 0; padding: 36px 0 80px; }
