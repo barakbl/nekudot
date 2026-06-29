@@ -37,5 +37,17 @@
 
   { "file": "copic_classic.gpl", "category": "GENERAL", "onboarding": false, "gradient": false },
   { "file": "copic_sketch.gpl", "category": "GENERAL", "onboarding": false, "gradient": false },
-  { "file": "copic_ciao.gpl", "category": "GENERAL", "onboarding": false, "gradient": false }
+  { "file": "copic_ciao.gpl", "category": "GENERAL", "onboarding": false, "gradient": false },
+
+  { "file": "aurora-green.gpl", "category": "AURORA", "onboarding": false, "gradient": true },
+  { "file": "aurora-purple.gpl", "category": "AURORA", "onboarding": false, "gradient": true },
+  { "file": "aurora-extreme.gpl", "category": "AURORA", "onboarding": false, "gradient": true },
+
+  { "file": "london.gpl", "category": "URBAN", "onboarding": false, "gradient": true },
+  { "file": "tokyo-night.gpl", "category": "URBAN", "onboarding": false, "gradient": true },
+  { "file": "positano.gpl", "category": "URBAN", "onboarding": false, "gradient": true },
+  { "file": "chefchaouen.gpl", "category": "URBAN", "onboarding": false, "gradient": true },
+  { "file": "nyc.gpl", "category": "URBAN", "onboarding": false, "gradient": true },
+
+  { "file": "olive-trees.gpl", "category": "EARTHY", "onboarding": false, "gradient": true }
 ]

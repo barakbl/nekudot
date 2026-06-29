@@ -19,6 +19,8 @@ export const CATEGORIES: readonly Category[] = [
   { id: "PASTEL", name: "Pastel" },
   { id: "ANIMALS", name: "Animals" },
   { id: "FRUITS", name: "Fruits" },
+  { id: "AURORA", name: "Aurora" },
+  { id: "URBAN", name: "Urban" },
   { id: "GENERAL", name: "General" },
 ];
 

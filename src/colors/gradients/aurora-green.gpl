@@ -1,0 +1,9 @@
+GIMP Palette
+Name: Greeny Northern Lights
+Columns: 5
+# Nekudot Aurora palette - mostly green, a mild aurora.
+  6  18  26	#06121a
+ 12  59  44	#0c3b2c
+ 31 138  85	#1f8a55
+ 69 224 138	#45e08a
+168 245 192	#a8f5c0

@@ -1,0 +1,10 @@
+GIMP Palette
+Name: Northern Lights
+Columns: 6
+# Nekudot Aurora palette - green into violet and pink.
+  7  14  34	#070e22
+ 18 138  94	#128a5e
+ 70 229 138	#46e58a
+106  75 216	#6a4bd8
+182  92 255	#b65cff
+255 155 232	#ff9be8
