@@ -56,8 +56,7 @@ export type NavbarDeps = {
   store: LocalStorageStore;
   // Stable callbacks defined in main.
   selectBrush: (key: string) => void;
-  clearArtContent: () => void;
-  pushUndo: (description: string) => void;
+  deleteCanvas: () => void;
   doUndo: () => void;
   doRedo: () => void;
   refreshSettingsColors: () => void;
@@ -99,8 +98,7 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     sizePicker,
     store,
     selectBrush,
-    clearArtContent,
-    pushUndo,
+    deleteCanvas,
     doUndo,
     doRedo,
     refreshSettingsColors,
@@ -142,11 +140,7 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
             message: "This wipes all layers and resets to a single layer.",
             confirmLabel: "Delete",
             destructive: true,
-            onConfirm: () => {
-              layerManager.reset(layerManager.currentSize);
-              clearArtContent(); // delete canvas clears content; keeps connection tools
-              pushUndo("Delete canvas");
-            },
+            onConfirm: () => deleteCanvas(),
           });
         },
       },
