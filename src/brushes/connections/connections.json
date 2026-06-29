@@ -104,7 +104,7 @@
     {
       "name": "bloom",
       "webWeight": { "light": { "strands": 1, "density": 60, "links": 0 }, "heavy": { "strands": 1, "density": 100, "links": 0 } },
-      "label": "Bloom",
+      "label": "Bloomer",
       "file": "classic.ts",
       "info": "Your stroke blooms - points multiply into a full glowing web. Made for mandalas.",
       "strokeAlpha": 0,
@@ -132,7 +132,7 @@
         "grainStrength": 0,
         "grainAngle": 0,
         "grainCross": false,
-        "bloom": 48,
+        "bloom": 32,
         "bloomRadius": 170
       }
     },

@@ -135,7 +135,7 @@
             {
               label: "More",
               children: [
-                { label: "Bloom", href: "/book/connections.html#bloom", icon: I.bloom },
+                { label: "Bloomer", href: "/book/connections.html#bloom", icon: I.bloom },
                 { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
                 { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
                 { label: "Arc", href: "/book/connections.html#arc", icon: I.arc },
