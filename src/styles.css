@@ -663,6 +663,36 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   flex: 1;
   font-size: 12px;
 }
+/* Combo dropdown footer: a divider + a "<feature> settings…" row, replacing the
+   old per-combo navbar gear (card #76). */
+.combo-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border-subtle);
+}
+.combo-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-icon);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+.combo-settings-row:hover {
+  background: var(--hover-bg);
+}
+.combo-settings-gear {
+  display: inline-flex;
+  color: var(--chevron);
+}
 .brush-option .opt-shortcut {
   font: 10px ui-monospace, SFMono-Regular, Menlo, monospace;
   padding: 1px 5px;

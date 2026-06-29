@@ -241,7 +241,6 @@ function makeSymmetryCombo(control: SymmetryControl): {
   chevron.setAttribute("aria-hidden", "true");
 
   pill.appendChild(trigger);
-  pill.appendChild(makeGear("Symmetry settings", control.onSettings));
   pill.appendChild(chevron);
 
   const popover = document.createElement("div");
@@ -286,6 +285,8 @@ function makeSymmetryCombo(control: SymmetryControl): {
     popover.appendChild(optEl);
     optionEls.set(m.value, optEl);
   }
+
+  appendComboSettings(popover, "Symmetry settings", control.onSettings, () => menu.close());
 
   // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
@@ -724,10 +725,6 @@ function makeBrushPill<T extends string>(
   trigger.appendChild(labelEl);
   pill.appendChild(trigger);
 
-  if (onBrushSettings) {
-    pill.appendChild(makeGear("Brush settings", onBrushSettings));
-  }
-
   pill.appendChild(chevron);
 
   const popover = document.createElement("div");
@@ -798,6 +795,10 @@ function makeBrushPill<T extends string>(
     }
   }
 
+  if (onBrushSettings) {
+    appendComboSettings(popover, "Brush settings", onBrushSettings, () => menu.close());
+  }
+
   // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
     const t = e.target as HTMLElement;
@@ -816,18 +817,35 @@ const GEAR_SVG =
   '<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>' +
   "</svg>";
 
-function makeGear(title: string, onClick: () => void): HTMLElement {
-  const gear = document.createElement("button");
-  gear.type = "button";
-  gear.className = "brush-gear";
-  gear.title = title;
-  gear.setAttribute("aria-label", title);
+// A "<feature> settings…" row at the foot of a combo dropdown (under a divider),
+// replacing the per-combo navbar gear - see card #76.
+function appendComboSettings(
+  popover: HTMLElement,
+  label: string,
+  onClick: () => void,
+  close: () => void,
+): void {
+  const sep = document.createElement("div");
+  sep.className = "combo-sep";
+  sep.setAttribute("role", "separator");
+  popover.appendChild(sep);
+
+  const row = document.createElement("button");
+  row.type = "button";
+  row.className = "combo-settings-row";
+  row.setAttribute("role", "menuitem");
+  const gear = document.createElement("span");
+  gear.className = "combo-settings-gear";
   gear.innerHTML = GEAR_SVG;
-  gear.addEventListener("click", (e) => {
+  const text = document.createElement("span");
+  text.textContent = `${label}…`;
+  row.append(gear, text);
+  row.addEventListener("click", (e) => {
     e.stopPropagation();
+    close();
     onClick();
   });
-  return gear;
+  popover.appendChild(row);
 }
 
 // ↓ into tray = import from a file; ↑ out of tray = export to a file.
@@ -875,7 +893,6 @@ function makeConnectingCombo(control: ConnectingControl): {
   trigger.appendChild(iconEl);
   trigger.appendChild(labelEl);
   pill.appendChild(trigger);
-  pill.appendChild(makeGear("Connecting settings", control.onSettings));
   pill.appendChild(chevron);
 
   const popover = document.createElement("div");
@@ -991,6 +1008,7 @@ function makeConnectingCombo(control: ConnectingControl): {
         optionEls.set(opt.value, optEl);
       }
     }
+    appendComboSettings(popover, "Web settings", control.onSettings, () => menu.close());
     setValue(current); // refresh active highlight against the new list
   };
 
