@@ -1,0 +1,10 @@
+GIMP Palette
+Name: London
+Columns: 6
+# Nekudot Urban palette - overcast greys, Thames mud, muted brick.
+ 35  40  48	#232830
+ 78  84  92	#4e545c
+124 115 107	#7c736b
+154  86  74	#9a564a
+183 168 144	#b7a890
+215 210 200	#d7d2c8
