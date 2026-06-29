@@ -22,7 +22,7 @@
   "tips": [
     {
       "title": "Points remember, lines connect",
-      "text": "The Round brush drops points and weaves a web between nearby ones. Open Connecting (press C) to change how they link."
+      "text": "The Round brush drops points and weaves a web between nearby ones. Open Web (press C) to change how they link."
     },
     {
       "title": "Multiply with symmetry",

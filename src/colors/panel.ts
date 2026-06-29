@@ -1072,7 +1072,7 @@ export function createPalettePanel(opts: PalettePanelOpts = {}): PalettePanel {
   const backupRow = document.createElement("div");
   backupRow.className = "palette-import-backup";
   const exportJsonBtn = makeActionBtn(
-    "Export JSON",
+    "Export",
     () => {
       closeImportModal();
       openExportModal();

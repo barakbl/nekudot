@@ -61,7 +61,7 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
     {
       key: "c",
       group: "Panels",
-      description: "Show connecting settings",
+      description: "Show Web settings",
       onPress: () => actions.showConnecting(),
     },
     {

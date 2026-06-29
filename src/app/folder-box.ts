@@ -104,7 +104,7 @@ export function createFolderBox(host: FolderBoxHost): FolderBox {
     // Show which file the canvas is bound to (or that it isn't yet) next to the
     // Save button, so a save's destination is never a mystery.
     const file = host.currentFile();
-    const drawingHead = actions(btn("Save to folder", host.onSaveArtwork));
+    const drawingHead = actions(btn("Save", host.onSaveArtwork));
     drawingHead.prepend(valueText(file ?? "Not saved here yet"));
 
     body.append(
@@ -113,8 +113,8 @@ export function createFolderBox(host: FolderBoxHost): FolderBox {
       row(
         "Settings",
         actions(
-          btn("Back up", host.onSaveSettings),
-          btn("Restore", host.onLoadSettings),
+          btn("Export", host.onSaveSettings),
+          btn("Import", host.onLoadSettings),
         ),
       ),
     );
