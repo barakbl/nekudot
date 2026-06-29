@@ -221,7 +221,7 @@ export function createAppSettingsBox(opts: {
       bypassWet.el,
       "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
     ),
-    sub("Backup"),
+    sub("Your settings"),
     desc("Backup your app settings, custom presets and saved palettes as one file"),
     row(
       "Settings file",

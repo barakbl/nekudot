@@ -48,7 +48,9 @@ describe("folder box", () => {
     );
     const text = box.el.textContent ?? "";
     expect(text).toContain("Pics");
-    expect(text).toContain("Save to folder");
+    expect(buttonByText(box.el, "Save")).toBeDefined();
+    expect(buttonByText(box.el, "Export")).toBeDefined(); // settings bundle out
+    expect(buttonByText(box.el, "Import")).toBeDefined(); // settings bundle in
     expect(buttonByText(box.el, "Reconnect")).toBeUndefined();
   });
 });

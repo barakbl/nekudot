@@ -895,7 +895,7 @@ function makeConnectingCombo(control: ConnectingControl): {
     // Show the selected style's glyph, falling back to the generic web mark.
     setIcon(iconEl, opt?.icon, CONNECT_ICON);
     labelEl.textContent = opt ? opt.label : v;
-    const name = opt ? `Connecting: ${opt.label}` : "Connecting";
+    const name = opt ? `Web: ${opt.label}` : "Web";
     trigger.title = opt?.title ?? name;
     trigger.setAttribute("aria-label", name);
     for (const [k, el] of optionEls) {
