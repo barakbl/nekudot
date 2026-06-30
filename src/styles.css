@@ -2537,9 +2537,8 @@ body.help-mode .help-icon {
    re-anchor to the bottom edge, full width, with a grab handle. They stay
    non-modal (no backdrop) so you can still draw; the drag header becomes a
    swipe-down-to-dismiss gesture (see drag.ts). */
-/* Panels dock as a bottom sheet on small screens AND on any touch device, so a
-   tablet gets the touch layout instead of the desktop floating windows. */
-@media (max-width: 640px), (pointer: coarse) {
+/* Phones: panels dock as a bottom sheet - too narrow to float a window. */
+@media (max-width: 640px) {
   .settings-panel,
   .shortcuts-panel,
   .layers-box {
@@ -2555,10 +2554,45 @@ body.help-mode .help-icon {
     border-radius: 16px 16px 0 0;
     padding: 18px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   }
-  /* Grab handle at the top edge of the sheet. */
   .settings-panel::before,
   .shortcuts-panel::before,
   .layers-box::before {
+    content: "";
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-stronger);
+    pointer-events: none;
+  }
+}
+/* Other touch devices (tablet/iPad): a bottom sheet too - UNLESS the user turns
+   on "Desktop mode" (App settings), which floats the panels as draggable windows
+   like the desktop. body.desktop-mode opts out of the sheet here; the phone rule
+   above still wins on a narrow screen (a floating window there is unusable). */
+@media (pointer: coarse) {
+  body:not(.desktop-mode) .settings-panel,
+  body:not(.desktop-mode) .shortcuts-panel,
+  body:not(.desktop-mode) .layers-box {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 85vh;
+    box-sizing: border-box;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Grab handle at the top edge of the sheet. */
+  body:not(.desktop-mode) .settings-panel::before,
+  body:not(.desktop-mode) .shortcuts-panel::before,
+  body:not(.desktop-mode) .layers-box::before {
     content: "";
     position: absolute;
     top: 7px;

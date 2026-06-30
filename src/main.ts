@@ -266,6 +266,7 @@ type AppState = {
   diagnosticsEnabled: boolean; // opt-in field diagnostics
   smoothGradients: boolean; // OKLCH "smooth" gradient blend space vs sRGB; default on
   singleKeyShortcuts: boolean; // bare-key shortcuts (b/c/y/1-9…); off disables them (WCAG 2.1.4)
+  desktopMode: boolean; // tablet: float panels as draggable windows (vs bottom sheets); off by default
 };
 const appState: AppState = {
   brush: brushes[initialBrushKey],
@@ -275,7 +276,12 @@ const appState: AppState = {
   diagnosticsEnabled: store.get<boolean>("app.diag") ?? false,
   smoothGradients: store.get<boolean>("app.gradient.oklch") ?? true,
   singleKeyShortcuts: store.get<boolean>("app.shortcuts.singleKey") ?? true,
+  desktopMode: store.get<boolean>("app.desktopMode") ?? false,
 };
+
+// "Desktop mode" (App settings, tablet only): the CSS gates the bottom-sheet vs
+// floating-window panel layout on body.desktop-mode (see styles.css).
+document.body.classList.toggle("desktop-mode", appState.desktopMode);
 
 // Apply the persisted pixel-log setting (App settings; off by default - it is
 // for future features and otherwise just grows storage, see pixel-log.ts).
@@ -763,6 +769,12 @@ const appSettingsBox = createAppSettingsBox({
   onToggleSingleKeyShortcuts: (on) => {
     appState.singleKeyShortcuts = on;
     store.set("app.shortcuts.singleKey", on);
+  },
+  desktopMode: appState.desktopMode,
+  onToggleDesktopMode: (on) => {
+    appState.desktopMode = on;
+    store.set("app.desktopMode", on);
+    document.body.classList.toggle("desktop-mode", on); // CSS flips sheet <-> window
   },
   pixelLog: appState.pixelLogEnabled,
   onTogglePixelLog: (on) => {
