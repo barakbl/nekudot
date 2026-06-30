@@ -1719,6 +1719,48 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   border-color: var(--accent);
   color: var(--text-primary);
 }
+/* Collapsible "Diagnostics" heading (chevron) + the "any diagnostic on" badge. */
+.appset-diag-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 10px 0 2px;
+  padding: 2px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  text-align: left;
+}
+.appset-diag-head:hover {
+  color: var(--text-muted);
+}
+.appset-diag-chevron {
+  flex: 0 0 auto;
+  transition: transform 0.15s ease;
+}
+.appset-diag-head.open .appset-diag-chevron {
+  transform: rotate(90deg);
+}
+.appset-diag-warn {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid #d9534f;
+  background: color-mix(in srgb, #d9534f 18%, transparent);
+  color: #d9534f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 /* Connected folder name shown beside the Disconnect button. */
 .appset-folder-name {
   align-self: center;

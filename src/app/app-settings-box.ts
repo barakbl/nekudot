@@ -92,6 +92,17 @@ export function createAppSettingsBox(opts: {
   }
   syncTheme();
 
+  // Red "any diagnostic on" badge for the (always-visible) Diagnostics header.
+  const diagWarn = document.createElement("span");
+  diagWarn.className = "appset-diag-warn";
+  diagWarn.textContent = "In diagnostic mode";
+  let diagOn = opts.diagnostics;
+  let pixelOn = opts.pixelLog;
+  let bypassOn = diagnosticOverride("disableWetOverlay");
+  const updateDiagWarn = () => {
+    diagWarn.style.display = diagOn || pixelOn || bypassOn ? "" : "none";
+  };
+
   const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
   const desktopMode = makeToggle(opts.desktopMode, opts.onToggleDesktopMode);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
@@ -104,8 +115,16 @@ export function createAppSettingsBox(opts: {
     opts.singleKeyShortcuts,
     opts.onToggleSingleKeyShortcuts,
   );
-  const pixelLog = makeToggle(opts.pixelLog, opts.onTogglePixelLog);
-  const diagnostics = makeToggle(opts.diagnostics, opts.onToggleDiagnostics);
+  const pixelLog = makeToggle(opts.pixelLog, (on) => {
+    pixelOn = on;
+    opts.onTogglePixelLog(on);
+    updateDiagWarn();
+  });
+  const diagnostics = makeToggle(opts.diagnostics, (on) => {
+    diagOn = on;
+    opts.onToggleDiagnostics(on);
+    updateDiagWarn();
+  });
 
   // Copy / download the captured diagnostics so they can be shared.
   const flash = (btn: HTMLButtonElement, msg: string) => {
@@ -141,9 +160,53 @@ export function createAppSettingsBox(opts: {
   diagActions.append(copyBtn, downloadBtn);
 
   // "Try a fix" toggle: bypass the live wet-stroke overlay canvas.
-  const bypassWet = makeToggle(diagnosticOverride("disableWetOverlay"), (on) =>
-    setDiagnosticOverride("disableWetOverlay", on),
+  const bypassWet = makeToggle(diagnosticOverride("disableWetOverlay"), (on) => {
+    bypassOn = on;
+    setDiagnosticOverride("disableWetOverlay", on);
+    updateDiagWarn();
+  });
+
+  // Collapsible Diagnostics group (folded by default); Pixel log lives here too.
+  const diagGroup = document.createElement("div");
+  diagGroup.className = "appset-diag-group";
+  const diagHead = document.createElement("button");
+  diagHead.type = "button";
+  diagHead.className = "appset-diag-head";
+  diagHead.setAttribute("aria-expanded", "false");
+  diagHead.innerHTML =
+    '<svg class="appset-diag-chevron" viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4 L10 8 L6 12"/></svg>' +
+    '<span class="appset-diag-title">Diagnostics</span>';
+  diagHead.appendChild(diagWarn);
+  const diagBody = document.createElement("div");
+  diagBody.className = "appset-diag-body";
+  diagBody.style.display = "none";
+  diagBody.append(
+    row(
+      "Diagnostic logging",
+      diagnostics.el,
+      "Captures brush, stroke, render and error events into a log you can copy or download to share for troubleshooting. Off by default; nothing is sent anywhere automatically.",
+    ),
+    diagActions,
+    row(
+      "Bypass wet layer",
+      bypassWet.el,
+      "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
+    ),
+    row(
+      "Pixel log",
+      pixelLog.el,
+      "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
+    ),
   );
+  diagHead.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const open = diagBody.style.display === "none";
+    diagBody.style.display = open ? "" : "none";
+    diagHead.classList.toggle("open", open);
+    diagHead.setAttribute("aria-expanded", String(open));
+  });
+  diagGroup.append(diagHead, diagBody);
+  updateDiagWarn(); // reflect any persisted-on diagnostic at load
 
   // Backup: export / import the whole local config as one portable file.
   const ioActions = document.createElement("div");
@@ -220,24 +283,7 @@ export function createAppSettingsBox(opts: {
       singleKey.el,
       "Let single keys (b, c, y, 1-9 …) trigger tools and toggles. Turn off if you use voice control or hit them by accident - Cmd/Ctrl shortcuts keep working either way.",
     ),
-    sub("Advanced"),
-    row(
-      "Pixel log",
-      pixelLog.el,
-      "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
-    ),
-    sub("Diagnostics"),
-    row(
-      "Diagnostic logging",
-      diagnostics.el,
-      "Captures brush, stroke, render and error events into a log you can copy or download to share for troubleshooting. Off by default; nothing is sent anywhere automatically.",
-    ),
-    diagActions,
-    row(
-      "Bypass wet layer",
-      bypassWet.el,
-      "For testing on an old machine where painting doesn't show up: draws faint strokes straight onto the layer instead of the live overlay canvas. If strokes become visible with this on, the overlay's compositing was the problem.",
-    ),
+    diagGroup,
     sub("Your settings"),
     desc("Backup your app settings, custom presets and saved palettes as one file"),
     row(
