@@ -79,6 +79,8 @@ const SETTING_HELP: Record<string, string> = {
   radius: "How far each point looks for others to link to - larger reaches across bigger gaps.",
   bloom:
     "Pad a sparse stroke with extra scattered points, so even a quick mark fills out into a full web. 0 keeps only the points you drew.",
+  bloomRadius:
+    "How far the bloom scatters its dots from your stroke - small hugs the line, large floods a wide area. (Shows once Bloom is on.)",
   sampleSpacing:
     "Spacing between the web's anchor points - 0 weaves a smooth web, higher breaks it into evenly spaced tufts or dots.",
   fade: "Make longer lines fainter, so the web settles into soft, shaded tone.",
@@ -144,6 +146,7 @@ const isWebWeight = (s: BrushSetting): boolean =>
 // a preset (or the artist) moving it off NEUTRAL means it's "in use" → shown.
 const NEUTRAL_STYLE: Record<string, string | number | boolean> = {
   bloom: 0,
+  bloomRadius: 60,
   fade: 0,
   curl: 0,
   comb: "0", // Comb's value = grain strength (string); "0" folds it under "More"

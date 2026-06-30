@@ -133,7 +133,42 @@
         "grainAngle": 0,
         "grainCross": false,
         "bloom": 32,
-        "bloomRadius": 170
+        "bloomRadius": 100
+      }
+    },
+    {
+      "name": "bloomtex",
+      "webWeight": { "light": { "strands": 1, "density": 60, "links": 0 }, "heavy": { "strands": 1, "density": 100, "links": 0 } },
+      "label": "Bloom Texture",
+      "file": "classic.ts",
+      "info": "A fine dotted bloom: dense specks scattered tight around your stroke, barely linked.",
+      "strokeAlpha": 0,
+      "icon": "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"4\" cy=\"4\" r=\"1\"/><circle cx=\"8\" cy=\"3\" r=\"1\"/><circle cx=\"12\" cy=\"5\" r=\"1\"/><circle cx=\"3\" cy=\"8\" r=\"1\"/><circle cx=\"7.5\" cy=\"8.5\" r=\"1\"/><circle cx=\"11\" cy=\"8\" r=\"1\"/><circle cx=\"5\" cy=\"12\" r=\"1\"/><circle cx=\"9\" cy=\"13\" r=\"1\"/><circle cx=\"13\" cy=\"11\" r=\"1\"/></svg>",
+      "defaults": {
+        "alpha": 0.22,
+        "color": "main",
+        "connect": "line",
+        "dash": "solid",
+        "density": 100,
+        "radius": 5,
+        "minDist": 0,
+        "inset": 0,
+        "fade": 0.2,
+        "strands": 1,
+        "spread": 6,
+        "scatter": 0.5,
+        "taper": 0,
+        "flow": 0,
+        "fray": 0,
+        "length": 1,
+        "wave": 0,
+        "dynamics": 0,
+        "curl": 0,
+        "grainStrength": 0,
+        "grainAngle": 0,
+        "grainCross": false,
+        "bloom": 3,
+        "bloomRadius": 100
       }
     },
     {
