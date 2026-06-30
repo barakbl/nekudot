@@ -36,6 +36,7 @@ import {
 // flows out along the web. Listed only on the connecting Color dial (not the
 // shared colour-source list, which also feeds solid-fill pickers).
 import { createColorWheel } from "../color-wheel";
+import { createCombPad } from "../comb-pad";
 
 const POINTS_COLOR_SOURCE = "points";
 const POINTS_SOURCE_ICON =
@@ -635,12 +636,15 @@ export class ConnectionBase {
     return [];
   }
 
-  // Style dials the settings panel shows by default (in the open area, never
-  // folded under "More"), regardless of value. Every other supported dial
-  // surfaces only when it's "in use" (its value differs from its neutral).
-  // Subclasses may override to open more of their own.
+  // Style dials the settings panel shows by default in the art-style group (never
+  // folded under "More"), regardless of value. A curated core - Opacity, Reach,
+  // Colour, Line shape - so a first-timer sees a short shelf; every other dial
+  // surfaces only when "in use" (value off its neutral) or its visibleWhen fires.
+  // (Weight/Density/Links live in the Web-weight group, not here.) Bloom and Dash
+  // were dropped from the core so they fold at their default instead of looking
+  // like dead controls. Subclasses may override to open more of their own.
   defaultOpenKeys(): readonly string[] {
-    return ["strands", "spread", "alpha", "density", "radius", "bloom", "links", "dash", "color"];
+    return ["alpha", "radius", "color", "connect"];
   }
 
   private num(
@@ -650,6 +654,10 @@ export class ConnectionBase {
     max: number,
     step: number,
     value: number,
+    extra?: {
+      unit?: string;
+      visibleWhen?: { key: string; when: (v: string | number | boolean) => boolean };
+    },
   ): BrushSetting {
     return {
       kind: "number",
@@ -660,6 +668,8 @@ export class ConnectionBase {
       max,
       step,
       value,
+      ...(extra?.unit !== undefined ? { unit: extra.unit } : {}),
+      ...(extra?.visibleWhen ? { visibleWhen: extra.visibleWhen } : {}),
       onChange: (val) => this.setKey(key, val),
     };
   }
@@ -732,27 +742,24 @@ export class ConnectionBase {
   protected baseStyleSliders(): BrushSetting[] {
     return [
       this.num("strands", "Weight", 1, MAX_CONNECT_STRANDS, 1, this.connectStrands),
-      this.num("spread", "Spread", 0, 40, 1, this.connectSpread),
+      // Spread only fans hairs when Weight > 1 (drawFanned); hide it otherwise.
+      this.num("spread", "Spread", 0, 40, 1, this.connectSpread, {
+        visibleWhen: { key: "strands", when: (v) => Number(v) > 1 },
+      }),
       this.num("alpha", "Opacity", 0, 1, 0.05, this.styleValue("alpha")),
-      this.num("density", "Density", 0, 100, 1, this.connectDensity),
+      this.num("density", "Density", 0, 100, 1, this.connectDensity, { unit: "%" }),
       this.num("radius", "Reach", 5, 1000, 1, this.searchRadius),
-      this.num("bloom", "Bloom", 0, 100, 1, this.connectBloom),
-      this.num("links", "Links", 0, 20, 1, this.connectMaxLinks),
-      this.num("sampleSpacing", "Stipple", 0, 20, 1, this.connectSampleSpacing),
+      this.num("bloom", "Bloom", 0, 100, 1, this.connectBloom, { unit: "%" }),
+      this.num("links", "Max links", 0, 20, 1, this.connectMaxLinks),
+      this.num("sampleSpacing", "Web spacing", 0, 20, 1, this.connectSampleSpacing),
       this.num("fade", "Fade", 0, 1, 0.05, this.connectAlphaFade),
-      this.num("curl", "Curl", 0, 1, 0.05, this.connectCurl),
-      this.num("grainStrength", "Grain", 0, 1, 0.05, this.connectGrainStrength),
-      this.num("grainAngle", "Grain angle", 0, 180, 5, this.connectGrainAngle),
-      {
-        kind: "boolean",
-        key: "grainCross",
-        label: "Crosshatch grain",
-        section: STYLE_SECTION,
-        value: this.connectGrainCross,
-        onChange: (v) => this.setKey("grainCross", v),
-      },
-      this.num("minDist", "Min length", 0, this.searchRadius, 1, this.minConnectDist),
-      this.num("inset", "Inset", 0, 0.45, 0.05, this.connectInset),
+      // Curl only renders on the Curve (quadraticCurve) line shape; hide otherwise.
+      this.num("curl", "Curl", 0, 1, 0.05, this.connectCurl, {
+        visibleWhen: { key: "connect", when: (v) => v === "quadraticCurve" },
+      }),
+      ...this.combSetting(), // folded Grain strength + angle + crosshatch
+      this.num("minDist", "Declutter", 0, this.searchRadius, 1, this.minConnectDist),
+      this.num("inset", "Float", 0, 0.45, 0.05, this.connectInset),
       {
         kind: "select",
         key: "connect",
@@ -795,6 +802,41 @@ export class ConnectionBase {
   // row. Hidden for solid sources (Primary/Secondary/From mark). Built only in a
   // DOM context - headless callers (tests, render harnesses) read the dials but
   // never the widget, so we skip the element rather than touch `document`.
+  // Folded grain control (strength + angle + crosshatch). Skipped headless (no
+  // DOM). `value` carries live strength so the panel folds it under "More" at 0.
+  private combSetting(): BrushSetting[] {
+    if (typeof document === "undefined") return [];
+    return [
+      {
+        kind: "custom",
+        key: "comb",
+        label: "Comb",
+        section: STYLE_SECTION,
+        value: String(this.connectGrainStrength),
+        inline: true,
+        el: this.buildCombPad(),
+      },
+    ];
+  }
+
+  private buildCombPad(): HTMLElement {
+    return createCombPad({
+      getAngle: () => this.connectGrainAngle,
+      onAngle: (deg) => {
+        this.connectGrainAngle = deg;
+      },
+      getStrength: () => this.connectGrainStrength,
+      onStrength: (v) => {
+        this.connectGrainStrength = v;
+      },
+      getCross: () => this.connectGrainCross,
+      onCross: (v) => {
+        this.connectGrainCross = v;
+      },
+      commit: () => this.deps.persistStyle?.(),
+    }).el;
+  }
+
   private colorDirectionSetting(): BrushSetting[] {
     if (typeof document === "undefined") return [];
     return [

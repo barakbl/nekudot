@@ -37,66 +37,87 @@ const NO_PERSIST: PersistFn = () => {};
 // connecting dials and the brush dials. makeRow attaches a "?" bubble for any
 // key found here, in either tab.
 const SETTING_HELP: Record<string, string> = {
-  strands:
-    "How bold the mark is — each connection is drawn as this many thin 1px hairs. More hairs = heavier, but it's never one solid line.",
-  spread:
-    "How wide the hairs fan out, perpendicular to the line. Narrow = a dense ribbon; wide = an airy band.",
-  alpha:
-    "Opacity of each line. Low values let many overlapping lines build into soft shading; high values look like solid ink.",
-  density:
-    "Chance each eligible neighbour gets a line. Higher = denser web (and heavier to draw).",
-  radius:
-    "How far around each point to look for neighbours to connect. Larger reaches across bigger gaps.",
-  links:
-    "Connect each point to only its nearest few neighbours instead of every one in Reach. 0 = all (the usual web); a small number trims the long crossing lines into a clean, even mesh - and makes the Gradient / Rainbow colours read clearly.",
+  // --- Global brush controls ---
+  __size: "Overall thickness of the stroke itself, before any web.",
+  __opacity: "How solid the stroke is - lower lets overlapping passes build up.",
+  // --- Brush-specific ---
+  strokeDash: "Solid, dashed, or dotted stroke.",
+  size: "Smallest-to-largest stamp size - your stroke speed picks a value between the two.",
+  sensitivity:
+    "How strongly stroke speed changes the stamp size. 0 keeps every stamp the same.",
+  fillMode: "Fill each shape or leave it an outline - and which colour the fill takes.",
+  fillOpacity: "How solid the shape fill is.",
+  nibAngle:
+    "The fixed angle of the chisel tip - sets the thick-to-thin direction of every stroke.",
+  penChisel: "Let stylus tilt steer the chisel angle instead of the fixed Nib angle.",
+  streamline: "Smooth the path so quick strokes come out clean and flowing, not shaky.",
   // Spray (airbrush) dials.
   sprayRadius:
-    "How wide the spray scatters around the pointer. Small = a tight stipple; large = a soft cloud.",
-  sprayFlow:
-    "How many specks land each frame. Higher = denser, faster build-up (and heavier to draw).",
-  sprayDot:
-    "Size of each speck. Tiny = fine grain; larger = a coarse, splattery spray.",
+    "How wide the spray scatters around the pointer - small a tight stipple, large a soft cloud.",
+  sprayFlow: "How many specks land as you spray - higher builds up denser and faster.",
+  sprayDot: "Size of each speck - tiny a fine grain, larger a coarse splatter.",
+  // Color Pen.
+  colorSource:
+    "Where the pen pulls colour from: a gradient, palette, Rainbow or Complement gives a living, shifting run as you draw; Primary/Secondary lay one flat hue.",
+  colorWheel:
+    "How your stroke's direction maps to colour. Rotate shifts which way shows which hue, Range sets how much of the palette a full turn covers, Relative locks the run to where you started.",
+
+  // --- Connecting web: routing ---
+  connecting_mode:
+    "Which points this brush links: just the current stroke, the shared map of every stroke, both, or nothing.",
+  // --- Connecting web: weight ---
+  strands:
+    "How many fine strands make up each line - more reads as a bolder, denser mark (never one solid stroke).",
+  spread:
+    "How wide each line's strands fan out: low a tight ribbon, high an airy band. (Only bites once Weight is above 1.)",
+  density: "How likely each nearby point is to link up - higher fills the web denser.",
+  links:
+    "Cap each point to its nearest few links instead of all within Reach - low trims long crossing lines into a clean, even mesh. 0 = link to all.",
+  // --- Connecting web: art style ---
+  alpha:
+    "Opacity of each line - low lets overlapping lines build into soft shading, high reads as solid ink.",
+  radius: "How far each point looks for others to link to - larger reaches across bigger gaps.",
+  bloom:
+    "Pad a sparse stroke with extra scattered points, so even a quick mark fills out into a full web. 0 keeps only the points you drew.",
   sampleSpacing:
-    "Stipple: spacing the web samples the stroke at. 0 = smoothest web (weave through every point). Raise it to break the web into evenly spaced tufts/dots — an artistic effect, not needed to control darkness (build-up is already rate-independent).",
-  fade:
-    "Fade each line with its length — longer connections go fainter, building soft shaded tone (Harmony's 'shaded' look).",
-  scatter:
-    "Jitter the hairs' ends: 0 = a neat parallel band, 1 = loose crossing hairs (hand-drawn).",
-  taper:
-    "Fade each hair from root to tip so it melts to a soft point instead of ending in a hard line — the key to fluffy fur.",
-  flow:
-    "Bow every hair the same way, like a combed or wind-swept pelt. 0 = straight, higher = a stronger sweep.",
-  fray:
-    "Stagger the hair lengths so the edge frays into stray strands instead of forming a blunt band.",
-  length:
-    "How far each hair reaches past its neighbour. 1 = stop at the dot; higher grows long flowing guard hairs that overshoot the shape — the soul of expressive fur.",
-  wave:
-    "Kink each hair with a gentle wave so the pelt looks like living hair instead of a flat comb. 0 = smooth sweep, higher = wavier, flicking tips.",
-  dynamics:
-    "Link weight to stroke speed: slow, deliberate passes build richer; fast flicks stay light.",
+    "Spacing between the web's anchor points - 0 weaves a smooth web, higher breaks it into evenly spaced tufts or dots.",
+  fade: "Make longer lines fainter, so the web settles into soft, shaded tone.",
   curl:
-    "Bow the connection lines into curves — only affects the 'Curve' line shape. 0 = straight, 1 = strong arc, for smoke wisps, wood grain and tendrils.",
-  grainStrength:
-    "Comb the web in one direction: 0 = lines reach every neighbour (an even web); 1 = only lines along the grain angle survive. Turns the web into fur, hatching or rain.",
-  grainAngle:
-    "Which way the grain combs, in degrees — 0 = horizontal, 90 = vertical. Only matters when Grain is above 0.",
-  grainCross:
-    "Comb along two perpendicular directions at once (the grain angle and its 90° cross) for crosshatching instead of a single grain.",
+    "Bow the lines into curves - 0 straight, 1 a strong arc; good for smoke, wood grain and tendrils. (Shows only on the Curve line shape.)",
+  comb:
+    "Comb the web in one direction: drag out from the centre to comb harder, around to aim it. Centre is an even mesh; combed turns the web into fur, hatching or rain. Crosshatch combs two ways at once for a woven look.",
   minDist:
-    "Skip connections shorter than this, so you don't get a clump of tiny lines right next to each point.",
+    "Skip the tiny links that bunch up right at each point, so the web breathes instead of clotting.",
   inset:
-    "Trim both ends of every line so it floats between points instead of piling up dark on the dots (Harmony's airy web look).",
-  connect:
-    "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
+    "Trim both ends of every line so it floats between points instead of pooling dark on them.",
+  connect: "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
   dash: "Solid, dashed, or dotted connection lines.",
   color:
-    "How the web takes its colour. Primary/Secondary draw one solid hue. The rest pull a living, varied run of colour from a gradient or palette as the web draws - not one flat tint: Gradient (Primary to Secondary), Complement (Primary and its opposite), Rainbow, and the curated palettes (Fire/Ocean/Sunset/Neon). 'From mark' inherits the colour your strokes already painted into the cloud. Steer the mapping with the Colour direction wheel below.",
-  colorSource:
-    "Where the pen's colour comes from. Pick a gradient, palette, Rainbow or Complement and the pen lays a living, varied run of colour as it travels - the heading walks the gradient - instead of one flat hue. Primary/Secondary draw a single solid colour. Best for lively, harmonious colour and texture, not for picking one exact shade.",
-  colorWheel:
-    "Steer how direction maps to colour. Rotate spins which heading shows which colour; Range sets how much of the palette a full turn covers (low keeps a curving stroke inside a colour arc); Relative anchors the colour to the stroke's start, so the same gesture gives the same colour run whichever way you draw it.",
+    "Where the web's colour comes from: one solid hue (Primary/Secondary), or a living run pulled from a gradient, Rainbow or palette as it draws. 'From mark' reuses colour your strokes already laid down.",
   colorDirection:
-    "Steer how the gradient colours the web. 'Colour follows stroke' colours the whole web by the way your hand travels (instead of each line's own angle). Rotate spins the map; Range limits how much of the palette a turn covers; Relative anchors to the stroke's start.",
+    "How the gradient colours the web. 'Colour follows stroke' tints the whole web by your hand's travel; Rotate shifts the map, Range narrows it, Relative anchors to the stroke's start.",
+
+  // --- Fur strands ---
+  scatter: "How loosely the hair-tips land - 0 a neat combed band, high a scattered, lived-in coat.",
+  taper: "Fade each hair from root to tip so it melts to a soft point - the key to fluffy fur.",
+  flow: "Bow every hair the same way, like a combed or wind-swept pelt.",
+  fray: "Stagger the hair lengths so the edge frays into stray strands instead of a blunt band.",
+  length: "How far each hair overshoots its point - 1 stops at the dot, higher grows long flowing hairs.",
+  wave: "Kink each hair with a gentle wave so the pelt looks like living hair, not a flat comb.",
+  dynamics:
+    "Link weight to stroke speed - slow, deliberate passes build richer, fast flicks stay light.",
+
+  // --- Pen modulation ---
+  penPressureSize: "Press harder for a thicker stroke.",
+  penPressureAlpha: "Press harder for a more opaque stroke.",
+  penTiltSize: "Tilt the pen to widen the stroke.",
+  penTiltAlpha: "Tilt the pen to deepen opacity.",
+  penWebDensity: "Press harder to thicken the connecting web as you draw.",
+  penWebRadius: "Press harder to reach further for connections.",
+  penSmoothing:
+    "Smooth jitter in pressure and tilt so width and opacity shift gradually, not in jumps.",
+  penResponse:
+    "How quickly pressure and tilt take effect - low eases in gently, high jumps to full fast.",
 };
 
 // "Web weight" group: how heavy the connecting web reads (how many lines go out).
@@ -122,11 +143,10 @@ const isWebWeight = (s: BrushSetting): boolean =>
 // value. Every other dial sits at a NEUTRAL value when it has no visible effect;
 // a preset (or the artist) moving it off NEUTRAL means it's "in use" → shown.
 const NEUTRAL_STYLE: Record<string, string | number | boolean> = {
+  bloom: 0,
   fade: 0,
   curl: 0,
-  grainStrength: 0,
-  grainAngle: 0,
-  grainCross: false,
+  comb: "0", // Comb's value = grain strength (string); "0" folds it under "More"
   minDist: 0,
   sampleSpacing: 0,
   inset: 0,
@@ -406,7 +426,11 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
         );
       } else {
         if (section) content.appendChild(makeSectionHeader(section));
-        for (const s of run) content.appendChild(makeRow(s, persist));
+        // Same dependency-gating for plain brush sections (e.g. Squares/Circles
+        // Fill opacity hidden until Fill != none).
+        const vis = makeVisibility(run, persist);
+        for (const s of run) content.appendChild(vis.row(s));
+        vis.apply();
       }
     }
   };
@@ -485,10 +509,35 @@ function buildRoutingGroup(
   return box;
 }
 
-// A connecting art-style row. Help is attached by makeRow now (keyed by setting
-// key), so this is just makeRow.
-function styleRow(s: BrushSetting, persist: PersistFn): HTMLElement {
-  return makeRow(s, persist);
+// Dependency-driven row visibility for a group. A dial with `visibleWhen` is
+// hidden in place while its controlling sibling's live value fails the predicate
+// and revealed when it passes - no panel re-render (which would tear down a
+// drag). One controller per group: it seeds a live value map from the items,
+// each row registers itself via `row()`, and makeRow's onLive feeds value
+// changes back so apply() can toggle the dependent rows' display. Call apply()
+// once after all rows (across primary + folded) are built.
+function makeVisibility(items: BrushSetting[], persist: PersistFn) {
+  const live: Record<string, string | number | boolean> = {};
+  for (const s of items)
+    if (s.kind === "number" || s.kind === "select" || s.kind === "boolean") live[s.key] = s.value;
+  const rows = new Map<string, HTMLElement>();
+  const deps = items.filter((s) => s.visibleWhen);
+  const apply = () => {
+    for (const s of deps) {
+      const row = rows.get(s.key);
+      const vw = s.visibleWhen;
+      if (row && vw) row.style.display = vw.when(live[vw.key]) ? "" : "none";
+    }
+  };
+  const row = (s: BrushSetting): HTMLElement => {
+    const r = makeRow(s, persist, (k, v) => {
+      live[k] = v;
+      apply();
+    });
+    rows.set(s.key, r);
+    return r;
+  };
+  return { row, apply };
 }
 
 // Web-weight group: three one-click presets (Light / Normal / Heavy) for how
@@ -553,7 +602,9 @@ function buildWebWeightGroup(
   const body = document.createElement("div");
   body.className = "settings-group-body";
   body.style.display = open ? "" : "none";
-  for (const s of items) body.appendChild(styleRow(s, persist));
+  const vis = makeVisibility(items, persist); // Spread is gated on Weight>1 here
+  for (const s of items) body.appendChild(vis.row(s));
+  vis.apply();
   box.appendChild(body);
 
   toggle.addEventListener("click", () => {
@@ -584,9 +635,10 @@ function buildStyleGroup(
   title.textContent = "Connection art style";
   box.appendChild(title);
 
+  const vis = makeVisibility(items, persist);
   const primary = items.filter((s) => styleInUse(s, openKeys));
   const rest = items.filter((s) => !styleInUse(s, openKeys));
-  for (const s of primary) box.appendChild(styleRow(s, persist));
+  for (const s of primary) box.appendChild(vis.row(s));
 
   if (rest.length) {
     const open = advanced.get();
@@ -603,7 +655,7 @@ function buildStyleGroup(
     const body = document.createElement("div");
     body.className = "settings-group-body";
     body.style.display = open ? "" : "none";
-    for (const s of rest) body.appendChild(styleRow(s, persist));
+    for (const s of rest) body.appendChild(vis.row(s));
 
     toggle.addEventListener("click", () => {
       const next = !advanced.get();
@@ -617,6 +669,7 @@ function buildStyleGroup(
     box.appendChild(body);
   }
 
+  vis.apply(); // hide dependency-gated dials whose controller isn't active yet
   return box;
 }
 
@@ -666,7 +719,13 @@ function makeCloseButton(onClick: () => void): HTMLElement {
 
 export { makeCloseButton };
 
-function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement {
+// onLive (optional) fires after any value change with the new value, so a group
+// can re-evaluate dependent rows' `visibleWhen` predicates in place (no re-render).
+function makeRow(
+  s: BrushSetting,
+  persist: PersistFn = NO_PERSIST,
+  onLive?: (key: string, value: string | number | boolean) => void,
+): HTMLElement {
   const row = document.createElement("div");
   row.className = "settings-row";
 
@@ -693,14 +752,16 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
     input.max = String(s.max);
     if (s.step !== undefined) input.step = String(s.step);
     input.value = String(s.value);
+    const unit = s.unit ?? "";
     const display = document.createElement("span");
     display.className = "settings-value";
-    display.textContent = String(s.value);
+    display.textContent = String(s.value) + unit;
     input.addEventListener("input", () => {
       const v = Number(input.value);
-      display.textContent = String(v);
+      display.textContent = String(v) + unit;
       s.onChange(v);
       persist(s, v);
+      onLive?.(s.key, v);
     });
     wrap.appendChild(input);
     wrap.appendChild(display);
@@ -719,10 +780,11 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
     const toggle = makeToggle(s.value, (v) => {
       s.onChange(v);
       persist(s, v);
+      onLive?.(s.key, v);
     });
     row.appendChild(toggle.el);
   } else if (s.kind === "custom") {
-    row.classList.add("settings-row-custom");
+    if (!s.inline) row.classList.add("settings-row-custom"); // inline = stay one row
     row.appendChild(s.el);
   } else if (s.kind === "range") {
     // One two-handle slider for a [low, high] pair (e.g. Squares/Circles size).
@@ -781,7 +843,7 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
   } else if (s.icons) {
     // Selects whose options carry a glyph/swatch (Dash, Color, Fill) get a
     // custom dropdown so each option shows its icon — native <option> can't.
-    row.appendChild(makeIconSelect(s, persist));
+    row.appendChild(makeIconSelect(s, persist, onLive));
   } else {
     const select = document.createElement("select");
     select.className = "settings-select";
@@ -795,6 +857,7 @@ function makeRow(s: BrushSetting, persist: PersistFn = NO_PERSIST): HTMLElement 
     select.addEventListener("change", () => {
       s.onChange(select.value);
       persist(s, select.value);
+      onLive?.(s.key, select.value);
     });
     row.appendChild(select);
   }
@@ -816,6 +879,7 @@ function closeIconSelectPopover(): void {
 function makeIconSelect(
   s: BrushSetting & { kind: "select" },
   persist: PersistFn,
+  onLive?: (key: string, value: string | number | boolean) => void,
 ): HTMLElement {
   const icons = s.icons ?? {};
   const labelOf = (v: string) => s.optionLabels?.[v] ?? v;
@@ -876,6 +940,7 @@ function makeIconSelect(
         fillTrigger();
         s.onChange(opt);
         persist(s, opt);
+        onLive?.(s.key, opt);
         close();
       });
       pop.appendChild(row);
