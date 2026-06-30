@@ -40,6 +40,12 @@ type BrushSettingCommon = {
   key: string;
   label: string;
   section?: string;
+  // Show this row only while another setting in the same group/run satisfies the
+  // predicate - so a dial that does nothing in its current context (e.g. Spread
+  // at Weight 1, Grain angle at Grain 0) hides until it bites. The panel watches
+  // `key`'s live value and toggles this row in place (no re-render). When present,
+  // it overrides the value-based "More" fold (true -> shown, false -> hidden).
+  visibleWhen?: { key: string; when: (v: string | number | boolean) => boolean };
 };
 
 export type BrushSetting =
@@ -49,6 +55,8 @@ export type BrushSetting =
       max: number;
       step?: number;
       value: number;
+      // Optional unit suffix shown after the value readout (e.g. "°", "%").
+      unit?: string;
       onChange: (v: number) => void;
     })
   | (BrushSettingCommon & {
@@ -86,6 +94,8 @@ export type BrushSetting =
       kind: "custom";
       value: string;
       el: HTMLElement;
+      // Inline row (label left, control right) instead of the full-width column.
+      inline?: boolean;
     });
 
 // The value a brush setting carries, by kind: a number, a colour/option string,

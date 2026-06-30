@@ -72,6 +72,7 @@ export class MarkerBrush extends BrushBase {
         min: -90,
         max: 90,
         step: 5,
+        unit: "°",
         value: this.nibAngleDeg,
         onChange: (v) => (this.nibAngleDeg = v),
       },

@@ -115,6 +115,7 @@ export abstract class ShapesStrokeBrush extends BrushBase {
         min: 0,
         max: 100,
         step: 1,
+        unit: "%",
         value: this.sensitivity,
         onChange: (v) => {
           this.sensitivity = v;
@@ -154,6 +155,9 @@ export abstract class ShapesStrokeBrush extends BrushBase {
         min: 10,
         max: 100,
         step: 1,
+        unit: "%",
+        // No fill is painted when Fill is None, so hide its opacity then.
+        visibleWhen: { key: "fillMode", when: (v) => v !== "none" },
         value: this.fillOpacity,
         onChange: (v) => {
           this.fillOpacity = v;

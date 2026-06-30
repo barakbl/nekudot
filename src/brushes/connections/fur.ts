@@ -49,7 +49,7 @@ export default class FurConnection extends ConnectionBase {
       this.numStyle("fray", "Fray", 0, 1, 0.05),
       this.numStyle("length", "Length", 1, 3, 0.05),
       this.numStyle("wave", "Wave", 0, 1, 0.05),
-      this.numStyle("dynamics", "Speed", 0, 1, 0.05),
+      this.numStyle("dynamics", "Slow = richer", 0, 1, 0.05),
     ];
   }
 
