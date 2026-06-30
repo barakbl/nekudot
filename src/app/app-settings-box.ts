@@ -22,6 +22,8 @@ export function createAppSettingsBox(opts: {
   onTogglePen: (on: boolean) => void;
   singleKeyShortcuts: boolean;
   onToggleSingleKeyShortcuts: (on: boolean) => void;
+  desktopMode: boolean;
+  onToggleDesktopMode: (on: boolean) => void;
   pixelLog: boolean;
   onTogglePixelLog: (on: boolean) => void;
   diagnostics: boolean;
@@ -91,7 +93,13 @@ export function createAppSettingsBox(opts: {
   syncTheme();
 
   const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
+  const desktopMode = makeToggle(opts.desktopMode, opts.onToggleDesktopMode);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
+  // "Desktop mode" only makes sense on a tablet: a desktop already floats panels,
+  // and a phone is too narrow for windows. Surface the row only on tablet-width touch.
+  const showDesktopMode =
+    typeof window !== "undefined" &&
+    window.matchMedia("(pointer: coarse) and (min-width: 641px)").matches;
   const singleKey = makeToggle(
     opts.singleKeyShortcuts,
     opts.onToggleSingleKeyShortcuts,
@@ -192,6 +200,15 @@ export function createAppSettingsBox(opts: {
       smoothGrad.el,
       "Blend gradients in OKLCH for perceptually even, vivid transitions (no muddy or grey midpoints). Off uses the classic sRGB blend.",
     ),
+    ...(showDesktopMode
+      ? [
+          row(
+            "Desktop mode",
+            desktopMode.el,
+            "On a tablet, open the settings panels as floating windows you can drag, like on a desktop, instead of sheets that slide up from the bottom.",
+          ),
+        ]
+      : []),
     sub("Input"),
     row(
       "Pen pressure",
