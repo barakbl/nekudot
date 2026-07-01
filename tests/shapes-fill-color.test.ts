@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { SquaresBrush } from "../src/brushes/squares";
+import { ShapesBrush } from "../src/brushes/shapes";
 
 // resolveFillColor() is a tri-state the shapes brushes depend on:
 //   fillMode "none"      -> null      (drawAt skips the fill: a hollow shape)
 //   fillMode "main"      -> undefined (the renderer fills with the Primary strokeStyle)
 //   fillMode "secondary" -> the stored secondary hex (an explicit fill colour)
 // Swapping null and undefined would silently fill shapes that should be hollow
-// (or vice versa), so lock the three branches. SquaresBrush.drawAt forwards the
-// resolved colour as host.fillRect's 5th arg, and skips fillRect entirely when it
-// is null - so the recorded fills tell us which branch fired.
-class TestSquares extends SquaresBrush {
+// (or vice versa), so lock the three branches. ShapesBrush.drawAt (Squares mode,
+// the default) forwards the resolved colour as host.fillRect's 5th arg, and skips
+// fillRect entirely when it is null - so the recorded fills tell us which branch fired.
+class TestSquares extends ShapesBrush {
   setFill(mode: "none" | "main" | "secondary"): void {
     this.fillMode = mode;
   }

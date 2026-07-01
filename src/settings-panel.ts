@@ -870,6 +870,8 @@ function makeRow(
     paint();
     wrap.append(dual, display);
     row.appendChild(wrap);
+  } else if (s.kind === "select" && s.segmented) {
+    row.appendChild(makeSegmented(s, persist, onLive));
   } else if (s.icons) {
     // Selects whose options carry a glyph/swatch (Dash, Color, Fill) get a
     // custom dropdown so each option shows its icon — native <option> can't.
@@ -900,6 +902,45 @@ function makeRow(
 let closeOpenIconSelect: (() => void) | null = null;
 function closeIconSelectPopover(): void {
   closeOpenIconSelect?.();
+}
+
+// A two-way (or few-way) button group for a select setting - e.g. the Shapes
+// brush's Circles/Squares toggle. Rides the same persist/onLive path as the
+// dropdown, so it restores like any other setting.
+function makeSegmented(
+  s: BrushSetting & { kind: "select" },
+  persist: PersistFn,
+  onLive?: (key: string, value: string | number | boolean) => void,
+): HTMLElement {
+  const group = document.createElement("div");
+  group.className = "settings-segmented";
+  group.setAttribute("role", "radiogroup");
+  const buttons = new Map<string, HTMLButtonElement>();
+  const setActive = (v: string) => {
+    for (const [k, b] of buttons) {
+      const on = k === v;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-checked", String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+  };
+  for (const opt of s.options) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "settings-segment";
+    b.setAttribute("role", "radio");
+    b.textContent = s.optionLabels?.[opt] ?? opt;
+    b.addEventListener("click", () => {
+      setActive(opt);
+      s.onChange(opt);
+      persist(s, opt);
+      onLive?.(s.key, opt);
+    });
+    buttons.set(opt, b);
+    group.appendChild(b);
+  }
+  setActive(s.value);
+  return group;
 }
 
 // A custom dropdown for selects with per-option icons. Closed: a pill showing

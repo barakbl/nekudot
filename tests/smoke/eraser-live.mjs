@@ -83,7 +83,7 @@ async function main() {
     await openBrushMenu(); await sleep(60); // close
 
     // 3) draw an opaque filled patch with Squares
-    await pickBrush("Squares");
+    await pickBrush("Shapes");
     await scrub(420, 700, 360, 440);
     const drawn = await alphaSum();
 

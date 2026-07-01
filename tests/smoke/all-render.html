@@ -34,14 +34,13 @@
       import { createBareHost } from "/src/paint-host.ts";
       import { RoundBrush } from "/src/brushes/round.ts";
       import { MarkerBrush } from "/src/brushes/marker.ts";
-      import { SquaresBrush } from "/src/brushes/squares.ts";
-      import { CirclesBrush } from "/src/brushes/circles.ts";
+      import { ShapesBrush } from "/src/brushes/shapes.ts";
 
       const W = 240;
       const H = 200;
       const SEED = 1234;
 
-      // Deterministic clock — ShapesStrokeBrush (Squares/Circles) sizes shapes by
+      // Deterministic clock - ShapesBrush (Squares/Circles) sizes shapes by
       // stroke speed via performance.now(), so freeze it to a controlled counter.
       let CLOCK = 1000;
       performance.now = () => CLOCK;
@@ -96,13 +95,14 @@
       const RENDERERS = {
         Squares: () => {
           const c = newCell();
-          const brush = new SquaresBrush(createBareHost(c.renderer, c.finder), SEED);
+          const brush = new ShapesBrush(createBareHost(c.renderer, c.finder), SEED);
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
         Circles: () => {
           const c = newCell();
-          const brush = new CirclesBrush(createBareHost(c.renderer, c.finder), SEED);
+          const brush = new ShapesBrush(createBareHost(c.renderer, c.finder), SEED);
+          brush.getSettings().find((s) => s.key === "shape")?.onChange("circles");
           for (const s of gestureStrokes()) runStroke(brush, s);
           return c.canvas;
         },
