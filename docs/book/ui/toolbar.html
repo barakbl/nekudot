@@ -28,11 +28,10 @@
       <p>
         A single draggable bar that floats over the canvas - grab the dotted
         handle on its left to move it anywhere. Most controls are
-        <strong>pills</strong> (a quick value plus a <strong>gear</strong> that
-        opens the matching panel and a <strong>⌄</strong> dropdown). On a phone
-        the bar wraps onto a few rows and trims itself: the brush and connecting
-        pills show only their icon, the maps pill drops its point count, and
-        undo/redo disappear (use the two- and three-finger tap gestures instead).
+        <strong>pills</strong> (a quick value plus a <strong>⌄</strong> dropdown
+        that opens the matching panel). On a phone the bar wraps onto a few rows
+        and trims itself: the brush pill shows only its icon, and undo/redo
+        disappear (use the two- and three-finger tap gestures instead).
       </p>
 
       <h2>What each control does</h2>
@@ -42,15 +41,13 @@
         <dt>More (…)</dt>
         <dd>Share / export PNG, save/load <code>.nekudot</code>, and <a href="/book/shortcuts.html">Record GIF</a>. (Theme and pen pressure moved to <a href="/book/ui/app-settings.html">Application settings</a>.)</dd>
         <dt>Windows</dt>
-        <dd>Show any panel (Brush settings, Connecting, Layers, Maps, Symmetry, <a href="/book/ui/app-settings.html">Application settings</a>, Shortcuts) with its keyboard shortcut listed.</dd>
+        <dd>Show any panel (Brush settings, Layers, Maps, Symmetry, <a href="/book/ui/app-settings.html">Application settings</a>, Shortcuts) with its keyboard shortcut listed.</dd>
         <dt>Memory Maps pill</dt>
-        <dd>The active map's live point count - click it to open the <a href="/book/ui/maps-panel.html">Maps panel</a>. The target button is a hot-map toggle: it keeps the active map's dots visible on the canvas while you draw (flashing once as it turns on), and turns them off when clicked again.</dd>
+        <dd>A flash button and a <strong>⌄</strong> dropdown. Click the flash to toggle the active map's live cloud-point highlight on the canvas (a chip shows the current point count); it stays lit while on. The dropdown shows the live point count and a <strong>Memory map settings</strong> row that opens the <a href="/book/ui/maps-panel.html">Maps panel</a>.</dd>
         <dt>Colour swatch</dt>
         <dd>Front and back colours; right-click to swap them. Click one to open the <a href="/book/ui/colors.html">Colours palette</a> (palettes by category, a picker, import/export).</dd>
         <dt>Brush pill</dt>
-        <dd>The selected brush (icon + name). The dropdown picks a brush; the gear opens <a href="/book/ui/settings.html">Brush settings</a>.</dd>
-        <dt>Connecting pill</dt>
-        <dd>The connection art style (Classic, Web, Shading…). Only shown for brushes that weave a web; the gear opens the <a href="/book/ui/settings.html">Web</a> tab.</dd>
+        <dd>The selected brush (icon + name). The dropdown picks a brush; the connecting brush is shown as <strong>Web</strong>, with the connection styles (Classic / More / Custom) nested under it - pick one to select Web and apply that look, and the pill then shows the active style's name. The <strong>settings…</strong> row (or <span class="kbd">b</span>) opens <a href="/book/ui/settings.html">Brush settings</a>; for Web it lands on the Web tab, where the style picker and its dials live.</dd>
         <dt>Symmetry pill</dt>
         <dd>The current symmetry mode (None / Tile / Radial / Mirror); the gear opens the <a href="/book/ui/symmetry-panel.html">Symmetry panel</a>.</dd>
         <dt>Undo / Redo</dt>
