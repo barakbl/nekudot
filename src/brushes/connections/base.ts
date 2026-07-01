@@ -659,6 +659,9 @@ export class ConnectionBase {
       visibleWhen?: { key: string; when: (v: string | number | boolean) => boolean };
     },
   ): BrushSetting {
+    // The style's factory default for this dial (undefined if the style keeps the
+    // brush's own default) - surfaced as a marker on the slider (card #86).
+    const def = this.defaults()[key];
     return {
       kind: "number",
       key,
@@ -668,6 +671,7 @@ export class ConnectionBase {
       max,
       step,
       value,
+      ...(typeof def === "number" ? { defaultValue: def } : {}),
       ...(extra?.unit !== undefined ? { unit: extra.unit } : {}),
       ...(extra?.visibleWhen ? { visibleWhen: extra.visibleWhen } : {}),
       onChange: (val) => this.setKey(key, val),

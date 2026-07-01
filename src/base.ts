@@ -57,6 +57,9 @@ export type BrushSetting =
       value: number;
       // Optional unit suffix shown after the value readout (e.g. "°", "%").
       unit?: string;
+      // A reference value marked on the slider rail - the current web style's
+      // default for this dial, so a manual tweak reads relative to it (card #86).
+      defaultValue?: number;
       onChange: (v: number) => void;
     })
   | (BrushSettingCommon & {

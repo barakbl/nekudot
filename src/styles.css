@@ -1347,6 +1347,23 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 .settings-number input[type="range"] {
   width: 100px;
 }
+/* Card #86: a tick on a dial's rail marking the current web style's default
+   value, so a manual tweak reads relative to it. */
+.settings-slider-track {
+  position: relative;
+  display: inline-flex;
+}
+.settings-default-mark {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  background: var(--text-icon);
+  border-radius: 1px;
+  opacity: 0.55;
+  pointer-events: none;
+}
 .settings-value {
   min-width: 28px;
   text-align: right;

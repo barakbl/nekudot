@@ -776,12 +776,25 @@ function makeRow(
   if (s.kind === "number") {
     const wrap = document.createElement("div");
     wrap.className = "settings-number";
+    const track = document.createElement("div");
+    track.className = "settings-slider-track";
     const input = document.createElement("input");
     input.type = "range";
     input.min = String(s.min);
     input.max = String(s.max);
     if (s.step !== undefined) input.step = String(s.step);
     input.value = String(s.value);
+    track.appendChild(input);
+    // A tick on the rail at the current web style's default for this dial (card
+    // #86), so a manual tweak reads relative to the style's default.
+    if (s.defaultValue !== undefined && s.max > s.min) {
+      const mark = document.createElement("span");
+      mark.className = "settings-default-mark";
+      const pct = ((s.defaultValue - s.min) / (s.max - s.min)) * 100;
+      mark.style.left = `${Math.max(0, Math.min(100, pct))}%`;
+      mark.title = `Style default: ${s.defaultValue}`;
+      track.appendChild(mark);
+    }
     const unit = s.unit ?? "";
     const display = document.createElement("span");
     display.className = "settings-value";
@@ -793,7 +806,7 @@ function makeRow(
       persist(s, v);
       onLive?.(s.key, v);
     });
-    wrap.appendChild(input);
+    wrap.appendChild(track);
     wrap.appendChild(display);
     row.appendChild(wrap);
   } else if (s.kind === "color") {
