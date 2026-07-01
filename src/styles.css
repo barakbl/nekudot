@@ -291,44 +291,54 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 }
 
 /* Navbar Maps pill: the active map's name (opens the Maps box) + a flash btn. */
+/* Card #87: a compact pill = the flash (live-highlight) toggle + a chevron that
+   opens the point count and a "Show map" action. position:relative anchors the
+   popover. */
 .toolbar .maps-pill {
-  padding: 2px 3px 2px 8px;
-  gap: 3px;
-}
-.toolbar .maps-pill-open {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: inherit;
-  font: inherit;
-  font-size: 11px;
-  cursor: pointer;
-}
-.toolbar .maps-pill-icon {
-  display: inline-flex;
-  color: var(--text-icon);
-}
-.toolbar .maps-pill-label {
-  font-weight: 500;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  position: relative;
+  padding: 2px 4px;
+  gap: 1px;
 }
 .toolbar .maps-pill-flash {
   width: 22px;
   height: 22px;
 }
-/* Lit: the persistent "hot map" highlight is on (single navbar toggle). */
+/* Lit: the persistent cloud-point highlight is on. */
 .toolbar .maps-pill-flash.is-on {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 .toolbar .maps-pill-flash.is-on:hover {
   background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.toolbar .maps-pill-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--chevron);
+  cursor: pointer;
+}
+.toolbar .maps-pill-more .chevron {
+  font-size: 10px;
+}
+/* The chevron menu: an info row (point-cloud glyph + live count) above the
+   "Show map" action. */
+.maps-pill-icon {
+  display: inline-flex;
+  color: var(--text-icon);
+}
+.maps-pop-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 5px;
+  font-size: 11px;
+  color: var(--text-icon);
+}
+.maps-pop-count {
+  font-weight: 500;
 }
 
 .brush-popover {
@@ -2764,11 +2774,9 @@ body.help-mode .help-icon {
   }
 
   /* Slim the toolbar so it needs fewer rows on a phone: the brush + connecting
-     pills show icon only (drop the name) and the maps pill drops its point count. */
+     pills show icon only (drop the name). The maps pill is already compact - its
+     count lives in the chevron menu. */
   .toolbar .brush-label {
-    display: none;
-  }
-  .toolbar .maps-pill-label {
     display: none;
   }
   /* Keep undo/redo and the Symmetry combo on phones: a touch user needs a visible
