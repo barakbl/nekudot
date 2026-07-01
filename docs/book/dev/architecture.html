@@ -52,7 +52,7 @@
   save-artwork.ts      export a .nekudot zip
   load-artwork.ts      validate + import a .nekudot (zip-bomb safe)
   export.ts            flatten layers to a PNG
-  brushes/             one file per brush (+ shapes-stroke.ts base)
+  brushes/             one file per brush (Shapes = squares + circles)
     brushes.json       ordered brush index (name/file/shortcut/group/connections)
     registry.ts        builds BRUSH_DEFS from brushes.json - map, menu, shortcuts, names
     connections/       the connecting engine + art-style "connections"
@@ -60,7 +60,7 @@
       registry.ts      builds the connection list from connections.json
       connections.json ordered index of connection styles
       routing.ts       ROUTING_PRESETS - where a stroke reads/stores neighbours
-      classic.ts web.ts arc.ts shaded.ts fur.ts lace.ts   one per style
+      classic.ts fur.ts   generic + code styles (the rest are data in connections.json)
   symmetry/            symmetry modes, each a plugin (like brushes), + the proxy
     tool.ts            SymmetryTool base - transforms(), settings(), guides
     registry.ts        builds the tool list from symmetry.json
@@ -188,11 +188,11 @@ stage.addEventListener("pointermove", (e) => {
         <code>src/brushes/connections/</code>. <code>ConnectionBase</code> holds
         all connecting state and the web/fan engine
         (<code>connectingNeighbors</code>, <code>drawFanned</code>,
-        <code>drawHair</code>); each art style - <em>Classic, Web, Arc, Shaded,
+        <code>drawHair</code>); each art style - <em>Classic, Web, Shaded,
         Fur, Lace</em> - is a subclass that just sets defaults, names the dials it
         exposes, and may override a texture hook (Fur's <code>drawHair</code>).
         A connecting brush attaches one with <code>initConnection("classic")</code>
-        and the navbar combo swaps it via <code>applyArtStylePreset</code>;
+        and the Web tab swaps it via <code>applyArtStylePreset</code>;
         routing presets live in <code>connections/routing.ts</code>. Both the
         brush list and the connection list are data-driven from JSON indexes
         (<code>brushes.json</code>, <code>connections.json</code>) resolved with

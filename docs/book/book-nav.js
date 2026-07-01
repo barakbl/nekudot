@@ -45,6 +45,8 @@
     round: "●",
     squares: "▭",
     circles: "◯",
+    shapes:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="11" height="11" rx="1.5"/><circle cx="15.5" cy="15.5" r="5.5"/></svg>',
     marker:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3 L21 8 L10 19 L4 19 L4 13 Z"/><path d="M13 6 L18 11"/><path d="M4 13 L10 19"/></svg>',
     spray:
@@ -92,7 +94,7 @@
         {
           label: "Panels",
           children: [
-            { label: "Brush & Connecting settings", href: "/book/ui/settings.html", icon: I.sliders },
+            { label: "Brush settings", href: "/book/ui/settings.html", icon: I.sliders },
             { label: "Colours palette", href: "/book/ui/colors.html", icon: I.colors },
             { label: "Layers panel", href: "/book/ui/layers-panel.html", icon: I.layers },
             { label: "Memory Maps panel", href: "/book/ui/maps-panel.html", icon: I.map },
@@ -109,9 +111,34 @@
         {
           label: "Brushes",
           children: [
-            { label: "Round", href: "/book/brushes/classic-round.html", icon: I.round },
-            { label: "Squares", href: "/book/brushes/squares.html", icon: I.squares },
-            { label: "Circles", href: "/book/brushes/circles.html", icon: I.circles },
+            {
+              // The connecting brush - shown as "Web" in the app, with the
+              // connection styles nested under it (mirrors the Brush combo).
+              label: "Web",
+              href: "/book/brushes/classic-round.html",
+              icon: I.web,
+              children: [
+                { label: "How connections work", href: "/book/connections.html", icon: I.link },
+                {
+                  label: "Classic",
+                  children: [
+                    { label: "Airy", href: "/book/connections.html#classic", icon: I.classic },
+                    { label: "String Art", href: "/book/brushes/web.html", icon: I.web },
+                    { label: "Shading", href: "/book/connections.html#shaded", icon: I.shaded },
+                  ],
+                },
+                {
+                  label: "More",
+                  children: [
+                    { label: "Bloomer", href: "/book/connections.html#bloom", icon: I.bloom },
+                    { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
+                    { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
+                  ],
+                },
+                { label: "Custom", href: "/book/connections.html#custom", icon: I.link },
+              ],
+            },
+            { label: "Shapes", href: "/book/brushes/shapes.html", icon: I.shapes },
             { label: "Marker", href: "/book/brushes/marker.html", icon: I.marker },
             { label: "Spray", href: "/book/brushes/spray.html", icon: I.spray },
             { label: "Color Pen", href: "/book/brushes/color-pen.html", icon: I.colorpen },
@@ -119,31 +146,6 @@
         },
         { label: "Symmetry", href: "/book/symmetry.html", icon: I.symmetry },
         { label: "Pen & pressure", href: "/book/pen.html", icon: I.pen },
-        {
-          label: "Connections",
-          href: "/book/connections.html",
-          icon: I.link,
-          children: [
-            {
-              label: "Classic",
-              children: [
-                { label: "Airy", href: "/book/connections.html#classic", icon: I.classic },
-                { label: "String Art", href: "/book/brushes/web.html", icon: I.web },
-                { label: "Shading", href: "/book/connections.html#shaded", icon: I.shaded },
-              ],
-            },
-            {
-              label: "More",
-              children: [
-                { label: "Bloomer", href: "/book/connections.html#bloom", icon: I.bloom },
-                { label: "Fur", href: "/book/textures.html#fur", icon: I.fur },
-                { label: "Lace", href: "/book/textures.html#lace", icon: I.lace },
-                { label: "Arc", href: "/book/connections.html#arc", icon: I.arc },
-              ],
-            },
-            { label: "Custom", href: "/book/connections.html#custom", icon: I.link },
-          ],
-        },
       ],
     },
     {
