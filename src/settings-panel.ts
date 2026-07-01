@@ -14,6 +14,12 @@ import {
   STYLE_SECTION,
   type ConnectingFlat,
 } from "./connecting-types";
+import {
+  makeConnectingCombo,
+  type ConnectingControl,
+  type ConnectionOptionGroup,
+} from "./menu";
+import { brushLabel } from "./brushes/registry";
 
 // Settings-tab glyphs: a paintbrush for the Brush tab, a spider-web for the Web
 // (connection) tab. Small inline SVGs in the shared stroke style.
@@ -212,6 +218,9 @@ export type SettingsPanelOpts = {
   // Notified after any setting on the panel changes - the preview names it (with
   // the same help text) and replays if its window is open.
   onSettingChange?: (change: { label: string; value: string; help?: string }) => void;
+  // The connection-style picker hosted at the top of the panel. onSettings is
+  // omitted so it renders without a redundant "Web settings" gear row.
+  connecting?: ConnectingControl;
 };
 
 // Human value of a changed setting for the preview's info box ("On", "6", "Curve").
@@ -226,6 +235,8 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   el: HTMLElement;
   render: (brush: BrushBase) => void;
   showTab: (tab: SettingsTab) => void;
+  setConnectingValue: (v: string) => void;
+  setConnectingOptions: (g: ConnectionOptionGroup[]) => void;
 } {
   const panel = document.createElement("div");
   panel.className = "settings-panel brush-panel";
@@ -293,6 +304,15 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
   // The connection tab keeps its internal id "connecting"; it's labelled "Web".
   const brushTab = mkTab("Brush", "brush", BRUSH_TAB_ICON);
   const connTab = mkTab("Web", "connecting", WEB_TAB_ICON);
+  // The connection-style picker heads the panel, above the Brush/Web tabs. It
+  // lives OUTSIDE the scrolling .panel-content so its dropdown isn't clipped.
+  const connectingHeader = document.createElement("div");
+  connectingHeader.className = "settings-conn-header";
+  connectingHeader.style.display = "none";
+  const connectingCombo = opts.connecting ? makeConnectingCombo(opts.connecting) : null;
+  if (connectingCombo) connectingHeader.appendChild(connectingCombo.el);
+  panel.appendChild(connectingHeader);
+
   tabBar.append(brushTab, connTab);
   panel.appendChild(tabBar);
 
@@ -310,10 +330,11 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
     const connects = brush.supportsConnecting();
     if (activeTab === "connecting" && !connects) activeTab = "brush"; // tab gone
 
-    title.textContent = `${brush.name()} settings`;
+    title.textContent = `${brushLabel(brush.name())} settings`;
     tabBar.style.display = connects ? "" : "none";
     brushTab.classList.toggle("active", activeTab === "brush");
     connTab.classList.toggle("active", activeTab === "connecting");
+    connectingHeader.style.display = connects ? "" : "none";
 
     content.replaceChildren();
     const persist: PersistFn = (s, v) => {
@@ -445,7 +466,13 @@ export function createSettingsPanel(opts: SettingsPanelOpts): {
     if (lastBrush) render(lastBrush);
   };
 
-  return { el: panel, render, showTab };
+  return {
+    el: panel,
+    render,
+    showTab,
+    setConnectingValue: (v: string) => connectingCombo?.setValue(v),
+    setConnectingOptions: (g: ConnectionOptionGroup[]) => connectingCombo?.setOptions(g),
+  };
 }
 
 function makeSectionHeader(text: string): HTMLElement {

@@ -338,6 +338,11 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   margin-top: 6px;
   min-width: 170px;
   padding: 4px;
+  /* Cap tall dropdowns (e.g. the Brush combo's nested Web style tree) to the
+     viewport and scroll inside, so they never run off-screen. */
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--panel-bg);
   border-radius: 10px;
   box-shadow: var(--shadow);
@@ -746,6 +751,19 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 .brush-option.in-group {
   padding-left: 22px;
 }
+/* The connecting brush's art-style tree nested under "Web" in the Brush combo:
+   sub-group headings (Classic / More / Custom) and their deeper-indented rows. */
+.brush-popover .brush-subgroup-header {
+  padding: 5px 8px 2px 22px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.brush-popover .brush-option.style-child {
+  padding-left: 34px;
+}
 /* Delete (×) on a user/custom option row (e.g. saved connection presets). */
 .brush-option .opt-remove {
   margin-left: auto;
@@ -1038,6 +1056,23 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+/* The connection-style picker heads the panel, above the Brush/Web tabs (flex
+   0 0 auto). It's outside .panel-content so its dropdown escapes the overflow
+   clipping. */
+.settings-panel > .settings-conn-header {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 6;
+  margin-bottom: 10px;
+}
+.settings-conn-header .connect-pill {
+  display: flex;
+  width: 100%;
+}
+.settings-conn-header .connect-pill .brush-pill-trigger {
+  flex: 1 1 auto;
+  justify-content: flex-start;
 }
 .settings-panel h3 {
   margin: 0;

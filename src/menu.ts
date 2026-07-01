@@ -68,10 +68,20 @@ export type ConnectingControl = {
   groups: ConnectionOptionGroup[];
   initial: string;
   onChange: (value: string) => void; // pick an art-style preset
-  onSettings: () => void; // gear → open the Connecting box
+  onSettings?: () => void; // gear → open the Connecting box (omit when hosted in-panel)
   onDeleteCustom?: (value: string) => void; // × on a custom preset
   onImport?: () => void; // import (↓) on the Custom group header
   onExport?: () => void; // export (↑) on the Custom group header
+};
+
+// The connecting brush's art-style tree, rendered nested under its own entry in
+// the Brush combo (so "Web" expands to its Classic / More / Custom styles).
+// Selecting a style row selects the brush AND applies the style.
+export type BrushStyleTree = {
+  brushValue: string; // the connecting brush the styles nest under (e.g. "Round")
+  groups: ConnectionOptionGroup[];
+  current: string; // active style value (highlighted in the tree)
+  onPick: (style: string) => void; // select that brush + apply the style
 };
 
 // The navbar Maps quick-access: a small pill showing the active map's live point
@@ -109,9 +119,12 @@ export function createMenu<T extends string>(
   connecting?: ConnectingControl,
   maps?: MapsPillControl,
   symmetry?: SymmetryControl,
+  brushStyleTree?: BrushStyleTree,
 ): {
   el: HTMLElement;
   setBrushValue: (value: T) => void;
+  setStyleValue: (v: string) => void;
+  setStyleOptions: (g: ConnectionOptionGroup[]) => void;
   setConnectingValue: (v: string) => void;
   setConnectingVisible: (v: boolean) => void;
   setConnectingOptions: (groups: ConnectionOptionGroup[]) => void;
@@ -145,11 +158,12 @@ export function createMenu<T extends string>(
   bar.appendChild(swatch.el);
   bar.appendChild(makeDivider());
   const flatOptions = flattenMenuEntries(options);
-  const { pill, setValue } = makeBrushPill(
+  const { pill, setValue, setStyleValue, setStyleOptions } = makeBrushPill(
     options,
     onChange,
     initial ?? flatOptions[0].value,
     onBrushSettings,
+    brushStyleTree,
   );
   bar.appendChild(pill);
   // The Connecting combo sits right after the brush selector. It only shows for
@@ -206,6 +220,8 @@ export function createMenu<T extends string>(
   return {
     el: bar,
     setBrushValue: setValue,
+    setStyleValue,
+    setStyleOptions,
     setConnectingValue,
     setConnectingVisible,
     setConnectingOptions,
@@ -702,7 +718,13 @@ function makeBrushPill<T extends string>(
   onChange: (value: T) => void,
   initial: T,
   onBrushSettings?: () => void,
-): { pill: HTMLElement; setValue: (v: T) => void } {
+  styleTree?: BrushStyleTree,
+): {
+  pill: HTMLElement;
+  setValue: (v: T) => void;
+  setStyleValue: (v: string) => void;
+  setStyleOptions: (g: ConnectionOptionGroup[]) => void;
+} {
   const pill = document.createElement("span");
   pill.className = "pill brush-pill";
 
@@ -734,19 +756,50 @@ function makeBrushPill<T extends string>(
   const menu = attachMenu({ trigger, menu: popover, container: pill });
 
   const optionEls = new Map<T, HTMLElement>();
+  const styleEls = new Map<string, HTMLElement>();
   const flatOptions = flattenMenuEntries(entries);
+  let currentBrushValue = initial;
+  let styleGroups: ConnectionOptionGroup[] = styleTree?.groups ?? [];
+  let currentStyle = styleTree?.current ?? "";
 
-  const setValue = (v: T) => {
-    const opt = flatOptions.find((o) => o.value === v);
+  // What the pill's trigger shows: normally the active brush's icon + name, but
+  // when the connecting brush is active it mirrors the SELECTED STYLE's icon +
+  // name, so the navbar reflects what you're actually drawing.
+  const refreshTrigger = () => {
+    if (styleTree && currentBrushValue === styleTree.brushValue) {
+      const s = styleGroups.flatMap((g) => g.items).find((o) => o.value === currentStyle);
+      if (s) {
+        setIcon(iconEl, s.icon, "∿");
+        labelEl.textContent = s.label;
+        trigger.setAttribute("aria-label", `Brush: Web - ${s.label}`);
+        return;
+      }
+    }
+    const opt = flatOptions.find((o) => o.value === currentBrushValue);
     if (!opt) return;
     setIcon(iconEl, opt.icon, "∿");
     labelEl.textContent = opt.label;
     trigger.setAttribute("aria-label", `Brush: ${opt.label}`);
+  };
+
+  const setValue = (v: T) => {
+    currentBrushValue = v;
     for (const [k, el] of optionEls) {
       const active = k === v;
       el.classList.toggle("active", active);
       el.setAttribute("aria-checked", String(active));
     }
+    refreshTrigger();
+  };
+
+  const setStyleValue = (v: string) => {
+    currentStyle = v;
+    for (const [k, el] of styleEls) {
+      const active = k === v;
+      el.classList.toggle("active", active);
+      el.setAttribute("aria-checked", String(active));
+    }
+    refreshTrigger();
   };
 
   const renderOption = (opt: MenuOption<T>, inGroup: boolean) => {
@@ -783,21 +836,64 @@ function makeBrushPill<T extends string>(
     optionEls.set(opt.value, optEl);
   };
 
-  for (const entry of entries) {
-    if ("kind" in entry && entry.kind === "group") {
+  // Empty style groups (e.g. Custom before any preset is saved) are skipped.
+  const renderStyleSubtree = () => {
+    if (!styleTree) return;
+    for (const g of styleGroups) {
+      if (!g.items.length) continue;
       const header = document.createElement("div");
-      header.className = "brush-group-header";
-      header.textContent = entry.label;
+      header.className = "brush-subgroup-header";
+      header.textContent = g.group;
       popover.appendChild(header);
-      for (const opt of entry.items) renderOption(opt, true);
-    } else {
-      renderOption(entry as MenuOption<T>, false);
+      for (const opt of g.items) {
+        const optEl = document.createElement("div");
+        optEl.className = "brush-option in-group style-child";
+        optEl.setAttribute("role", "menuitemradio");
+        if (opt.title) optEl.title = opt.title;
+        const optIcon = document.createElement("span");
+        optIcon.className = "opt-icon";
+        if (opt.icon) setIcon(optIcon, opt.icon, "");
+        const optLabel = document.createElement("span");
+        optLabel.className = "opt-label";
+        optLabel.textContent = opt.label;
+        optEl.append(optIcon, optLabel);
+        optEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setStyleValue(opt.value);
+          styleTree.onPick(opt.value);
+          menu.close();
+        });
+        popover.appendChild(optEl);
+        styleEls.set(opt.value, optEl);
+      }
     }
-  }
+  };
 
-  if (onBrushSettings) {
-    appendComboSettings(popover, "Brush settings", onBrushSettings, () => menu.close());
-  }
+  const renderPopover = () => {
+    popover.replaceChildren();
+    optionEls.clear();
+    styleEls.clear();
+    for (const entry of entries) {
+      if ("kind" in entry && entry.kind === "group") {
+        const header = document.createElement("div");
+        header.className = "brush-group-header";
+        header.textContent = entry.label;
+        popover.appendChild(header);
+        for (const opt of entry.items) renderOption(opt, true);
+      } else {
+        const opt = entry as MenuOption<T>;
+        renderOption(opt, false);
+        if (styleTree && opt.value === styleTree.brushValue) renderStyleSubtree();
+      }
+    }
+    if (onBrushSettings) {
+      appendComboSettings(popover, "Brush settings", onBrushSettings, () => menu.close());
+    }
+    setValue(currentBrushValue);
+    setStyleValue(currentStyle);
+  };
+
+  renderPopover();
 
   // The chevron / pill padding open the menu too (the trigger handles itself).
   pill.addEventListener("click", (e) => {
@@ -807,8 +903,15 @@ function makeBrushPill<T extends string>(
     menu.toggle();
   });
 
-  setValue(initial);
-  return { pill, setValue };
+  return {
+    pill,
+    setValue,
+    setStyleValue,
+    setStyleOptions: (g: ConnectionOptionGroup[]) => {
+      styleGroups = g;
+      renderPopover();
+    },
+  };
 }
 
 const GEAR_SVG =
@@ -866,7 +969,7 @@ const CONNECT_ICON =
 // The Connecting combo: art-style preset dropdown + a gear for the Connecting
 // box. Reuses the brush-pill styling so it sits visually beside the brush
 // selector. Hidden (setVisible(false)) for brushes that don't connect.
-function makeConnectingCombo(control: ConnectingControl): {
+export function makeConnectingCombo(control: ConnectingControl): {
   el: HTMLElement;
   setValue: (v: string) => void;
   setVisible: (v: boolean) => void;
@@ -1008,7 +1111,8 @@ function makeConnectingCombo(control: ConnectingControl): {
         optionEls.set(opt.value, optEl);
       }
     }
-    appendComboSettings(popover, "Web settings", control.onSettings, () => menu.close());
+    if (control.onSettings)
+      appendComboSettings(popover, "Web settings", control.onSettings, () => menu.close());
     setValue(current); // refresh active highlight against the new list
   };
 

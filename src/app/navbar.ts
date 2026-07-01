@@ -14,7 +14,6 @@ import type { MapsControl } from "../layered/maps-box";
 import type { Viewport } from "./viewport";
 import type { AppHistory } from "./history";
 import type { MapHighlighter } from "./map-highlight";
-import type { PresetsController } from "./presets";
 import type { LocalStorageStore } from "../store/local_storage";
 
 // Turn the brush registry into the toolbar's menu entries: consecutive brushes
@@ -23,7 +22,7 @@ function buildBrushMenu(defs: BrushDef[]): MenuEntry<string>[] {
   const out: MenuEntry<string>[] = [];
   let group: MenuGroup<string> | null = null;
   for (const d of defs) {
-    const opt = { value: d.name, label: d.name, icon: d.icon, shortcut: d.shortcut };
+    const opt = { value: d.name, label: d.label ?? d.name, icon: d.icon, shortcut: d.shortcut };
     if (d.menuGroup) {
       if (!group || group.label !== d.menuGroup) {
         group = { kind: "group", label: d.menuGroup, items: [] };
@@ -51,7 +50,6 @@ export type NavbarDeps = {
   symmetry: SymmetryController;
   mapsControl: MapsControl;
   mapHighlighter: MapHighlighter;
-  presets: PresetsController;
   sizePicker: { open: () => void };
   store: LocalStorageStore;
   // Stable callbacks defined in main.
@@ -72,7 +70,6 @@ export type NavbarDeps = {
   // File System Access API isn't available, so the menu entry is hidden.
   showFolder?: () => void;
   folderSupported?: boolean;
-  showConnecting: () => void;
   // Late-bound in main (the Shortcuts panel needs `menu` to be built first), so
   // it's passed as a wrapper that reads the current value at click time.
   showShortcuts: () => void;
@@ -94,7 +91,6 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     symmetry,
     mapsControl,
     mapHighlighter,
-    presets,
     sizePicker,
     store,
     selectBrush,
@@ -112,7 +108,6 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     showAppSettings,
     showFolder,
     folderSupported,
-    showConnecting,
     showShortcuts,
     initialMainColor,
     initialSecondaryColor,
@@ -207,15 +202,8 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
       { label: "Settings", shortcut: ",", open: showAppSettings },
       { label: "Shortcuts", shortcut: "/", open: () => showShortcuts() },
     ],
-    {
-      groups: connectingComboGroups(),
-      initial: initialArtStyle,
-      onChange: (name) => setArtStyle(name),
-      onSettings: () => showConnecting(),
-      onDeleteCustom: (name) => presets.remove(name),
-      onImport: () => presets.import(),
-      onExport: () => presets.export(),
-    },
+    // No Connecting combo now - the style picker lives in the settings panel.
+    undefined,
     {
       getActiveInfo: () => {
         const { maps } = mapsControl.getInfo();
@@ -243,6 +231,16 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
       initial: symmetry.mode,
       onChange: (m) => symmetry.setMode(m as SymmetryMode),
       onSettings: () => showSymmetry(),
+    },
+    // The art-style tree nested under "Web" in the Brush combo.
+    {
+      brushValue: "Round",
+      groups: connectingComboGroups(),
+      current: initialArtStyle,
+      onPick: (style) => {
+        selectBrush("Round");
+        setArtStyle(style);
+      },
     },
   );
   history.subscribe(() => menu.refreshHistoryState());

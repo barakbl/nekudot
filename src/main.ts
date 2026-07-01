@@ -346,7 +346,11 @@ const presets = createPresetsController({
   applyStyle: (name) => setArtStyle(name),
   defaultStyle: () => DEFAULT_ART_STYLE,
   strokeAlpha: () => appOpacity.get(),
-  refreshMenu: () => menu.setConnectingOptions(connectingComboGroups()),
+  refreshMenu: () => {
+    const g = connectingComboGroups();
+    settingsPanel.setConnectingOptions(g);
+    menu.setStyleOptions(g);
+  },
 });
 
 // ---- settings panels ----------------------------------------------------------
@@ -370,6 +374,16 @@ const settingsPanel = createSettingsPanel({
   showPen: () => appState.penEnabled,
   onOpenPreview: () => brushPreview.open(),
   onSettingChange: (change) => brushPreview.onSettingChanged(change),
+  // No onSettings: a "Web settings" gear would just reopen the panel this picker
+  // sits in.
+  connecting: {
+    groups: connectingComboGroups(),
+    initial: appState.artStyle,
+    onChange: (name) => setArtStyle(name),
+    onDeleteCustom: (name) => presets.remove(name),
+    onImport: () => presets.import(),
+    onExport: () => presets.export(),
+  },
   brushControls: {
     size: {
       get: () => store.get<number>("app.size") ?? initialSize,
@@ -431,7 +445,7 @@ registerWindow(settingsPanel.el);
 // and bring it to the front (rather than toggling it shut); it closes via its
 // × button.
 const showSettings = () => {
-  settingsPanel.showTab("brush");
+  settingsPanel.showTab(appState.brush.supportsConnecting() ? "connecting" : "brush");
   showWindow(settingsPanel.el);
 };
 const showConnecting = () => {
@@ -445,9 +459,10 @@ const showConnecting = () => {
 const renderActiveBrush = () => {
   settingsPanel.render(appState.brush);
   mapsBox.render(); // the routing "Connection" group tracks the active brush
-  const supports = appState.brush.supportsConnecting();
-  menu.setConnectingVisible(supports);
-  if (supports) menu.setConnectingValue(appState.artStyle);
+  if (appState.brush.supportsConnecting()) {
+    settingsPanel.setConnectingValue(appState.artStyle);
+    menu.setStyleValue(appState.artStyle);
+  }
 };
 
 // Re-render the open settings window so the Primary/Secondary swatches in the
@@ -480,7 +495,8 @@ const setArtStyle = (name: string) => {
   appState.brush.selectArtStyle(name); // apply + restore this brush's saved dials for it
   applyBrushStrokeOpacity(true);
   settingsPanel.render(appState.brush);
-  menu.setConnectingValue(name);
+  settingsPanel.setConnectingValue(name);
+  menu.setStyleValue(name);
 };
 
 // Keep the connecting "Connect to" / "Map" dropdowns in sync when layers or
@@ -934,7 +950,6 @@ const menu = buildNavbar({
   symmetry,
   mapsControl,
   mapHighlighter,
-  presets,
   sizePicker,
   store,
   selectBrush,
@@ -952,7 +967,6 @@ const menu = buildNavbar({
   showAppSettings,
   showFolder,
   folderSupported: folderSync.supported,
-  showConnecting,
   // Late-bound: read the current `showShortcuts` at click time (it's reassigned
   // once the Shortcuts panel - which itself needs `menu` - is wired below).
   showShortcuts: () => showShortcuts(),
