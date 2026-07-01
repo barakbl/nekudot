@@ -8,8 +8,10 @@ import {
 } from "../base";
 import { COLOR_SOURCE_LABELS, colorSourceIcons } from "./color-source";
 import type { Pixel } from "../neighbor-finder";
+import type { BrushContext } from "./registry";
 
 type FillMode = "none" | "main" | "secondary";
+export type ShapeKind = "squares" | "circles";
 
 export type ShapeDrawParams = {
   cx: number;
@@ -29,14 +31,27 @@ export type ShapeDrawParams = {
 const REF_SPEED = 1.6;
 const MAX_SIZE_LIMIT = 320; // upper bound of the Max-size slider
 
-// Shared base for stroke-shape brushes (Squares, Circles). Owns the
-// speed-driven sizing, fill, dash, and settings; subclasses only paint.
-export abstract class ShapesStrokeBrush extends BrushBase {
+// Menu glyph: a square + a circle.
+export const icon =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+  '<rect x="3" y="3" width="11" height="11" rx="1.5"/>' +
+  '<circle cx="15.5" cy="15.5" r="5.5"/>' +
+  "</svg>";
+
+export function create(c: BrushContext): ShapesBrush {
+  return new ShapesBrush(c.host, undefined, c.store);
+}
+
+// One "Shapes" brush that stamps speed-sized squares OR circles along the
+// stroke; the shape is a per-brush setting (the two-button toggle at the top of
+// its settings). Owns the speed-driven sizing, fill, dash, and settings.
+export class ShapesBrush extends BrushBase {
   private placedX = 0;
   private placedY = 0;
   private placedSize = 0;
   private placedT = 0;
 
+  protected shape: ShapeKind = "squares";
   protected fillMode: FillMode = "none";
   protected fillOpacity = 100;
   protected strokeDash: DashStyle = "solid";
@@ -44,6 +59,10 @@ export abstract class ShapesStrokeBrush extends BrushBase {
   protected maxSize = 160;
   // 0 = linear speed→size; higher bends it convex (big shapes from gentler moves).
   protected sensitivity = 35;
+
+  name() {
+    return "Shapes";
+  }
 
   strokeStart(x: number, y: number): void {
     this.placedX = x;
@@ -97,7 +116,38 @@ export abstract class ShapesStrokeBrush extends BrushBase {
     this.placedT = now;
   }
 
-  protected abstract drawAt(params: ShapeDrawParams): void;
+  private drawAt(p: ShapeDrawParams): void {
+    if (this.shape === "circles") {
+      const r = p.size / 2;
+      if (p.fillColor !== null) {
+        this.renderer.fillCircle(p.cx, p.cy, r, p.fillColor, p.fillAlpha);
+      }
+      this.renderer.strokeCircle(p.cx, p.cy, r, {
+        dash: p.dashPattern,
+        alpha: p.strokeAlpha,
+      });
+      return;
+    }
+    if (p.fillColor !== null) {
+      this.renderer.fillRect(
+        p.cx,
+        p.cy,
+        p.size,
+        p.size,
+        p.fillColor,
+        p.angle,
+        p.fillAlpha,
+      );
+    }
+    this.renderer.strokeRect(
+      p.cx,
+      p.cy,
+      p.size,
+      p.size,
+      { dash: p.dashPattern, alpha: p.strokeAlpha },
+      p.angle,
+    );
+  }
 
   protected strokeDashValue(): DashStyle {
     return this.strokeDash;
@@ -108,6 +158,18 @@ export abstract class ShapesStrokeBrush extends BrushBase {
 
   getSettings(): BrushSetting[] {
     return [
+      {
+        kind: "select",
+        key: "shape",
+        label: "Shape",
+        segmented: true,
+        options: ["circles", "squares"] as const,
+        optionLabels: { circles: "Circles", squares: "Squares" },
+        value: this.shape,
+        onChange: (v) => {
+          this.shape = v as ShapeKind;
+        },
+      },
       {
         kind: "number",
         key: "sensitivity",

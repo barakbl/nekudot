@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { SquaresBrush } from "../src/brushes/squares";
+import { ShapesBrush } from "../src/brushes/shapes";
 
 // base.stroke(): only a sampled (sample=true), non-erasing, non-throttled stroke
 // deposits a searchable point into the persistent cloud (host.addPixel). Coalesced
 // sub-samples (sample=false) and erasing strokes paint the mark but use an
 // ephemeral id:-1 point, so they must NOT grow the cloud - otherwise the web
 // builds up ~quadratically with the pointer's report rate (the "web darkens"
-// regression). Squares is a convenient non-connecting brush, so depositPixel goes
+// regression). Shapes is a convenient non-connecting brush, so depositPixel goes
 // straight to host.addPixel.
 function setup(erasing = false) {
   const deposits: { x: number; y: number }[] = [];
@@ -24,7 +24,7 @@ function setup(erasing = false) {
   const host = new Proxy(tracked, {
     get: (t, p) => (p in t ? t[p as string] : () => {}),
   }) as never;
-  const brush = new SquaresBrush(host, 1); // fixed seed, no store
+  const brush = new ShapesBrush(host, 1); // fixed seed, no store
   return { brush, deposits };
 }
 

@@ -1571,6 +1571,32 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   outline: none;
 }
 
+/* A two-way button group for a select setting (e.g. the Shapes brush's
+   Circles/Squares toggle) - reads like the tab bar. */
+.settings-segmented {
+  display: flex;
+  gap: 4px;
+  flex: 1 1 auto;
+}
+.settings-segment {
+  flex: 1 1 0;
+  background: var(--pill-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.settings-segment:not(.active):hover {
+  border-color: var(--accent);
+}
+.settings-segment.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
 /* Custom dropdown for selects whose options carry an icon (Dash glyph, colour
    swatch). The trigger reads like the native .settings-select pill; the open
    popover lists each option with its own icon. */

@@ -70,6 +70,8 @@ export type BrushSetting =
       // Optional friendly labels keyed by option value (e.g. layer id -> name).
       optionLabels?: Record<string, string>;
       icons?: Record<string, string>;
+      // Render as a two-way (or few-way) button group instead of a dropdown.
+      segmented?: boolean;
       value: string;
       onChange: (v: string) => void;
     })
