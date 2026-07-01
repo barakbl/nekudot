@@ -24,7 +24,7 @@
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.1",
+    "@biomejs/biome": "2.5.2",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.10.6",
     "typescript": "^5.6.0",
