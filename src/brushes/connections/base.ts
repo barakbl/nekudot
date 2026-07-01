@@ -749,7 +749,12 @@ export class ConnectionBase {
       this.num("alpha", "Opacity", 0, 1, 0.05, this.styleValue("alpha")),
       this.num("density", "Density", 0, 100, 1, this.connectDensity, { unit: "%" }),
       this.num("radius", "Reach", 5, 1000, 1, this.searchRadius),
-      this.num("bloom", "Bloom", 0, 100, 1, this.connectBloom, { unit: "%" }),
+      this.num("bloom", "Bloom", 0, 100, 1, this.connectBloom),
+      // Bloom radius (the scatter spread) only bites once Bloom is on; reveal it under Bloom.
+      this.num("bloomRadius", "Bloom radius", 5, 300, 5, this.connectBloomRadius, {
+        unit: "px",
+        visibleWhen: { key: "bloom", when: (v) => Number(v) > 0 },
+      }),
       this.num("links", "Max links", 0, 20, 1, this.connectMaxLinks),
       this.num("sampleSpacing", "Web spacing", 0, 20, 1, this.connectSampleSpacing),
       this.num("fade", "Fade", 0, 1, 0.05, this.connectAlphaFade),

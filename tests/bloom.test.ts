@@ -100,10 +100,20 @@ describe("Bloom (density-targeted point multiplier)", () => {
     expect(flat.bloomRadius).toBe(90);
   });
 
-  it("exposes a Bloom slider in the Connecting panel", () => {
+  it("exposes Bloom + Bloom radius sliders in the Connecting panel", () => {
     const { brush } = round({});
     const keys = brush.activeConnection()!.sliders().map((s) => s.key);
     expect(keys).toContain("bloom");
+    expect(keys).toContain("bloomRadius");
+  });
+
+  it("the Bloom Texture preset uses a tiny reach + a 100px bloom radius", () => {
+    const brush = new RoundBrush(createBareHost(noopRenderer(), makeFinder()), 1);
+    brush.selectArtStyle("bloomtex");
+    const flat = brush.activeConnection()!.toFlat();
+    expect(flat.radius).toBe(5);
+    expect(flat.bloomRadius).toBe(100);
+    expect(flat.bloom as number).toBeGreaterThan(0);
   });
 
   it("the Bloom preset wires it on; other styles keep it off (no leak)", () => {
