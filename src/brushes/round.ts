@@ -12,8 +12,13 @@ import type { PenSample } from "../pen";
 import type { Store } from "../store/base";
 import type { BrushContext } from "./registry";
 
-// Menu glyph for the toolbar — Round's mark is a filled dot.
-export const icon = "●";
+// Menu glyph for the toolbar - the connecting web (the brush is shown as "Web").
+export const icon =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="2"/>' +
+  '<path d="M12 2 V22 M2 12 H22 M5 5 L19 19 M19 5 L5 19"/>' +
+  '<path d="M12 5 A7 7 0 0 1 19 12 M12 5 A7 7 0 0 0 5 12"/>' +
+  "</svg>";
 
 export function create(c: BrushContext): RoundBrush {
   return new RoundBrush(c.host, undefined, c.store);

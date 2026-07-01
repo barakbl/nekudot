@@ -26,6 +26,7 @@ const modules = import.meta.glob<BrushModule>("./*.ts", { eager: true });
 
 type IndexEntry = {
   name: string;
+  label?: string;
   file: string;
   shortcut?: string;
   menuGroup?: string;
@@ -46,6 +47,7 @@ function moduleFor(file: string): BrushModule {
 // from this list (built from brushes.json + each brush module).
 export type BrushDef = {
   name: string; // display name, storage key, and pixel-log brush_type
+  label?: string; // toolbar menu label when it should differ from name (Round shows as "Web")
   shortcut?: string; // single key for keyboard select + menu hint (e.g. "1")
   menuGroup?: string; // toolbar sub-group label; undefined = top-level
   connections?: boolean; // whether the brush weaves the connecting web
@@ -60,6 +62,7 @@ export const BRUSH_DEFS: BrushDef[] = INDEX.map((e) => {
   const mod = moduleFor(e.file);
   return {
     name: e.name,
+    label: e.label,
     shortcut: e.shortcut,
     menuGroup: e.menuGroup,
     connections: e.connections,
@@ -78,4 +81,10 @@ export function isKnownBrush(name: string): boolean {
 
 export function brushNames(): string[] {
   return BRUSH_DEFS.map((d) => d.name);
+}
+
+// The toolbar/menu display label for a brush (falls back to its name). Round is
+// shown as "Web"; its internal name/storage key stays "Round".
+export function brushLabel(name: string): string {
+  return BRUSH_DEFS.find((d) => d.name === name)?.label ?? name;
 }

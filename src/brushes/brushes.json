@@ -1,5 +1,5 @@
 [
-  { "name": "Round", "file": "round.ts", "shortcut": "1", "connections": true, "info": "The heart of the app — a round line plus the connecting web." },
+  { "name": "Round", "label": "Web", "file": "round.ts", "shortcut": "1", "connections": true, "info": "The heart of the app - a round line plus the connecting web." },
   { "name": "Squares", "file": "squares.ts", "shortcut": "2", "menuGroup": "Shapes strokes", "info": "Speed-sized squares stamped along the stroke." },
   { "name": "Circles", "file": "circles.ts", "shortcut": "3", "menuGroup": "Shapes strokes", "info": "Speed-sized circles stamped along the stroke." },
   { "name": "Spray", "file": "spray.ts", "shortcut": "4", "menuGroup": "Other", "info": "Airbrush: scatters specks within a radius, building density as you dwell. Feeds the memory map (throttled) so connecting brushes can web over it." },

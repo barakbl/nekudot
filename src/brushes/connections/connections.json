@@ -209,38 +209,6 @@
         "grainAngle": 0,
         "grainCross": false
       }
-    },
-    {
-      "name": "arc",
-      "webWeight": { "light": { "strands": 1, "density": 6, "links": 20 }, "heavy": { "strands": 2, "density": 26, "links": 0 } },
-      "label": "Arc",
-      "file": "classic.ts",
-      "info": "Bulging arcs between points.",
-      "icon": "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.3\" stroke-linecap=\"round\" aria-hidden=\"true\"><path d=\"M2 12 A6 6 0 0 1 14 12\"/><circle cx=\"2\" cy=\"12\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/><circle cx=\"14\" cy=\"12\" r=\"1.2\" fill=\"currentColor\" stroke=\"none\"/></svg>",
-      "defaults": {
-        "alpha": 1,
-        "color": "main",
-        "connect": "arc",
-        "dash": "solid",
-        "density": 12,
-        "radius": 55,
-        "minDist": 0,
-        "inset": 0,
-        "fade": 0,
-        "strands": 1,
-        "spread": 6,
-        "scatter": 0,
-        "taper": 0,
-        "flow": 0,
-        "fray": 0,
-        "length": 1,
-        "wave": 0,
-        "dynamics": 0,
-        "curl": 0,
-        "grainStrength": 0,
-        "grainAngle": 0,
-        "grainCross": false
-      }
     }
   ],
   "Custom": []
