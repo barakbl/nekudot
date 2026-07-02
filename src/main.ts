@@ -55,6 +55,7 @@ import { createUndoWiring } from "./app/undo-wiring";
 import { createResetGate } from "./app/reset-gate";
 import { buildNavbar } from "./app/navbar";
 import { createOnboarding, shouldShowOnboarding } from "./onboarding/onboarding";
+import { createFirstRunGuide } from "./onboarding/first-run-guide";
 import {
   applyConnectionColor,
   mandalaConnectionColor,
@@ -1081,8 +1082,13 @@ const onboarding = createOnboarding({
 // stay above it), not the whole page.
 viewportEl.appendChild(onboarding.el);
 
+// The first-run "draw anywhere" cue + post-first-stroke tips strip. Started only
+// on the true first-run branch below, so it never shows on later runs.
+const firstRunGuide = createFirstRunGuide({ mount: viewportEl });
+
 // First run: open straight into the mandala instead of the Start page (still
-// reachable via the G shortcut). Returning users keep their canvas.
+// reachable via the G shortcut), with the draw cue over the empty canvas.
+// Returning users keep their canvas and see nothing.
 {
   const onboarded = store.get<boolean>(ONBOARDED_KEY) === true;
   const hasPriorUse =
@@ -1091,10 +1097,12 @@ viewportEl.appendChild(onboarding.el);
   if (shouldShowOnboarding({ onboarded, hasPriorUse })) {
     startMandala();
     store.set(ONBOARDED_KEY, true);
+    firstRunGuide.start();
   } else if (!onboarded && hasPriorUse) store.set(ONBOARDED_KEY, true);
 }
 // Opening the Start page mid-session is a deliberate "start over", so confirm
-// first (the first-run auto-show below calls onboarding.show() directly).
+// first. (First run goes straight to the mandala canvas above; this page is
+// never auto-shown.)
 const showStartPage = () => {
   showConfirm({
     title: "Start a new drawing?",
@@ -1192,6 +1200,8 @@ const drawingInput = bindDrawingInput({
     // One capture serves both undo and persistence — the pushed row is the
     // persisted paint, so this is the only blob-encode pass per stroke.
     pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
+    // First-run only: surface the tips strip after the first stroke lands.
+    firstRunGuide.notifyStrokeEnd();
   },
 });
 
