@@ -17,8 +17,8 @@ export function create(c: BrushContext): SprayBrush {
 // to web over the cloud you laid.
 export class SprayBrush extends BrushBase {
   private radius = 28; // spread of the spray, px
-  private flow = 9; // specks per frame
-  private dotSize = 3; // speck diameter, px
+  private flow = 12; // specks per frame
+  private dotSize = 4; // speck diameter, px
 
   private active = false;
   private cx = 0;
@@ -36,10 +36,10 @@ export class SprayBrush extends BrushBase {
     return false;
   }
 
-  // Selecting Spray drops the global Opacity low so specks build softly out of
-  // the box (raise the Opacity slider for a harder edge).
+  // Selecting Spray sets a soft-but-visible global Opacity out of the box (raise
+  // the Opacity slider for a harder edge).
   getSelectOpacity(): number {
-    return 0.2;
+    return 0.35;
   }
 
   strokeStart(x: number, y: number): void {

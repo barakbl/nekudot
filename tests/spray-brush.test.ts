@@ -26,7 +26,7 @@ describe("Spray brush", () => {
   it("a puff scatters `flow` specks and deposits ONE point (throttled feeder)", () => {
     const { brush, specks, points } = setup();
     brush.strokeStart(50, 50); // one immediate puff
-    expect(specks.length).toBe(9); // default Flow
+    expect(specks.length).toBe(12); // default Flow
     expect(points.length).toBe(1); // one deposit per frame, not one per speck
   });
 
@@ -35,13 +35,14 @@ describe("Spray brush", () => {
     brush.strokeStart(50, 50);
     for (const s of specks) {
       expect(Math.hypot(s.x - 50, s.y - 50)).toBeLessThanOrEqual(28 + 1e-9); // default Radius
-      expect(s.r).toBeCloseTo(1.5); // dotSize 3 -> radius 1.5
+      expect(s.r).toBeCloseTo(2); // dotSize 4 -> radius 2
     }
   });
 
-  it("does not buffer (specks build up individually) and selects at low opacity", () => {
+  it("does not buffer (specks build individually) and selects at a soft-but-visible opacity", () => {
     const { brush } = setup();
     expect(brush.bufferedStroke()).toBe(false);
+    expect(brush.getSelectOpacity()).toBeGreaterThanOrEqual(0.3);
     expect(brush.getSelectOpacity()).toBeLessThan(0.5);
   });
 });
