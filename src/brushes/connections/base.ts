@@ -135,6 +135,9 @@ export class ConnectionBase {
   protected connectGrainAngle = 0;
   protected connectGrainStrength = 0;
   protected connectGrainCross = false;
+  // How strongly the grain axis follows the stroke's local heading (0 = fixed
+  // compass angle; 1 = grainAngle is an offset from the drawn direction).
+  protected connectGrainFollow = 0;
   // Colour-direction wheel state (used by the directional colour sources).
   // colorByTravel: false = colour each web line by its own angle (the original
   // behaviour); true = colour by the hand's direction of travel, so the gradient
@@ -339,7 +342,14 @@ export class ConnectionBase {
     );
     const dynAlphaMul = 1 - dyn * slow * 0.65; // slow → fainter per line (~0.35×)
     const grainStrength = this.connectGrainStrength;
-    const grainRad = (this.connectGrainAngle * Math.PI) / 180;
+    // Rotate the grain axis toward the stroke's local heading (grainFollow) so the
+    // pelt sweeps along the contour. travel.absolute() comes from beforeDeposit (no
+    // RNG), so the random draws below keep their seeded order.
+    let grainRad = (this.connectGrainAngle * Math.PI) / 180;
+    if (grainStrength > 0 && this.connectGrainFollow > 0) {
+      const heading = this.travel.absolute() * Math.PI * 2 - Math.PI;
+      grainRad += this.connectGrainFollow * heading;
+    }
     const grainCross = this.connectGrainCross;
     for (const n of neighbors) {
       if (this.connectMode === "map" && n.id >= cutoff) continue;
@@ -524,6 +534,7 @@ export class ConnectionBase {
       grainStrength: this.connectGrainStrength,
       grainAngle: this.connectGrainAngle,
       grainCross: this.connectGrainCross,
+      grainFollow: this.connectGrainFollow,
       colorTravel: this.connectColorByTravel,
       colorAngle: this.connectColorAngle,
       colorRange: this.connectColorRange,
@@ -605,6 +616,7 @@ export class ConnectionBase {
       case "grainStrength": if (typeof v === "number") this.connectGrainStrength = v; break;
       case "grainAngle": if (typeof v === "number") this.connectGrainAngle = v; break;
       case "grainCross": if (typeof v === "boolean") this.connectGrainCross = v; break;
+      case "grainFollow": if (typeof v === "number") this.connectGrainFollow = v; break;
       case "colorTravel": if (typeof v === "boolean") this.connectColorByTravel = v; break;
       case "colorAngle": if (typeof v === "number") this.connectColorAngle = v; break;
       case "colorRange": if (typeof v === "number") this.connectColorRange = v; break;
@@ -721,6 +733,7 @@ export class ConnectionBase {
       case "curl": return this.connectCurl;
       case "grainStrength": return this.connectGrainStrength;
       case "grainAngle": return this.connectGrainAngle;
+      case "grainFollow": return this.connectGrainFollow;
       default: return 0;
     }
   }
