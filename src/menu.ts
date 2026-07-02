@@ -147,6 +147,8 @@ export function createMenu<T extends string>(
     const { el, toggle } = makeCanvasMenu(canvasOptions);
     toggleCanvasMenu = toggle;
     bar.appendChild(el);
+    // Share promoted onto the bar as its own button; the full set stays in More.
+    bar.appendChild(makeShareButton(canvasOptions.onShareImage));
   }
   if (windows && windows.length) bar.appendChild(makeWindowsMenu(windows));
   let refreshMapsPill = () => {};
@@ -568,6 +570,19 @@ const redoIcon =
   '<polyline points="15 14 20 9 15 4"/>' +
   '<path d="M20 9 H10 A6 6 0 0 0 4 15 V20"/>' +
   "</svg>";
+
+const shareIcon =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 12 v7 a1 1 0 0 0 1 1 h14 a1 1 0 0 0 1 -1 v-7"/>' +
+  '<path d="M12 15 V3"/>' +
+  '<path d="M8 7 L12 3 L16 7"/>' +
+  "</svg>";
+
+function makeShareButton(onShare: () => void): HTMLElement {
+  const btn = makeSvgButton(shareIcon, "Share or save your art", onShare);
+  btn.classList.add("share-btn");
+  return btn;
+}
 
 function makeSvgButton(
   svg: string,
