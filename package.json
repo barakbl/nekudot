@@ -2,6 +2,29 @@
   "name": "nekudot",
   "private": true,
   "version": "0.25.1",
+  "description": "A browser drawing tool with a memory - it keeps every point you draw and weaves faint threads between nearby ones, so a single gesture blooms into a web. Inspired by mrdoob's Harmony.",
+  "keywords": [
+    "generative-art",
+    "creative-coding",
+    "drawing",
+    "mandala",
+    "symmetry",
+    "kaleidoscope",
+    "canvas",
+    "procedural-art",
+    "harmony",
+    "typescript"
+  ],
+  "homepage": "https://nekudot.app",
+  "bugs": {
+    "url": "https://github.com/barakbl/nekudot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/barakbl/nekudot.git"
+  },
+  "license": "GPL-2.0-only",
+  "author": "Barak Bloch",
   "type": "module",
   "scripts": {
     "dev": "vite",
