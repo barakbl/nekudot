@@ -1,12 +1,27 @@
 # Nekudot
 
+[![License: GPL v2](https://img.shields.io/badge/license-GPL%20v2-blue.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/barakbl/nekudot)](https://github.com/barakbl/nekudot/releases)
+[![Try it live](https://img.shields.io/badge/try%20it-nekudot.app-e7b24e)](https://nekudot.app/app/)
+
 A browser-based **expressive drawing tool**. As you draw, Nekudot remembers
 every point and weaves faint lines between nearby ones - so a single gesture
 blooms into a web of its own. Inspired by
 [mrdoob's Harmony](https://mrdoob.github.io/harmony/).
 
+<p align="center">
+  <a href="https://nekudot.app/app/">
+    <img src="docs/img/hero.gif" alt="One stroke blooming into a rainbow mandala in Nekudot" width="460" />
+  </a>
+</p>
+
 🎨 **[Open the tool online →](https://nekudot.app/app/)**
 🏠 **[Home →](https://nekudot.app/)** · 📖 **[About & usage book →](https://nekudot.app/about.html)**
+
+<p align="center">
+  <img src="docs/img/mandala-flower.png" alt="A flower mandala made with one stroke" width="240" />
+  <img src="docs/img/mandala-star.png" alt="A star mandala made with one stroke" width="240" />
+</p>
 
 ## The idea
 
