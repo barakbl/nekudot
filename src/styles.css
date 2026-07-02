@@ -539,6 +539,12 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   background: none;
   cursor: pointer;
 }
+.maps-intro {
+  margin: 0 0 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
 .maps-menu-info {
   padding: 8px 10px 6px;
 }
@@ -1931,6 +1937,7 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   left: auto;
   right: 16px;
   min-width: 248px;
+  max-width: 270px;
 }
 .maps-box .maps-menu-info {
   padding: 4px 0 0;
