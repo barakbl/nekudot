@@ -4235,6 +4235,180 @@ body.help-mode .help-icon {
 
 /* Respect "reduce motion": collapse transitions/animations (incl. the looping
    record-blink) to near-instant for users who opt out of motion. */
+/* ---- First-run guide: "draw anywhere" cue + post-stroke tips strip ---------- */
+/* Both live inside the fixed .viewport. The cue is pointer-transparent so it can
+   never eat the pointerdown that dismisses it; the strip surfaces after the first
+   stroke and is dismissible. Show-once, first-run only (gated in main.ts). */
+.frg-cue {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: rgb(235, 238, 245); /* cool off-white, never pure #fff on the dark canvas */
+  text-align: center;
+  pointer-events: none;
+  z-index: 5;
+  animation:
+    frg-cue-in 500ms ease-out 700ms both,
+    frg-cue-breathe 3s ease-in-out 1200ms infinite alternate;
+}
+.frg-cue-glyph {
+  color: inherit;
+}
+.frg-cue-arc {
+  opacity: 0.42;
+  stroke-dasharray: 190;
+  stroke-dashoffset: 190;
+  animation: frg-cue-draw 4.5s ease-in-out 1400ms infinite;
+}
+.frg-cue-dot {
+  fill: currentColor;
+  opacity: 0.42;
+}
+.frg-cue-lead {
+  opacity: 0.72;
+}
+.frg-cue-primary {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  opacity: 0.6;
+}
+.frg-cue-secondary {
+  font-size: 12.5px;
+  opacity: 0.34;
+  margin-top: 2px;
+}
+.frg-cue.is-dismissing {
+  animation: none;
+  opacity: 0;
+  transition: opacity 380ms ease-out;
+}
+
+@keyframes frg-cue-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes frg-cue-breathe {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.025);
+    opacity: 1;
+  }
+}
+@keyframes frg-cue-draw {
+  0% {
+    stroke-dashoffset: 190;
+  }
+  35%,
+  70% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -190;
+  }
+}
+
+.frg-tips {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 14px);
+  width: min(640px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 11px 14px 13px;
+  background: rgba(18, 20, 26, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  box-shadow: var(--shadow-toolbar);
+  color: var(--text-body);
+  z-index: 6;
+  opacity: 0;
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
+}
+.frg-tips.is-in {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.frg-tips.is-out {
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+.frg-tips-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+.frg-tips-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.frg-tips-got {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.frg-tips-got:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.frg-tips-list {
+  display: grid;
+  gap: 5px;
+}
+.frg-tip {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+.frg-tip b {
+  font-weight: 600;
+  opacity: 1;
+}
+
+/* Reduced motion: the cue is static (visible, connectors drawn, no breathe); the
+   strip fades without the rise. */
+@media (prefers-reduced-motion: reduce) {
+  .frg-cue {
+    animation: none;
+    opacity: 1;
+  }
+  .frg-cue-arc {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .frg-tips.is-in,
+  .frg-tips.is-out {
+    transform: translate(-50%, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

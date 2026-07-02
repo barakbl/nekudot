@@ -21,20 +21,20 @@
   ],
   "tips": [
     {
-      "title": "Points remember, lines connect",
-      "text": "The Round brush drops points and weaves a web between nearby ones. Open Web (press C) to change how they link."
+      "title": "Points weave a web",
+      "text": "The Round brush drops points and links nearby ones. Tap Web to change how they connect, or turn the weaving off."
     },
     {
-      "title": "Multiply with symmetry",
-      "text": "Press Y for Symmetry. Radial turns any doodle into a mandala; Mirror and Tile repeat it across the canvas."
+      "title": "Make a mandala",
+      "text": "Tap Symmetry and choose Radial - every stroke mirrors around the center. Mirror and Tile repeat it other ways."
     },
     {
-      "title": "Lots of brushes",
-      "text": "Number keys (1-4, 8, 9) switch brushes - Round, Spray, Marker and more. Each has its own settings (press B)."
+      "title": "Try other brushes",
+      "text": "Tap the brush pill to swap Round for Spray, Marker and more - each with its own settings."
     },
     {
-      "title": "Find everything",
-      "text": "Press / any time for the full list of shortcuts. You can reopen this Start page from there."
+      "title": "Everything's in one place",
+      "text": "Tap the More menu for other tools, or open Shortcuts to see every gesture and key. You can reopen this Start page from there."
     }
   ]
 }
