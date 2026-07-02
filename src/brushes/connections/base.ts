@@ -116,6 +116,10 @@ export class ConnectionBase {
   protected connectType: LineConnectType = "quadraticCurve";
   protected connectionDash: DashStyle = "solid";
   protected connectionColorSource = "main"; // one of CONNECTION_COLOR_OPTIONS
+  // Per-line canvas blend (globalCompositeOperation). "source-over" = normal, the
+  // default for every style so their output is unchanged; Chroma defaults it to
+  // "lighten" for a metallic sheen. Persisted via the flat, shown as a Blend dial.
+  protected connectBlend: GlobalCompositeOperation = "source-over";
   protected connectInset = 0;
   protected connectAlphaFade = 0;
   protected connectStrands = 1;
@@ -443,7 +447,9 @@ export class ConnectionBase {
 
   protected drawConnection(p1: Pixel, p2: Pixel, style: LineStyle): void {
     const h = this.host;
-    h.drawConnectionToLayer(h.activeConnectionLayerId(), p1, p2, style, this.connectType);
+    const s =
+      this.connectBlend === "source-over" ? style : { ...style, composite: this.connectBlend };
+    h.drawConnectionToLayer(h.activeConnectionLayerId(), p1, p2, s, this.connectType);
   }
 
   private primaryColor(): string {
@@ -523,6 +529,7 @@ export class ConnectionBase {
       colorRange: this.connectColorRange,
       colorRelative: this.connectColorRelative,
       sampleSpacing: this.connectSampleSpacing,
+      blend: this.connectBlend,
     };
   }
 
@@ -566,7 +573,7 @@ export class ConnectionBase {
 
   // Single source of truth for "key → field" so sliders, presets and loads all
   // mutate state the same way.
-  private setKey(key: string, v: string | number | boolean): void {
+  protected setKey(key: string, v: string | number | boolean): void {
     switch (key) {
       case "alpha":
         if (typeof v === "number") this.connectionStyle = { ...this.connectionStyle, alpha: v };
@@ -604,6 +611,10 @@ export class ConnectionBase {
       case "colorRelative": if (typeof v === "boolean") this.connectColorRelative = v; break;
       case "connect": if (typeof v === "string") this.connectType = v as LineConnectType; break;
       case "dash": if (typeof v === "string") this.connectionDash = v as DashStyle; break;
+      case "blend":
+        if (typeof v === "string" && ["source-over", "lighten", "darken", "screen", "multiply"].includes(v))
+          this.connectBlend = v as GlobalCompositeOperation;
+        break;
       case "color":
         // Keep the source as-is (mapping legacy names); unknown sources resolve to
         // the Primary strokeStyle in connectionLineColor, and become valid once

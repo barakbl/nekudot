@@ -98,6 +98,14 @@
         "grainAngle": 0,
         "grainCross": false
       }
+    },
+    {
+      "name": "chroma",
+      "webWeight": { "light": { "strands": 1, "density": 45, "links": 20 }, "heavy": { "strands": 2, "density": 100, "links": 0 } },
+      "label": "Chroma",
+      "file": "chroma.ts",
+      "info": "Short, inset crossing lines in random darkened tones that build a metallic sheen - a port of the chrome brush in Harmony.",
+      "strokeAlpha": 0.1
     }
   ],
   "More": [

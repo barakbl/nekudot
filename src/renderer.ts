@@ -12,6 +12,11 @@ export type LineStyle = {
   // fraction of the line length, perpendicular to it. 0 = straight; larger =
   // more curl. Ignored by "line" and "arc". Defaults to 0.3 (the historic bow).
   curve?: number;
+  // Per-line canvas blend mode. Scoped by styled()'s save/restore, so it only
+  // affects this one draw and never leaks into later strokes. Unset = the
+  // context's current mode (normally source-over). Used by the Chroma web style
+  // for its metallic sheen; also the seam a future additive "Glow" style would use.
+  composite?: GlobalCompositeOperation;
 };
 
 export const LineConnectTypes = ["line", "arc", "quadraticCurve"] as const;
@@ -186,6 +191,8 @@ export class CanvasRenderer implements IRenderer {
     if (style.dash !== undefined) this.ctx.setLineDash(style.dash as number[]);
     if (style.dashOffset !== undefined)
       this.ctx.lineDashOffset = style.dashOffset;
+    if (style.composite !== undefined)
+      this.ctx.globalCompositeOperation = style.composite;
   }
 
   // Run `draw` inside save()/restore() with the optional stroke style applied.
