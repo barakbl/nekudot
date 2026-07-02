@@ -34,8 +34,11 @@ export default class FurConnection extends ConnectionBase {
       dynamics: 0.3,
       curl: 0,
       grainStrength: 0.85,
-      grainAngle: 75, // hairs comb down & slightly forward, like a coat's lay
+      // grainFollow reinterprets grainAngle as an offset from the stroke heading
+      // (not an absolute angle); 0 lays hairs along the contour, a tilt sweeps them.
+      grainAngle: 20,
       grainCross: false,
+      grainFollow: 1, // sweep the pelt along the stroke, not one global way
     };
   }
 
@@ -50,6 +53,7 @@ export default class FurConnection extends ConnectionBase {
       this.numStyle("length", "Length", 1, 3, 0.05),
       this.numStyle("wave", "Wave", 0, 1, 0.05),
       this.numStyle("dynamics", "Slow = richer", 0, 1, 0.05),
+      this.numStyle("grainFollow", "Follow stroke", 0, 1, 0.05),
     ];
   }
 
