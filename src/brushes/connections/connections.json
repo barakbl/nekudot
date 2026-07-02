@@ -107,14 +107,14 @@
       "label": "Bloomer",
       "file": "classic.ts",
       "info": "Your stroke blooms - points multiply into a full glowing web. Made for mandalas.",
-      "strokeAlpha": 0,
+      "strokeAlpha": 0.1,
       "icon": "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\" aria-hidden=\"true\"><circle cx=\"8\" cy=\"8\" r=\"2\"/><path d=\"M8 1 V4 M8 12 V15 M1 8 H4 M12 8 H15 M3.2 3.2 L5.3 5.3 M10.7 10.7 L12.8 12.8 M12.8 3.2 L10.7 5.3 M5.3 10.7 L3.2 12.8\"/></svg>",
       "defaults": {
         "alpha": 0.22,
         "color": "main",
         "connect": "line",
         "dash": "solid",
-        "density": 100,
+        "density": 75,
         "radius": 180,
         "minDist": 0,
         "inset": 0,
@@ -132,7 +132,8 @@
         "grainStrength": 0,
         "grainAngle": 0,
         "grainCross": false,
-        "bloom": 32,
+        "sampleSpacing": 8,
+        "bloom": 28,
         "bloomRadius": 100
       }
     },
