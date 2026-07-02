@@ -59,7 +59,17 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment-retry.outputs.page_url }}
     steps:
       - id: deployment
+        uses: actions/deploy-pages@v5
+        # The build + the deployment CREATE both succeed, but GitHub Pages' publish
+        # backend intermittently reports "Deployment failed, try again later" a few
+        # seconds later - a transient (it hits isolated deploys with no collision).
+        # Don't fail the run on the first attempt; retry once below.
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 20
+      - id: deployment-retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v5
