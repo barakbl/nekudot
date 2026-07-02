@@ -856,6 +856,15 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   background: var(--hover-bg-strong);
 }
 
+/* Tint only the glyph (not a filled chip, which would read as a toggled-on
+   state like the hot-map pill); accent wash on hover. */
+.toolbar .icon-btn.share-btn {
+  color: var(--accent);
+}
+.toolbar .icon-btn.share-btn:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 .shortcuts-panel {
   position: fixed;
   top: 64px;
