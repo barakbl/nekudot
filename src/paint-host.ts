@@ -97,6 +97,9 @@ export function createBareHost(
       finder.findNeighbors(px, radius),
     mapSize: (_mapId: string): number => finder.pixelCount(),
     clearPixels: () => finder.clear(),
+    forgetPointsNear: (x: number, y: number, radius: number): void => {
+      finder.removeNear?.(x, y, radius);
+    },
     isErasing: () => false,
     activeLayerId: () => "",
     activeConnectionLayerId: () => "",

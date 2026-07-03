@@ -20,7 +20,7 @@
     <main>
       <p class="crumbs"><a href="/book/">Book</a> › Utilities › Eraser</p>
       <h1>Eraser</h1>
-      <p class="lead">Rubs out pixels - without forgetting anything.</p>
+      <p class="lead">Rubs out paint - and, by default, forgets the dots underneath so the web stops reaching in.</p>
 
       <h2>What it is</h2>
       <p>
@@ -45,33 +45,62 @@
         <li>Toggle the eraser off to go straight back to painting with that same brush.</li>
       </ul>
 
-      <h2>The eraser and memory</h2>
+      <h2>Erase mode: paint, dots, or both</h2>
       <p>
-        This is the important part: <strong>erasing is purely visual.</strong> It
-        clears pixels on the canvas but does <em>not</em> touch your drawing's
-        <a href="/book/map.html">memory</a>. While erasing, nothing is added to or
-        removed from that memory - the remembered points behind the paint stay
-        exactly where they were.
+        A drawing has two layers of "there-ness": the <strong>paint</strong> you
+        see and the <a href="/book/map.html">dots your drawing remembers</a>. A
+        connecting web is woven toward those remembered dots - so a mark you rub
+        out with paint alone can still <em>pull the web</em> back into the space
+        you thought you cleared. The eraser's <strong>Erase</strong> setting lets
+        you choose which of the two a wipe removes:
       </p>
+      <ul>
+        <li>
+          <strong>Paint + dots</strong> (the default) - wipes the paint
+          <em>and</em> forgets the remembered dots under the stroke, so a
+          connecting web no longer reaches into the cleared area. The honest
+          eraser: what you rub out stays gone.
+        </li>
+        <li>
+          <strong>Paint only</strong> - wipes the paint but keeps every dot. Rub
+          out the ink while leaving the invisible scaffold the web is built on,
+          so a later connecting stroke still weaves toward where the mark was.
+        </li>
+        <li>
+          <strong>Dots only</strong> - forgets the dots without touching the
+          paint. A "forget brush": prune the memory where you don't want
+          connections while leaving your art exactly as it looks.
+        </li>
+      </ul>
       <div class="note">
-        So if you erase a stroke and then draw with a connecting brush, its web
-        will still reach toward the points you "erased" - they're invisible but
-        not forgotten. To actually forget points (and stop them attracting
-        connections), <em>clear the memory map</em> instead - that's a separate
-        action from erasing.
+        The Erase setting lives with the eraser's own dials (open
+        <strong>Settings</strong> while the eraser is on). Your choice is
+        remembered across sessions.
       </div>
+
+      <h2>Erasing and undo</h2>
+      <p>
+        Everything a wipe removes is a single undo step. Press
+        <span class="kbd">⌘Z</span> / <span class="kbd">Ctrl Z</span> and both
+        come back together - the paint <em>and</em> any dots the same stroke
+        forgot. You can rub out a region, decide you went too far, and undo it
+        whole.
+      </p>
       <div class="tip">
-        <span class="tip-label">Check the memory</span>
-        Erase a stroke, then press <span class="kbd">m</span> and
-        <strong>Flash</strong> the map - you'll see its points glowing right where
-        the paint used to be. That's why a new web still reaches there. It's a
-        handy feature, not a bug: rub out the ink but keep the structure.
+        <span class="tip-label">See the difference</span>
+        Erase a stroke in <strong>Paint only</strong>, then press
+        <span class="kbd">m</span> and <strong>Flash</strong> the map - the dots
+        still glow right where the paint used to be, which is why a new web
+        reaches there. Do the same in <strong>Paint + dots</strong> and they're
+        gone: no glow, no pull.
       </div>
 
       <h2>When to use which</h2>
       <ul>
-        <li><strong>Eraser</strong> - remove paint you don't want, while keeping the structure the web is built on.</li>
-        <li><strong>Clear the map</strong> - forget the remembered points so new connections start fresh.</li>
+        <li><strong>Paint + dots</strong> - the everyday eraser: clear a region and stop the web from weaving back into it.</li>
+        <li><strong>Paint only</strong> - rub out ink but keep the structure the web is built on, so connections still reach the old spot.</li>
+        <li><strong>Dots only</strong> - thin out the memory (fewer connections in an area) without changing how the drawing looks.</li>
+        <li><strong>Clear the map</strong> - forget <em>every</em> remembered dot at once so new connections start from a blank slate (see <a href="/book/map.html">Memory maps</a>).</li>
         <li><strong>Layer opacity / delete</strong> - fade or drop a whole layer at once (see <a href="/book/layers.html">Layers</a>).</li>
       </ul>
     </main>

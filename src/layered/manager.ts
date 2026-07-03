@@ -407,6 +407,11 @@ export class LayerManager implements PaintHost {
   livePixelCount(): number {
     return this.selectedMap?.finder.livePixelCount() ?? 0;
   }
+  // Forget dots near (x, y) on the selected map - the one new dots go to and the
+  // active web reads from.
+  forgetPointsNear(x: number, y: number, radius: number): void {
+    this.selectedMap?.finder.removeNear?.(x, y, radius);
+  }
 
   // ---- ConnectRouter (target specific layers/maps by stable id) -------------
 
