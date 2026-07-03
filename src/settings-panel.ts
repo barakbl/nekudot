@@ -43,6 +43,9 @@ const NO_PERSIST: PersistFn = () => {};
 // connecting dials and the brush dials. makeRow attaches a "?" bubble for any
 // key found here, in either tab.
 const SETTING_HELP: Record<string, string> = {
+  // --- Eraser ---
+  eraseMode:
+    "What an erase stroke removes. Paint + dots also forgets the remembered dots under it, so the web stops weaving back into the wiped area. Paint only keeps the dots; Dots only forgets the dots without touching the paint.",
   // --- Global brush controls ---
   __size: "Overall thickness of the stroke itself, before any web.",
   __opacity: "How solid the stroke is - lower lets overlapping passes build up.",

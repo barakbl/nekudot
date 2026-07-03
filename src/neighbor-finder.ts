@@ -12,6 +12,10 @@ export interface NeighborFinder {
   findNeighbors(px: Pixel, radius: number): Pixel[];
   addPixel(x: number, y: number): Pixel;
   clear(): void;
+  // Remove every point within `radius` of (x, y) and return them (the eraser's
+  // forget-dots). Optional: only the quadtree finder implements it, so a caller
+  // falls back to a no-op. Leaves nextId untouched so the stroke cutoff holds.
+  removeNear?(x: number, y: number, radius: number): Pixel[];
   allPixels(): Pixel[];
   // The next id to be assigned (ids are 0-based and monotonic), i.e. the total
   // number of points ever added since the last clear. Used as a stroke cutoff
@@ -98,6 +102,17 @@ class QuadtreeFinder extends NeighborFinderBase {
 
   allPixels(): Pixel[] {
     return this.pixels.slice();
+  }
+
+  removeNear(x: number, y: number, radius: number): Pixel[] {
+    const hits = this.findNeighbors({ id: -1, x, y }, radius);
+    if (!hits.length) return [];
+    // Drop the hits from both the d3-tree and the backing array; nextId stays put
+    // (deletes just leave id gaps). findNeighbors returns live objects -> identity.
+    this.tree.removeAll(hits);
+    const gone = new Set(hits);
+    this.pixels = this.pixels.filter((p) => !gone.has(p));
+    return hits;
   }
 
   findNeighbors(px: Pixel, radius: number): Pixel[] {

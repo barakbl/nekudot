@@ -86,6 +86,10 @@ export interface ConnectRouter {
   mapSize(mapId: string): number;
   // Clear every neighbors map's point cloud (used by brush clear()).
   clearPixels(): void;
+  // Forget the selected map's dots within `radius` of (x, y) - the eraser's
+  // "forget dots" pass, so a wiped area stops attracting web lines. Undo restores
+  // them (the undo snapshot captures the whole cloud).
+  forgetPointsNear(x: number, y: number, radius: number): void;
   // Whether the renderer is currently in erase mode (then strokes shouldn't
   // deposit points or draw connections).
   isErasing(): boolean;

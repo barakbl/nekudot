@@ -1,9 +1,5 @@
-import { BrushBase } from "../base";
+import { BrushBase, type BrushSetting } from "../base";
 import type { Pixel } from "../neighbor-finder";
-import type { PaintHost } from "../paint-host";
-import type { Store } from "../store/base";
-import { hasConnection } from "./connections/registry";
-import { DEFAULT_ART_STYLE } from "./round";
 import type { BrushContext } from "./registry";
 
 // Menu glyph for the toolbar — the classic eraser block.
@@ -18,23 +14,23 @@ export function create(c: BrushContext): EraserBrush {
 }
 
 // The Eraser: a round-capped line painted in erase mode (destination-out), so it
-// wipes the layer instead of drawing. Like Round it can weave connections — but
-// while erasing those lines erase too, so you can rub out the connecting web.
-// It defaults to the "no connect" routing, so out of the box it's a plain
-// eraser; switch "Connect to stroke or map?" on in Connecting settings to also
-// erase along connections. Selecting it flips the renderer into erase mode (see
+// wipes the layer instead of drawing. It is a plain eraser - it attaches no
+// connection, so there's no web/Connecting tab and no bloom; it just clears the
+// area it passes over. Selecting it flips the renderer into erase mode (see
 // LayerManager.setEraseMode, driven by erases() in main.ts).
+//
+// What an erase stroke removes is set by the "Erase" mode (default "both"):
+//   both  - wipe paint AND forget the dots under it (default; the honest eraser)
+//   paint - wipe paint only, keep the dots (advanced: keep the memory scaffold)
+//   dots  - forget dots only, leave the paint (a "forget brush": rub out memory
+//           without touching the art)
+export type EraseMode = "both" | "paint" | "dots";
+
 export class EraserBrush extends BrushBase {
   private lastX = 0;
   private lastY = 0;
-
-  constructor(host: PaintHost, seed?: number, store?: Store) {
-    super(host, seed, store);
-    // Attach a connection so the Connecting combo/box engage like Round, but
-    // start with "no connect" routing so the eraser only wipes its own line.
-    this.initConnection(DEFAULT_ART_STYLE);
-    this.applyRoutingPreset("no_connect");
-  }
+  // Persisted via the standard brush store (brush.Eraser.eraseMode).
+  private eraseMode: EraseMode = "both";
 
   name() {
     return "Eraser";
@@ -50,26 +46,50 @@ export class EraserBrush extends BrushBase {
   }
 
   protected onStroke(x: number, y: number, _current: Pixel): void {
-    // penStyle: pressure can narrow the eraser / soften the wipe (alpha in
-    // destination-out = partial erase). Empty for a mouse.
-    this.renderer.drawLine(
-      { id: 0, x: this.lastX, y: this.lastY },
-      { id: 0, x, y },
-      { cap: "round", ...this.penStyle() },
-    );
+    // Wipe the paint (unless "dots only"). penStyle: pressure can narrow the
+    // eraser / soften the wipe (alpha in destination-out = partial erase).
+    if (this.eraseMode !== "dots") {
+      this.renderer.drawLine(
+        { id: 0, x: this.lastX, y: this.lastY },
+        { id: 0, x, y },
+        { cap: "round", ...this.penStyle() },
+      );
+    }
+    // Forget the dots under the stroke (unless "paint only") - the same area the
+    // wipe covers. Sweep the whole segment so a fast stroke doesn't skip dots.
+    if (this.eraseMode !== "paint") {
+      const r = Math.max(this.host.strokeWidth() / 2, 3);
+      const dx = x - this.lastX;
+      const dy = y - this.lastY;
+      const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / r));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        this.host.forgetPointsNear(this.lastX + dx * t, this.lastY + dy * t, r);
+      }
+    }
     this.lastX = x;
     this.lastY = y;
   }
 
-  // Match the navbar Connecting combo so a chosen art style applies to the
-  // erased web too; routing (the "no connect" default) is preserved across the
-  // swap. Falls back to the default style until a custom preset finishes loading.
-  onSelect(): void {
-    const name = this.store?.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE;
-    this.selectArtStyle(hasConnection(name) ? name : DEFAULT_ART_STYLE);
+  getSettings(): BrushSetting[] {
+    return [
+      {
+        kind: "select",
+        key: "eraseMode",
+        label: "Erase",
+        section: "Eraser",
+        options: ["both", "paint", "dots"],
+        optionLabels: { both: "Paint + dots", paint: "Paint only", dots: "Dots only" },
+        value: this.eraseMode,
+        onChange: (v) => {
+          this.eraseMode = v as EraseMode;
+        },
+      },
+      ...super.getSettings(),
+    ];
   }
 
-  // Erase at full strength regardless of the connection style's stroke alpha.
+  // Erase at full strength regardless of the global stroke opacity.
   getSelectOpacity(): number {
     return 1;
   }
