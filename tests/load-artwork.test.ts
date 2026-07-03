@@ -26,6 +26,16 @@ function nekudot(files: Record<string, Uint8Array>): File {
   return new File([u8 as BlobPart], "art.nekudot");
 }
 
+// N schema-valid layer/map config + file entries, for the count-limit checks.
+const layerCfgs = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ index: i, name: `L${i + 1}` }));
+const layerFiles = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ layerIndex: i, baseFile: `layers/l${i}.png` }));
+const mapCfgs = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ name: `map-${i + 1}` }));
+const mapFiles = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({ index: i, file: `neighbors/m${i}.json` }));
+
 const expectFail = async (file: File, re: RegExp) => {
   const r = await loadArtworkFile(file);
   expect(r.ok).toBe(false);
@@ -71,6 +81,30 @@ describe("loadArtworkFile validation", () => {
       }),
       /too large/i,
     );
+  });
+
+  it("rejects a file with more layers than the app supports (max 10)", async () => {
+    const m = manifest({
+      config: { ...defaultLayersConfig(), layers: layerCfgs(11) },
+      files: {
+        preview: "preview.png",
+        layers: layerFiles(11),
+        neighborsMaps: [{ index: 0, file: "neighbors/map0.json" }],
+      },
+    });
+    await expectFail(nekudot({ "manifest.json": strToU8(JSON.stringify(m)) }), /too many layers/i);
+  });
+
+  it("rejects a file with an absurd number of memory maps", async () => {
+    const m = manifest({
+      config: { ...defaultLayersConfig(), neighborsMaps: mapCfgs(65) },
+      files: {
+        preview: "preview.png",
+        layers: [{ layerIndex: 0, baseFile: "layers/layer0.png" }],
+        neighborsMaps: mapFiles(65),
+      },
+    });
+    await expectFail(nekudot({ "manifest.json": strToU8(JSON.stringify(m)) }), /too many memory maps/i);
   });
 
   it("reports a missing referenced layer image", async () => {

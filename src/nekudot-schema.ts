@@ -34,9 +34,19 @@ export const ManifestSchema = z.object({
 });
 export type Manifest = z.infer<typeof ManifestSchema>;
 
+// Coordinates are canvas pixels (canvas is at most 8192 px); a real point, even
+// off-canvas, stays well within this. The bound also rejects nonsense values -
+// z.number() already rejects NaN/Infinity (a JSON "1e999" parses to Infinity),
+// and this catches finite-but-absurd coordinates from a corrupt file.
+export const MAX_MAP_COORD = 1_000_000;
+
 export const NeighborsMapPixelsSchema = z.array(
   // `color` is optional: most points carry the hue painted at deposit, but older
   // files (and uncoloured points) omit it, so it stays optional for back-compat.
-  z.object({ x: z.number(), y: z.number(), color: z.string().optional() }),
+  z.object({
+    x: z.number().min(-MAX_MAP_COORD).max(MAX_MAP_COORD),
+    y: z.number().min(-MAX_MAP_COORD).max(MAX_MAP_COORD),
+    color: z.string().max(64).optional(),
+  }),
 );
 export type NeighborsMapPixels = z.infer<typeof NeighborsMapPixelsSchema>;
