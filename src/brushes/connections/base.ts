@@ -236,6 +236,13 @@ export class ConnectionBase {
     return this.spec.name;
   }
 
+  // The web's search radius in canvas px (the "Reach" dial) - how far the web
+  // reaches for dots to link. 0 when this connection won't weave (connect mode
+  // off), so the cursor preview draws no reach ring.
+  reach(): number {
+    return this.connectMode === "none" ? 0 : this.searchRadius;
+  }
+
   // Optional min travel (px) between web samples. 0 (default) = weave through
   // every sampled point for the smoothest web. Rate-independence is handled
   // upstream now (the pointer loop samples the web once per frame, like Harmony),

@@ -1,4 +1,5 @@
 import { Overlay } from "./overlay";
+import { createBrushCursor } from "./brush-cursor";
 import { createMapHighlighter } from "./map-highlight";
 import type { CanvasSize } from "../canvas-size";
 import type { LayerManager } from "../layered/manager";
@@ -38,6 +39,17 @@ export function createDrawingCore(deps: {
   // visible while drawing). Restore the pinned state and keep it re-rendered as the
   // active map / its points change (camera moves need no refresh - it rides the
   // transformed stage).
+  // A ring under the pointer sized to the current brush - so you can see the
+  // dab's painted size before laying it down (and it scales with zoom).
+  const brushCursor = createBrushCursor({
+    stage,
+    dpr,
+    initialCanvasSize,
+    viewport,
+    store,
+    brushRadius: () => layerManager.strokeWidth() / 2,
+  });
+
   const mapHighlighter = createMapHighlighter(stage, layerManager, dpr);
   const storedHighlightColor = store.get<string>("app.maps.highlightColor");
   if (storedHighlightColor) mapHighlighter.setColor(storedHighlightColor);
@@ -66,6 +78,7 @@ export function createDrawingCore(deps: {
   const applyNewCanvasSize = (size: CanvasSize) => {
     invisibleOverlay.resize(size);
     symmetryOverlay.resize(size);
+    brushCursor.resize(size);
     updateSymmetryOverlay();
     mapHighlighter.refresh(); // re-fit the pinned highlight to the new canvas
     viewport.reset();
@@ -75,6 +88,7 @@ export function createDrawingCore(deps: {
     invisibleOverlay,
     symmetryOverlay,
     mapHighlighter,
+    brushCursor,
     updateSymmetryOverlay,
     applyNewCanvasSize,
   };

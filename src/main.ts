@@ -52,6 +52,7 @@ import { createStage } from "./app/stage";
 import { createExportActions, applyTheme } from "./app/export-actions";
 import { bindCameraInput } from "./app/camera-input";
 import { createDrawingCore } from "./app/drawing-core";
+import { CURSOR_STORE_KEY } from "./app/brush-cursor";
 import { createUndoWiring } from "./app/undo-wiring";
 import { createResetGate } from "./app/reset-gate";
 import { buildNavbar } from "./app/navbar";
@@ -208,7 +209,7 @@ const symmetry = new SymmetryController(store);
 
 // On-stage overlays (the invisible-brush glow, the symmetry guides, the map-dot
 // highlight), the symmetry-guide wiring, and the new-canvas resize/reframe.
-const { invisibleOverlay, mapHighlighter, applyNewCanvasSize } = createDrawingCore(
+const { invisibleOverlay, mapHighlighter, brushCursor, applyNewCanvasSize } = createDrawingCore(
   {
     stage,
     dpr,
@@ -283,6 +284,10 @@ const appState: AppState = {
   singleKeyShortcuts: store.get<boolean>("app.shortcuts.singleKey") ?? true,
   desktopMode: store.get<boolean>("app.desktopMode") ?? false,
 };
+
+// Feed the cursor preview the active brush's web reach (0 when it won't weave),
+// so its dashed reach ring tracks the current brush + Reach dial.
+brushCursor.setReach(() => appState.brush.activeConnection()?.reach() ?? 0);
 
 // "Desktop mode" (App settings, tablet only): the CSS gates the bottom-sheet vs
 // floating-window panel layout on body.desktop-mode (see styles.css).
@@ -398,6 +403,7 @@ const settingsPanel = createSettingsPanel({
       onChange: (size) => {
         layerManager.setLineWidth(size);
         store.set("app.size", size);
+        brushCursor.redraw(); // resize the preview ring live
         brushPreview.onSettingChanged({
           label: "Size",
           value: String(size),
@@ -771,6 +777,13 @@ const appSettingsBox = createAppSettingsBox({
     onChange: (t) => {
       applyTheme(t);
       store.set("app.theme", t);
+    },
+  },
+  cursor: {
+    initial: brushCursor.mode(),
+    onChange: (m) => {
+      store.set(CURSOR_STORE_KEY, m);
+      brushCursor.setMode(m);
     },
   },
   smoothGradients: appState.smoothGradients,
@@ -1237,6 +1250,7 @@ const imagePaste = bindImagePaste({
 });
 onViewportChange = () => {
   imagePaste.handleCameraChange();
+  brushCursor.redraw(); // keep the ring under the pointer + sized to the new zoom
   zoomReadout.refresh();
 };
 
