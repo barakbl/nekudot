@@ -1,6 +1,7 @@
 import { showChip } from "../chip";
 import type { AppHistory } from "./history";
 import type { LayerManager } from "../layered/manager";
+import { prettyLayerName } from "../layered/schema";
 import type { UndoSnapshot } from "../undo";
 
 // Undo/redo actions + the per-stroke persistence push. The AppHistory instance
@@ -18,7 +19,7 @@ export function createUndoWiring(deps: {
   const pushUndo = (description: string) => void history.push(description);
 
   const activeLayerName = (): string =>
-    layerManager.all[layerManager.activeIdx]?.config.name ?? "active layer";
+    prettyLayerName(layerManager.all[layerManager.activeIdx]?.config.name ?? "active layer");
 
   // No persist here: the undo/redo that triggered this already saved the new
   // pointer, and the pointer row is what boot restores from.

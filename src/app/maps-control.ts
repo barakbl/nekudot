@@ -48,7 +48,7 @@ export function createMapsControl(
       const name = layerManager.allNeighborsMaps[i]?.config.name ?? "map";
       showConfirm({
         title: "Delete map?",
-        message: `Delete the “${name}” map and the points it remembers?`,
+        message: `Delete the “${name}” map and the dots it remembers?`,
         confirmLabel: "Delete",
         destructive: true,
         onConfirm: () => {

@@ -4,6 +4,6 @@
   { "name": "Spray", "file": "spray.ts", "shortcut": "4", "menuGroup": "Other", "info": "Airbrush: scatters specks within a radius, building density as you dwell. Feeds the memory map (throttled) so connecting brushes can web over it." },
   { "name": "Marker", "file": "marker.ts", "shortcut": "8", "menuGroup": "Other", "info": "A chisel-tip marker stroke." },
   { "name": "Color Pen", "file": "color-pen.ts", "shortcut": "5", "menuGroup": "Other", "info": "A round pen with no connecting web. Lays a living, varied run of colour pulled from a gradient or palette as you draw - the pen's direction of travel walks the gradient. For lively, harmonious colour and texture, not picking one exact shade." },
-  { "name": "Invisible", "file": "invisible.ts", "shortcut": "9", "menuGroup": "Other", "info": "Deposits points (with a fading glow) without painting the layer." },
+  { "name": "Invisible", "label": "Seed", "file": "invisible.ts", "shortcut": "9", "menuGroup": "Other", "info": "Sows dots for the web to grow on - each glows briefly, but the layer stays blank." },
   { "name": "Eraser", "file": "eraser.ts", "menuGroup": "Other", "connections": true, "info": "Rubs out the layer with a round stroke. Can also erase connections — turn on a connect mode in Connecting settings (defaults to no connect)." }
 ]

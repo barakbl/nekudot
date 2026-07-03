@@ -28,6 +28,6 @@ export function registerHelpHints(panels: {
   );
   attachToHeading(
     panels.mapsBox,
-    "Memory maps remember sets of points so the Round brush can connect to them. Pick the active map (drawn into now), flash any map to see its dots on the canvas, or rename/add/delete maps.",
+    "Memory maps remember sets of dots so the Web brush can connect to them. Pick the active map (drawn into now), flash any map to see its dots on the canvas, or rename/add/delete maps.",
   );
 }

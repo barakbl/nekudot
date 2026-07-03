@@ -396,8 +396,8 @@ function makeMapsPill(control: MapsPillControl): {
     const { dots } = control.getActiveInfo();
     showChip(
       control.pinned()
-        ? `Showing cloud points live - currently ${dots} ${dots === 1 ? "point" : "points"}`
-        : "Cloud points highlight off",
+        ? `Showing cloud dots live - currently ${dots} ${dots === 1 ? "dot" : "dots"}`
+        : "Cloud dots highlight off",
     );
   });
 
@@ -457,19 +457,19 @@ function makeMapsPill(control: MapsPillControl): {
 
   const refresh = () => {
     const { name, dots } = control.getActiveInfo();
-    count.textContent = `${dots} ${dots === 1 ? "point" : "points"}`;
+    count.textContent = `${dots} ${dots === 1 ? "dot" : "dots"}`;
     const isPinned = control.pinned();
     flash.classList.toggle("is-on", isPinned);
     flash.setAttribute("aria-pressed", String(isPinned));
     flash.setAttribute(
       "aria-label",
-      isPinned ? `Hide ${name} cloud points` : `Show ${name} cloud points live`,
+      isPinned ? `Hide ${name} cloud dots` : `Show ${name} cloud dots live`,
     );
     flash.title = isPinned
-      ? `Cloud points showing - ${name} (click to hide)`
-      : `Show ${name} cloud points live`;
-    trigger.setAttribute("aria-label", `${name}: ${dots} points - open map menu`);
-    trigger.title = `${name} - ${dots} points`;
+      ? `Cloud dots showing - ${name} (click to hide)`
+      : `Show ${name} cloud dots live`;
+    trigger.setAttribute("aria-label", `${name}: ${dots} dots - open map menu`);
+    trigger.title = `${name} - ${dots} dots`;
     showRow.setAttribute("aria-label", `Memory map settings (${name})`);
   };
   control.subscribe(refresh);

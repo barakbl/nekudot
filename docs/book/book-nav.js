@@ -55,7 +55,7 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 Q8 8 12 12 T21 7"/><circle cx="3" cy="17" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="21" cy="7" r="1.3" fill="currentColor" stroke="none"/></svg>',
     symmetry:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3 V21 M3 12 H21 M5.6 5.6 L18.4 18.4 M18.4 5.6 L5.6 18.4"/></svg>',
-    invisible:
+    seed:
       '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-dasharray="2 2"><circle cx="8" cy="8" r="5"/></svg>',
     // connections - the app's own glyphs
     classic:
@@ -151,7 +151,7 @@
     {
       label: "Utilities",
       children: [
-        { label: "Invisible", href: "/book/brushes/invisible.html", icon: I.invisible },
+        { label: "Seed", href: "/book/brushes/seed.html", icon: I.seed },
         { label: "Eraser", href: "/book/eraser.html", icon: I.eraser },
       ],
     },
