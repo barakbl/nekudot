@@ -1,7 +1,11 @@
 import { unzipSync, strFromU8, type UnzipFileInfo } from "fflate";
 import { z } from "zod";
 import { CanvasSizeSchema, type CanvasSize } from "./canvas-size";
-import { LayersConfigSchema, type LayersConfig } from "./layered/schema";
+import {
+  LayersConfigSchema,
+  MAX_LAYERS_DEFAULT,
+  type LayersConfig,
+} from "./layered/schema";
 import { NeighborsMapPixelsSchema, NEKUDOT_SCHEMA_VERSION } from "./nekudot-schema";
 import type { LayerManager } from "./layered/manager";
 import type { PixelLog } from "./pixel-log";
@@ -12,6 +16,7 @@ const MAX_FILE_BYTES = 50 * 1024 * 1024; // any single entry, uncompressed
 const MAX_DIM = 8192; // canvas width/height
 const MAX_IMAGE_PIXELS = 64 * 1024 * 1024; // decoded bitmap guard
 const MAX_MAP_PIXELS = 200_000; // per neighbors map (extra trimmed)
+const MAX_MAPS = 64; // neighbors maps in one file (the app uses a handful)
 
 // ---- lenient import manifest (accepts current + older shapes) ---------------
 // LayersConfigSchema strips unknown keys, so a legacy config carrying the old
@@ -111,6 +116,22 @@ export async function loadArtworkFile(file: File): Promise<LoadResult> {
   const size = manifest.canvas;
   if (size.width < 1 || size.height < 1 || size.width > MAX_DIM || size.height > MAX_DIM) {
     return fail(`Canvas size out of range (${size.width}×${size.height}).`);
+  }
+
+  // 3b. Count sanity. hydrate() spawns every layer/map in the config with no cap
+  //     of its own, so bound them here. Layers reuse the app's own limit
+  //     (MAX_LAYERS_DEFAULT) so this tracks any future change to it; the config
+  //     and the file list must agree, so check whichever is larger.
+  const layerCount = Math.max(manifest.config.layers.length, manifest.files.layers.length);
+  if (layerCount > MAX_LAYERS_DEFAULT) {
+    return fail(`Too many layers (${layerCount}); this app supports up to ${MAX_LAYERS_DEFAULT}.`);
+  }
+  const mapCount = Math.max(
+    manifest.config.neighborsMaps.length,
+    manifest.files.neighborsMaps.length,
+  );
+  if (mapCount > MAX_MAPS) {
+    return fail(`Too many memory maps (${mapCount}); max ${MAX_MAPS}.`);
   }
 
   // 4. Decompress only referenced entries, each size-capped before inflating.
