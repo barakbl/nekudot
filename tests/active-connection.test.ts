@@ -8,9 +8,9 @@ installDocumentStub();
 // The connecting web bakes onto the active layer (there is no separate
 // connection layer). activeConnectionLayerId() always tracks the selected layer.
 describe("connections target the active layer", () => {
-  it("starts with two layers, layer-2 selected", () => {
+  it("starts with two layers, Layer 2 selected", () => {
     const m = newManager();
-    expect(m.all.map((l) => l.config.name)).toEqual(["layer-1", "layer-2"]);
+    expect(m.all.map((l) => l.config.name)).toEqual(["Layer 1", "Layer 2"]);
     expect(m.activeIdx).toBe(1);
     expect(m.activeConnectionLayerId()).toBe(m.active.config.id);
   });

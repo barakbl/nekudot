@@ -70,35 +70,35 @@ const SETTING_HELP: Record<string, string> = {
 
   // --- Connecting web: routing ---
   connecting_mode:
-    "Which points this brush links: just the current stroke, the shared map of every stroke, both, or nothing.",
+    "Which dots this brush links: just the current stroke, the shared map of every stroke, both, or nothing.",
   // --- Connecting web: weight ---
   strands:
     "How many fine strands make up each line - more reads as a bolder, denser mark (never one solid stroke).",
   spread:
     "How wide each line's strands fan out: low a tight ribbon, high an airy band. (Only bites once Weight is above 1.)",
-  density: "How likely each nearby point is to link up - higher fills the web denser.",
+  density: "How likely each nearby dot is to link up - higher fills the web denser.",
   links:
-    "Cap each point to its nearest few links instead of all within Reach - low trims long crossing lines into a clean, even mesh. 0 = link to all.",
+    "Cap each dot to its nearest few links instead of all within Reach - low trims long crossing lines into a clean, even mesh. 0 = link to all.",
   // --- Connecting web: art style ---
   alpha:
     "Opacity of each line - low lets overlapping lines build into soft shading, high reads as solid ink.",
-  radius: "How far each point looks for others to link to - larger reaches across bigger gaps.",
+  radius: "How far each dot looks for others to link to - larger reaches across bigger gaps.",
   bloom:
-    "Pad a sparse stroke with extra scattered points, so even a quick mark fills out into a full web. 0 keeps only the points you drew.",
+    "Pad a sparse stroke with extra scattered dots, so even a quick mark fills out into a full web. 0 keeps only the dots you drew.",
   bloomRadius:
     "How far the bloom scatters its dots from your stroke - small hugs the line, large floods a wide area. (Shows once Bloom is on.)",
   sampleSpacing:
-    "Spacing between the web's anchor points - 0 weaves a smooth web, higher breaks it into evenly spaced tufts or dots.",
+    "Spacing between the web's anchor dots - 0 weaves a smooth web, higher breaks it into evenly spaced tufts or clumps.",
   fade: "Make longer lines fainter, so the web settles into soft, shaded tone.",
   curl:
     "Bow the lines into curves - 0 straight, 1 a strong arc; good for smoke, wood grain and tendrils. (Shows only on the Curve line shape.)",
   comb:
     "Comb the web in one direction: drag out from the centre to comb harder, around to aim it. Centre is an even mesh; combed turns the web into fur, hatching or rain. Crosshatch combs two ways at once for a woven look.",
   minDist:
-    "Skip the tiny links that bunch up right at each point, so the web breathes instead of clotting.",
+    "Skip the tiny links that bunch up right at each dot, so the web breathes instead of clotting.",
   inset:
-    "Trim both ends of every line so it floats between points instead of pooling dark on them.",
-  connect: "Shape of the line between two points: straight, a bulging arc, or a smooth curve.",
+    "Trim both ends of every line so it floats between dots instead of pooling dark on them.",
+  connect: "Shape of the line between two dots: straight, a bulging arc, or a smooth curve.",
   dash: "Solid, dashed, or dotted connection lines.",
   color:
     "Where the web's colour comes from: one solid hue (Primary/Secondary), or a living run pulled from a gradient, Rainbow or palette as it draws. 'From mark' reuses colour your strokes already laid down.",
@@ -110,7 +110,7 @@ const SETTING_HELP: Record<string, string> = {
   taper: "Fade each hair from root to tip so it melts to a soft point - the key to fluffy fur.",
   flow: "Bow every hair the same way, like a combed or wind-swept pelt.",
   fray: "Stagger the hair lengths so the edge frays into stray strands instead of a blunt band.",
-  length: "How far each hair overshoots its point - 1 stops at the dot, higher grows long flowing hairs.",
+  length: "How far each hair overshoots its dot - 1 stops at the dot, higher grows long flowing hairs.",
   wave: "Kink each hair with a gentle wave so the pelt looks like living hair, not a flat comb.",
   dynamics:
     "Link weight to stroke speed - slow, deliberate passes build richer, fast flicks stay light.",
@@ -137,7 +137,7 @@ const SETTING_HELP: Record<string, string> = {
 // stay in art style. A manual tweak matches no preset, so none stays highlighted.
 const WEB_WEIGHT_KEYS = ["strands", "spread", "density", "links"] as const;
 const WEB_WEIGHT_HELP =
-  "Sets how heavy the web is for this connecting style: Weight (lines per point), Density and Links. Normal is this style's default look, Light makes it sparser, Heavy fills it in. Each style has its own Light/Normal/Heavy. Open Customize to fine-tune the sliders.";
+  "Sets how heavy the web is for this connecting style: Weight (lines per dot), Density and Links. Normal is this style's default look, Light makes it sparser, Heavy fills it in. Each style has its own Light/Normal/Heavy. Open Customize to fine-tune the sliders.";
 const isWebWeight = (s: BrushSetting): boolean =>
   (WEB_WEIGHT_KEYS as readonly string[]).includes(s.key);
 

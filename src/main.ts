@@ -1199,7 +1199,9 @@ const drawingInput = bindDrawingInput({
     mapHighlighter.refresh();
     // One capture serves both undo and persistence — the pushed row is the
     // persisted paint, so this is the only blob-encode pass per stroke.
-    pushUndo(`${b.name()} stroke on ${activeLayerName()}`);
+    // Use the brush's display label (e.g. "Web"), not its internal name ("Round").
+    const label = BRUSH_DEFS.find((d) => d.name === b.name())?.label ?? b.name();
+    pushUndo(`${label} stroke on ${activeLayerName()}`);
     // First-run only: surface the tips strip after the first stroke lands.
     firstRunGuide.notifyStrokeEnd();
   },

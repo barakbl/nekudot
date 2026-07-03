@@ -56,10 +56,17 @@ export function defaultLayer(index: number): LayerConfig {
   return {
     id: genId(),
     index,
-    name: `layer-${index + 1}`,
+    // Display name only (identity is `id`), so a friendly default is free to change.
+    name: `Layer ${index + 1}`,
     types: ["normal"],
     opacity: 100,
   };
+}
+
+// Upgrade a legacy default layer name ("layer-2" -> "Layer 2") for display; a
+// no-op on custom names and the current "Layer N" default.
+export function prettyLayerName(name: string): string {
+  return name.replace(/^layer-(\d+)$/i, "Layer $1");
 }
 
 export function defaultNeighborsMap(
@@ -73,7 +80,7 @@ export function defaultLayersConfig(
 ): LayersConfig {
   return {
     maxLayers,
-    // Start with two layers: layer-2 selected for painting.
+    // Start with two layers: the second (Layer 2) selected for painting.
     activeIndex: 1,
     layers: [defaultLayer(0), defaultLayer(1)],
     neighborsMaps: [defaultNeighborsMap([])],

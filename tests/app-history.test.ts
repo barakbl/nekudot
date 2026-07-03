@@ -62,7 +62,7 @@ describe("AppHistory serialization", () => {
       captured = snap.config.layers[0].name;
     });
     expect(action).toBe("rename race");
-    expect(captured).toBe("layer-1"); // the name at push time, not the later one
+    expect(captured).toBe("Layer 1"); // the name at push time, not the later one
   });
 
   it("a failed capture is dropped without poisoning later pushes", async () => {

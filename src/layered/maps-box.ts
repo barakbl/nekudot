@@ -58,7 +58,7 @@ export function createMapsBox(
   const intro = document.createElement("p");
   intro.className = "maps-intro";
   intro.textContent =
-    "Every point your brush drops is remembered here - connecting brushes weave lines between nearby points.";
+    "Every dot your brush drops is remembered here - connecting brushes weave lines between nearby dots.";
   panel.appendChild(intro);
 
   // "New map" creates a map (made active by the manager) and re-renders so the

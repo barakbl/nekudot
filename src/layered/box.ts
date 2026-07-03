@@ -1,6 +1,7 @@
 import { createPanel } from "../ui/panel";
 import { makeToggle } from "../ui/toggle";
 import { sizeCanvasForDpr } from "../canvas-size";
+import { prettyLayerName } from "./schema";
 import type { LayerManager } from "./manager";
 
 export type LayersBox = {
@@ -255,8 +256,8 @@ function makeRow(
   refreshers.push(refreshLayerThumb);
   row.appendChild(layerThumb);
 
-  const name = makeEditableName(layer.config.name, (n) => {
-    const prev = layer.config.name;
+  const name = makeEditableName(prettyLayerName(layer.config.name), (n) => {
+    const prev = prettyLayerName(layer.config.name);
     manager.setName(index, n);
     onCommit(`Rename ${prev} → ${n}`);
   });
