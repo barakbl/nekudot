@@ -4,6 +4,15 @@ import { attachHelp } from "../help";
 import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
 import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
+import type { BrushCursorMode } from "./brush-cursor";
+
+// The canvas-cursor styles offered in App settings (see app/brush-cursor).
+const CURSOR_OPTIONS: { value: BrushCursorMode; label: string }[] = [
+  { value: "size-reach", label: "Brush size + web reach" },
+  { value: "cross-reach", label: "Cross + web reach" },
+  { value: "size", label: "Brush size" },
+  { value: "cross", label: "Cross only" },
+];
 
 export type AppSettingsBox = { el: HTMLElement; toggle: () => void };
 
@@ -16,6 +25,7 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 // draggable box sharing the Layers/Symmetry panel chrome.
 export function createAppSettingsBox(opts: {
   theme: { initial: Theme; onChange: (t: Theme) => void };
+  cursor: { initial: BrushCursorMode; onChange: (m: BrushCursorMode) => void };
   smoothGradients: boolean;
   onToggleSmoothGradients: (on: boolean) => void;
   penEnabled: boolean;
@@ -91,6 +101,22 @@ export function createAppSettingsBox(opts: {
     seg.appendChild(b);
   }
   syncTheme();
+
+  // Cursor preview picker: brush-size ring and/or dashed web-reach ring, or the
+  // classic crosshair. A dropdown since the labels are too wordy for a segmented row.
+  const cursorSelect = document.createElement("select");
+  cursorSelect.className = "appset-select";
+  for (const o of CURSOR_OPTIONS) {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === opts.cursor.initial) opt.selected = true;
+    cursorSelect.appendChild(opt);
+  }
+  cursorSelect.addEventListener("click", (e) => e.stopPropagation());
+  cursorSelect.addEventListener("change", () => {
+    opts.cursor.onChange(cursorSelect.value as BrushCursorMode);
+  });
 
   // Red "any diagnostic on" badge for the (always-visible) Diagnostics header.
   const diagWarn = document.createElement("span");
@@ -258,6 +284,11 @@ export function createAppSettingsBox(opts: {
   body.append(
     sub("Appearance"),
     row("Theme", seg),
+    row(
+      "Cursor",
+      cursorSelect,
+      "What the canvas cursor shows: a ring at the brush's painted size, the web's reach as a dashed ring, the classic crosshair, or a combination.",
+    ),
     row(
       "Smooth gradients",
       smoothGrad.el,

@@ -1776,6 +1776,17 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 .appset-link:hover {
   text-decoration: underline;
 }
+.appset-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-stronger);
+  background: transparent;
+  color: var(--text-body);
+  cursor: pointer;
+  max-width: 62%;
+}
 .appset-seg {
   display: flex;
   gap: 4px;
