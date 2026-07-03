@@ -268,6 +268,7 @@ type AppState = {
   brush: BrushBase; // selected brush; written by selectBrush
   artStyle: string; // connection art style; written by setArtStyle + onboarding reset
   penEnabled: boolean; // pen pressure/tilt support; off = stylus draws like a mouse, Pen section hidden
+  penOnly: boolean; // palm rejection: touch never draws, only pen/mouse; off by default
   pixelLogEnabled: boolean; // pixel-log writing (future features); off by default
   diagnosticsEnabled: boolean; // opt-in field diagnostics
   smoothGradients: boolean; // OKLCH "smooth" gradient blend space vs sRGB; default on
@@ -278,6 +279,7 @@ const appState: AppState = {
   brush: brushes[initialBrushKey],
   artStyle: store.get<string>("app.artStyle") ?? DEFAULT_ART_STYLE,
   penEnabled: store.get<boolean>("app.penEnabled") ?? true,
+  penOnly: store.get<boolean>("app.penOnly") ?? false,
   pixelLogEnabled: store.get<boolean>("app.pixelLog") ?? false,
   diagnosticsEnabled: store.get<boolean>("app.diag") ?? false,
   smoothGradients: store.get<boolean>("app.gradient.oklch") ?? true,
@@ -799,6 +801,11 @@ const appSettingsBox = createAppSettingsBox({
     store.set("app.penEnabled", on);
     settingsPanel.render(appState.brush); // show/hide the Pen section live
   },
+  penOnlyDraws: appState.penOnly,
+  onTogglePenOnlyDraws: (on) => {
+    appState.penOnly = on;
+    store.set("app.penOnly", on);
+  },
   singleKeyShortcuts: appState.singleKeyShortcuts,
   onToggleSingleKeyShortcuts: (on) => {
     appState.singleKeyShortcuts = on;
@@ -1206,6 +1213,7 @@ const drawingInput = bindDrawingInput({
   layerManager,
   penEnabled: () => appState.penEnabled,
   gestureActive: () => touchGestures?.active() ?? false,
+  penOnly: () => appState.penOnly, // "Pen only draws" palm rejection (App settings)
   ready: () => bootRestored, // hold input until the boot paint-restore settles
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {

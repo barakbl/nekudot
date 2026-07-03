@@ -203,6 +203,62 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
   });
 });
 
+describe("drawing input: penOnly palm rejection", () => {
+  const setup = (penOnly: () => boolean) => {
+    const stage = makeStage();
+    let starts = 0;
+    let ends = 0;
+    const brush = {
+      strokeStart: () => void starts++,
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => true,
+      penOnly,
+      onStrokeEnd: () => void ends++,
+    });
+    return { stage, starts: () => starts, ends: () => ends };
+  };
+  const move = (id: number) => ({ pointerId: id, getCoalescedEvents: () => [] });
+
+  it("ignores touch entirely when on (a resting palm/finger leaves no mark)", () => {
+    const { stage, starts, ends } = setup(() => true);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointermove", move(1));
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(starts()).toBe(0);
+    expect(ends()).toBe(0);
+  });
+
+  it("still draws with a pen when on", () => {
+    const { stage, starts } = setup(() => true);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "pen", pressure: 0.5 });
+    expect(starts()).toBe(1); // pen is unambiguous — draws immediately
+  });
+
+  it("still draws with a mouse when on (a mouse is never a touch pointer)", () => {
+    const { stage, starts } = setup(() => true);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "mouse" });
+    expect(starts()).toBe(1);
+  });
+
+  it("off (default): a finger tap still draws, so finger drawing isn't broken", () => {
+    const { stage, starts, ends } = setup(() => false);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, pointerType: "touch" });
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(starts()).toBe(1);
+    expect(ends()).toBe(1);
+  });
+});
+
 describe("drawing input: ready gate (boot paint-restore)", () => {
   const setup = (ready: () => boolean) => {
     const stage = makeStage();
