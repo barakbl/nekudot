@@ -33,6 +33,12 @@ export function bindDrawingInput(opts: {
   // True while a multi-touch camera gesture (pan/zoom/rotate) owns the input -
   // touch pointers must not draw then. See app/touch-gestures.
   gestureActive?: () => boolean;
+  // Palm rejection ("Pen only draws", App settings). When true, touch pointers
+  // never start a stroke, so a resting palm or stray finger leaves no mark -
+  // only pen (and mouse) draw. Two-finger pan/pinch still works: that's the
+  // gesture layer, which listens on TouchEvents. Default (unset) draws with any
+  // pointer, so finger drawing keeps working out of the box.
+  penOnly?: () => boolean;
   // Gate: when this returns false, pointerdown is ignored so no stroke starts.
   // Used to hold input until the boot paint-restore finishes - otherwise an
   // early stroke is overwritten by applyPaintData mid-flight (bug #1). Default
@@ -114,6 +120,8 @@ export function bindDrawingInput(opts: {
     // gesture owns the input. Guards both event orders (pointerdown vs touchstart).
     if (drawingId !== null) return;
     if (e.pointerType === "touch" && opts.gestureActive?.()) return;
+    // Palm rejection: with "Pen only draws" on, no touch ever marks the canvas.
+    if (e.pointerType === "touch" && opts.penOnly?.()) return;
     e.preventDefault();
     stage.setPointerCapture(e.pointerId);
     drawingId = e.pointerId;

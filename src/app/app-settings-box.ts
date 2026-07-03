@@ -30,6 +30,8 @@ export function createAppSettingsBox(opts: {
   onToggleSmoothGradients: (on: boolean) => void;
   penEnabled: boolean;
   onTogglePen: (on: boolean) => void;
+  penOnlyDraws: boolean;
+  onTogglePenOnlyDraws: (on: boolean) => void;
   singleKeyShortcuts: boolean;
   onToggleSingleKeyShortcuts: (on: boolean) => void;
   desktopMode: boolean;
@@ -132,11 +134,16 @@ export function createAppSettingsBox(opts: {
   const smoothGrad = makeToggle(opts.smoothGradients, opts.onToggleSmoothGradients);
   const desktopMode = makeToggle(opts.desktopMode, opts.onToggleDesktopMode);
   const pen = makeToggle(opts.penEnabled, opts.onTogglePen);
+  const penOnly = makeToggle(opts.penOnlyDraws, opts.onTogglePenOnlyDraws);
   // "Desktop mode" only makes sense on a tablet: a desktop already floats panels,
   // and a phone is too narrow for windows. Surface the row only on tablet-width touch.
   const showDesktopMode =
     typeof window !== "undefined" &&
     window.matchMedia("(pointer: coarse) and (min-width: 641px)").matches;
+  // "Pen only draws" (palm rejection) is only meaningful with a touchscreen -
+  // a mouse is never a touch pointer, so the toggle would do nothing on desktop.
+  const showPenOnly =
+    typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
   const singleKey = makeToggle(
     opts.singleKeyShortcuts,
     opts.onToggleSingleKeyShortcuts,
@@ -309,6 +316,15 @@ export function createAppSettingsBox(opts: {
       pen.el,
       "Use a stylus's pressure and tilt to shape the stroke. Off makes a pen draw like a mouse.",
     ),
+    ...(showPenOnly
+      ? [
+          row(
+            "Pen only draws",
+            penOnly.el,
+            "Palm rejection: only a pen (stylus) marks the canvas, so a resting palm or stray finger leaves no stroke. Two-finger pan, pinch and rotate still work. Turn off to draw with a finger.",
+          ),
+        ]
+      : []),
     row(
       "Single-key shortcuts",
       singleKey.el,
