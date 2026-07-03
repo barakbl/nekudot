@@ -7,6 +7,9 @@ export type Shortcut = {
   cmdOrCtrl?: boolean;
   fingers?: 2 | 3 | 4;
   swipe?: "up";
+  // A mouse/touch input hint ("pinch", "middle-drag", "⌘ + scroll") for non-key
+  // controls; renders as a soft gesture badge and never binds (no key/code).
+  gesture?: string;
   label?: string;
   group?: string;
   onPress: () => void;
@@ -201,7 +204,7 @@ function shortcutParts(s: Shortcut): string[] {
 }
 
 // Stable group order — groups not listed here appear after, in insertion order.
-const GROUP_ORDER = ["Brushes", "Panels", "Edit", "Capture", "Help", "Other"];
+const GROUP_ORDER = ["Brushes", "Panels", "View", "Edit", "Capture", "Help", "Other"];
 
 type GroupedShortcut = {
   description: string;
@@ -238,6 +241,8 @@ function groupShortcuts(shortcuts: Shortcut[]): Map<string, GroupedShortcut[]> {
     }
     if (s.fingers !== undefined) {
       entry.touchLabels.push(fingerLabel(s));
+    } else if (s.gesture !== undefined) {
+      entry.touchLabels.push(s.gesture); // mouse/touch hint -> soft gesture badge
     } else {
       entry.keyboardCombos.push(shortcutParts(s));
     }

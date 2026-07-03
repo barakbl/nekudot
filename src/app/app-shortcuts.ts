@@ -3,6 +3,12 @@ import type { Shortcut } from "../shortcuts";
 import { toggleHelpMode, isHelpModeOn, onHelpModeChange } from "../help";
 import { showChip } from "../chip";
 
+// Modifier symbol for the desktop zoom hint (⌘ on mac, Ctrl elsewhere).
+const MOD =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPod|iPad/i.test(navigator.platform)
+    ? "⌘"
+    : "Ctrl";
+
 // Everything the global shortcut table triggers. The panel list is read lazily
 // because the Shortcuts panel itself is built from the table this returns.
 export type ShortcutActions = {
@@ -22,6 +28,7 @@ export type ShortcutActions = {
   redo: () => void;
   save: () => void; // Cmd/Ctrl+S: save to the connected folder, else download
   recordClip: () => void; // start a GIF recording (arms on first stroke)
+  resetView: () => void; // recentre + fit the canvas (the navbar's Reset view)
 };
 
 // The app's shortcut table (keyboard + multi-finger gestures). The Brushes
@@ -169,5 +176,19 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       description: "Hide/show all panels",
       onPress: () => actions.togglePanels("touch"),
     },
+    // --- View / camera. Mouse + touch, so it had no keyboard hints and read as
+    // absent. Only "0" is a real key; the rest are display-only gesture badges.
+    {
+      key: "0",
+      group: "View",
+      description: "Reset view (fit and recentre)",
+      onPress: () => actions.resetView(),
+    },
+    { gesture: `${MOD} + scroll`, group: "View", description: "Zoom in and out", onPress: () => {} },
+    { gesture: "pinch", group: "View", description: "Zoom in and out", onPress: () => {} },
+    { gesture: "scroll", group: "View", description: "Pan the canvas", onPress: () => {} },
+    { gesture: "middle-drag", group: "View", description: "Pan the canvas", onPress: () => {} },
+    { gesture: "2-finger drag", group: "View", description: "Pan the canvas", onPress: () => {} },
+    { gesture: "twist", group: "View", description: "Rotate the canvas", onPress: () => {} },
   ];
 }
