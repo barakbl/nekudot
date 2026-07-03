@@ -5,6 +5,7 @@ import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
+import { createZoomReadout } from "./app/zoom-readout";
 import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
 import { createBrushPreview } from "./brush-preview";
 import { connectionGroups, hasConnection } from "./brushes/connections/registry";
@@ -167,6 +168,9 @@ const viewport = new Viewport({
   onChange: () => onViewportChange(),
 });
 viewport.reset(); // 100% centred, or fit if the canvas is bigger than the window
+// Refreshed on every view change (see onViewportChange below).
+const zoomReadout = createZoomReadout(viewport);
+viewportEl.appendChild(zoomReadout.el);
 bindCameraInput({
   viewportEl,
   viewport,
@@ -1127,6 +1131,7 @@ const uiVisibility = createUiVisibility(() => [
   appSettingsBox.el,
   ...(folderBox ? [folderBox.el] : []),
   shortcutsPanel.el,
+  zoomReadout.el,
 ]);
 
 const shortcuts = buildAppShortcuts({
@@ -1150,6 +1155,7 @@ const shortcuts = buildAppShortcuts({
     else void downloadArtwork();
   },
   recordClip,
+  resetView: () => viewport.reset(),
 });
 const shortcutsPanel = createShortcutsPanel(shortcuts);
 document.body.appendChild(shortcutsPanel.el);
@@ -1229,7 +1235,10 @@ const imagePaste = bindImagePaste({
     layersBox.refreshPreviews();
   },
 });
-onViewportChange = () => imagePaste.handleCameraChange();
+onViewportChange = () => {
+  imagePaste.handleCameraChange();
+  zoomReadout.refresh();
+};
 
 // ---- durability on hide/close -----------------------------------------------------
 

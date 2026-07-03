@@ -2819,6 +2819,34 @@ body.help-mode .help-icon {
   }
 }
 
+/* ---- Zoom % readout: a transient corner pill; flashes in while zooming, then
+   fades. Click (while shown) resets zoom to 100%. -------------------------- */
+.zoom-readout {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  min-width: 42px;
+  padding: 4px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-toolbar);
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0; /* hidden at rest - only shows while the zoom is changing */
+  pointer-events: none;
+  transition: opacity 250ms ease;
+}
+.zoom-readout.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* ---- GIF recording: REC pill + preview/edit modal -------------------------- */
 .clip-rec-pill {
   position: absolute;
