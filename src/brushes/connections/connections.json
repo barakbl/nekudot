@@ -110,6 +110,14 @@
   ],
   "More": [
     {
+      "name": "glow",
+      "webWeight": { "light": { "strands": 1, "density": 38, "links": 20 }, "heavy": { "strands": 2, "density": 72, "links": 0 } },
+      "label": "Glow",
+      "file": "glow.ts",
+      "info": "Faint single-hued strands that pile into a luminous halo - additive light on the dark canvas.",
+      "strokeAlpha": 0.08
+    },
+    {
       "name": "bloom",
       "webWeight": { "light": { "strands": 1, "density": 60, "links": 0 }, "heavy": { "strands": 1, "density": 100, "links": 0 } },
       "label": "Bloomer",
