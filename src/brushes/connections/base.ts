@@ -50,6 +50,27 @@ const MAX_CONNECT_STRANDS = 12;
 // Sample spacing (px) at/above which `dynamics` treats the stroke as "fast".
 const DYNAMICS_SPEED_REF = 28;
 
+// The per-line canvas blend modes offered by the Blend dial (Chroma, Glow) and
+// accepted from a preset's `blend` key. "Add" (lighter) accumulates light
+// linearly; "Screen" accumulates but self-limits toward white (no hard clip);
+// darken/multiply subtract light, so they only read on a light background.
+export const BLEND_MODES = [
+  "source-over",
+  "screen",
+  "lighter",
+  "lighten",
+  "darken",
+  "multiply",
+] as const;
+const BLEND_LABELS: Record<string, string> = {
+  "source-over": "Normal",
+  screen: "Screen",
+  lighter: "Add",
+  lighten: "Lighten",
+  darken: "Darken (light bg)",
+  multiply: "Multiply (light bg)",
+};
+
 // Everything a connection needs from its owning brush. `host` is a live
 // accessor (not a snapshot) so a brush could swap its drawing surface
 // mid-stroke (none does today; kept for parity with the original renderer
@@ -624,7 +645,7 @@ export class ConnectionBase {
       case "connect": if (typeof v === "string") this.connectType = v as LineConnectType; break;
       case "dash": if (typeof v === "string") this.connectionDash = v as DashStyle; break;
       case "blend":
-        if (typeof v === "string" && ["source-over", "lighten", "darken", "screen", "multiply"].includes(v))
+        if (typeof v === "string" && (BLEND_MODES as readonly string[]).includes(v))
           this.connectBlend = v as GlobalCompositeOperation;
         break;
       case "color":
@@ -657,6 +678,22 @@ export class ConnectionBase {
   // none — most presets are single-line and expose just the universal dials.
   protected extraSliders(): BrushSetting[] {
     return [];
+  }
+
+  // The per-line Blend dial, shared by the composite-driven styles (Chroma, Glow).
+  // Not on every style by default — only the ones whose look is defined by the
+  // blend expose it via extraSliders().
+  protected blendSlider(): BrushSetting {
+    return {
+      kind: "select",
+      key: "blend",
+      label: "Blend",
+      section: STYLE_SECTION,
+      options: [...BLEND_MODES],
+      optionLabels: BLEND_LABELS,
+      value: this.connectBlend,
+      onChange: (v) => this.setKey("blend", v),
+    };
   }
 
   // Style dials the settings panel shows by default in the art-style group (never

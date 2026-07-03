@@ -1,6 +1,5 @@
 import { ConnectionBase } from "./base";
 import type { ConnectingFlat } from "../../connecting-types";
-import { STYLE_SECTION } from "../../connecting-types";
 import type { LineStyle } from "../../renderer";
 import type { Pixel } from "../../neighbor-finder";
 import type { BrushSetting } from "../../base";
@@ -17,17 +16,6 @@ import { parseHex, toHex } from "../../colors/gradient";
 export const icon =
   '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" aria-hidden="true">' +
   '<path d="M3 6 L10 10 M5 11 L12 4 M4 9 L11 8 M8 3 L7 13"/></svg>';
-
-// The Blend dial's modes, most-useful-first. darken/multiply only read on a
-// light background (they subtract light), so they are labelled as such.
-const BLEND_OPTIONS = ["lighten", "screen", "source-over", "darken", "multiply"];
-const BLEND_LABELS: Record<string, string> = {
-  lighten: "Lighten",
-  screen: "Screen",
-  "source-over": "Normal",
-  darken: "Darken (light bg)",
-  multiply: "Multiply (light bg)",
-};
 
 export default class ChromaConnection extends ConnectionBase {
   protected defaults(): ConnectingFlat {
@@ -63,20 +51,9 @@ export default class ChromaConnection extends ConnectionBase {
     return [...super.defaultOpenKeys(), "blend"];
   }
 
-  // Chroma's own dial: the composite blend for the web lines.
+  // Chroma's own dial: the composite blend for the web lines (shared with Glow).
   protected extraSliders(): BrushSetting[] {
-    return [
-      {
-        kind: "select",
-        key: "blend",
-        label: "Blend",
-        section: STYLE_SECTION,
-        options: BLEND_OPTIONS,
-        optionLabels: BLEND_LABELS,
-        value: this.connectBlend,
-        onChange: (v) => this.setKey("blend", v),
-      },
-    ];
+    return [this.blendSlider()];
   }
 
   // Recolour every web line a random darkened shade of its own colour (Primary,
