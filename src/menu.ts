@@ -95,6 +95,15 @@ export type MapsPillControl = {
   subscribe: (fn: () => void) => () => void; // refresh when maps change
 };
 
+// The navbar Layers quick-access: a single stacked-layers icon that opens the
+// Layers subpanel (see layered/box.ts) anchored under it. The tooltip carries the
+// active layer's name + count.
+export type LayersPillControl = {
+  getActiveInfo: () => { name: string; count: number }; // active layer + count
+  onOpen: (anchor: HTMLElement) => void; // click → open/close the Layers subpanel
+  subscribe: (fn: () => void) => () => void; // refresh when layers change
+};
+
 // The navbar Symmetry combo: an icon-only pill (the selected mode's glyph) +
 // a gear that opens the Symmetry panel + a dropdown listing each mode as
 // icon + name. Mirrors the Connecting combo, minus the collapsed label.
@@ -117,6 +126,7 @@ export function createMenu<T extends string>(
   history?: HistoryControl,
   windows?: WindowEntry[],
   connecting?: ConnectingControl,
+  layers?: LayersPillControl,
   maps?: MapsPillControl,
   symmetry?: SymmetryControl,
   brushStyleTree?: BrushStyleTree,
@@ -133,6 +143,7 @@ export function createMenu<T extends string>(
   setSecondaryColor: (v: string) => void;
   refreshHistoryState: () => void;
   refreshMapsPill: () => void;
+  layersPillAnchor: HTMLElement | null; // navbar Layers icon; the subpanel anchors here
   mapsPillAnchor: HTMLElement | null; // navbar Maps icon; the subpanel anchors here
   toggleCanvasMenu: () => void;
 } {
@@ -151,6 +162,13 @@ export function createMenu<T extends string>(
     bar.appendChild(makeShareButton(canvasOptions.onShareImage));
   }
   if (windows && windows.length) bar.appendChild(makeWindowsMenu(windows));
+  // Layers icon sits just left of the Maps icon (appended first).
+  let layersPillAnchor: HTMLElement | null = null;
+  if (layers) {
+    const pill = makeLayersPill(layers);
+    layersPillAnchor = pill.anchor;
+    bar.appendChild(pill.el);
+  }
   let refreshMapsPill = () => {};
   let mapsPillAnchor: HTMLElement | null = null;
   if (maps) {
@@ -235,6 +253,7 @@ export function createMenu<T extends string>(
     setSecondaryColor: swatch.setSecondary,
     refreshHistoryState,
     refreshMapsPill,
+    layersPillAnchor,
     mapsPillAnchor,
     toggleCanvasMenu,
   };
@@ -368,6 +387,45 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   }
 
   return wrap;
+}
+
+// Navbar Layers quick-access: a single stacked-layers icon that opens the Layers
+// subpanel anchored beneath it. Tooltip carries the active layer's name + count,
+// kept in sync via control.subscribe (layer add/remove/rename/reorder all emit).
+function makeLayersPill(control: LayersPillControl): {
+  el: HTMLElement;
+  anchor: HTMLElement; // the icon button - the subpanel opens beneath it
+  refresh: () => void;
+} {
+  const wrap = document.createElement("span");
+  wrap.className = "pill layers-pill";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "icon-btn layers-pill-btn";
+  // Stacked-sheets glyph - the conventional "layers" icon.
+  btn.innerHTML =
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M12 3 L21 8 L12 13 L3 8 Z"/>' +
+    '<path d="M3 12 L12 17 L21 12"/>' +
+    '<path d="M3 16 L12 21 L21 16"/>' +
+    "</svg>";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    control.onOpen(btn);
+  });
+  wrap.appendChild(btn);
+
+  const refresh = () => {
+    const { name, count } = control.getActiveInfo();
+    const c = `${count} ${count === 1 ? "layer" : "layers"}`;
+    btn.setAttribute("aria-label", `Layers - ${name}, ${c}`);
+    btn.title = `${name} - ${c} (open layers)`;
+  };
+  control.subscribe(refresh);
+  refresh();
+
+  return { el: wrap, anchor: btn, refresh };
 }
 
 // Navbar Maps quick-access (card #88): a single cloud-of-dots icon that opens the

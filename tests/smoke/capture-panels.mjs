@@ -90,7 +90,7 @@ try {
 
   // Layers panel - the Background "Transparent" iOS switch.
   await key("l", "KeyL", 76);
-  await shot(".layers-box:not(.symmetry-box)", "panel-layers.png");
+  await shot(".layers-popover", "panel-layers.png");
   await key("l", "KeyL", 76);
 
   // Memory Maps panel - the map list, web routing, and the highlight-colour swatch.

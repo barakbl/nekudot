@@ -1,12 +1,14 @@
-import { createPanel } from "../ui/panel";
 import { makeToggle } from "../ui/toggle";
+import { makeCloseButton } from "../settings-panel";
 import { sizeCanvasForDpr } from "../canvas-size";
 import { prettyLayerName } from "./schema";
 import type { LayerManager } from "./manager";
 
 export type LayersBox = {
   el: HTMLElement;
-  toggle: () => void;
+  open: (anchor: HTMLElement) => void; // reveal the popover next to `anchor`
+  close: () => void;
+  isOpen: () => boolean;
   render: () => void;
   refreshPreviews: () => void;
 };
@@ -47,7 +49,19 @@ export function createLayersBox(
   onBackgroundApply: () => void = () => {},
   openColorPicker?: OpenColorPicker,
 ): LayersBox {
-  const { panel } = createPanel({ className: "layers-box", title: "Layers" });
+  // The navbar Layers icon opens this as a navbar-anchored popover (like the
+  // Maps subpanel / colour picker), NOT a draggable window.
+  const panel = document.createElement("div");
+  panel.className = "layers-popover";
+  panel.style.display = "none";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  const title = document.createElement("h3");
+  title.textContent = "Layers";
+  header.appendChild(title);
+  header.appendChild(makeCloseButton(() => close()));
+  panel.appendChild(header);
 
   const list = document.createElement("div");
   list.className = "layers-list";
@@ -201,11 +215,95 @@ export function createLayersBox(
   manager.subscribe(render);
   render();
 
-  const toggle = () => {
-    panel.style.display = panel.style.display === "none" ? "" : "none";
+  // --- open / close / positioning (mirrors the Maps subpanel / colour picker) ---
+  let onDocPointerDown: ((e: PointerEvent) => void) | null = null;
+  let onKeyDown: ((e: KeyboardEvent) => void) | null = null;
+  let lastAnchor: HTMLElement | null = null;
+
+  const isOpen = () => panel.style.display !== "none";
+
+  const open = (anchor: HTMLElement) => {
+    if (isOpen() && lastAnchor === anchor) {
+      close(); // clicking the same anchor again toggles the panel shut
+      return;
+    }
+    lastAnchor = anchor;
+    render();
+    panel.style.display = "";
+    refreshPreviews(); // fresh thumbnails each time it opens
+    positionNear(anchor);
+    // Defer the dismiss listener a tick so the opening click doesn't close it.
+    setTimeout(() => attachDismiss(anchor), 0);
   };
 
-  return { el: panel, toggle, render, refreshPreviews };
+  const close = () => {
+    panel.style.display = "none";
+    detachDismiss();
+  };
+
+  function attachDismiss(anchor: HTMLElement): void {
+    detachDismiss();
+    onDocPointerDown = (e) => {
+      const t = e.target as Element | null;
+      if (!t) return;
+      // Keep open for clicks on ourselves, the anchor, or the popovers/modals we
+      // spawn (the background colour picker, a confirm dialog).
+      if (
+        panel.contains(t) ||
+        anchor.contains(t) ||
+        t.closest(".color-palette-popover") ||
+        t.closest(".app-modal")
+      )
+        return;
+      close();
+    };
+    onKeyDown = (e) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", onDocPointerDown, true);
+    document.addEventListener("keydown", onKeyDown, true);
+  }
+
+  function detachDismiss(): void {
+    if (onDocPointerDown)
+      document.removeEventListener("pointerdown", onDocPointerDown, true);
+    if (onKeyDown) document.removeEventListener("keydown", onKeyDown, true);
+    onDocPointerDown = null;
+    onKeyDown = null;
+  }
+
+  // Below the anchor by default, flipped above when there isn't room, left-aligned
+  // to the icon and clamped to the viewport. On phones the CSS makes it a bottom
+  // sheet, so clear the inline coords and let the stylesheet position it.
+  function positionNear(anchor: HTMLElement): void {
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      panel.style.left = panel.style.top = panel.style.right = panel.style.bottom = "";
+      return;
+    }
+    const gap = 8;
+    const margin = 8;
+    const a = anchor.getBoundingClientRect();
+    const pw = panel.offsetWidth;
+    const ph = panel.offsetHeight;
+    let top = a.bottom + gap;
+    if (top + ph > window.innerHeight - margin && a.top - gap - ph > margin)
+      top = a.top - gap - ph;
+    let left = a.left;
+    left = Math.min(left, window.innerWidth - pw - margin);
+    left = Math.max(margin, left);
+    top = Math.min(top, window.innerHeight - ph - margin);
+    top = Math.max(margin, top);
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+  }
+
+  window.addEventListener("resize", () => {
+    if (isOpen() && lastAnchor) positionNear(lastAnchor);
+  });
+
+  return { el: panel, open, close, isOpen, render, refreshPreviews };
 }
 
 function makeRow(

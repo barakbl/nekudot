@@ -10,6 +10,7 @@ import { SYMMETRY_MODES } from "../symmetry/menu-section";
 import type { SymmetryController, SymmetryMode } from "../symmetry/controller";
 import { showConfirm } from "../confirm";
 import type { LayerManager } from "../layered/manager";
+import { prettyLayerName } from "../layered/schema";
 import type { MapsControl } from "../layered/maps-box";
 import type { Viewport } from "./viewport";
 import type { AppHistory } from "./history";
@@ -62,7 +63,9 @@ export type NavbarDeps = {
   setArtStyle: (name: string) => void;
   connectingComboGroups: () => ConnectionOptionGroup[];
   showSettings: () => void;
-  showLayers: () => void;
+  // Opens the Layers subpanel. Anchored to the given element when the navbar icon
+  // opens it; falls back to the navbar Layers icon (Windows menu / "l" shortcut).
+  showLayers: (anchor?: HTMLElement) => void;
   // Opens the Maps subpanel. Anchored to the given element when the navbar icon
   // opens it; falls back to the navbar Maps icon (Windows menu / "m" shortcut).
   showMaps: (anchor?: HTMLElement) => void;
@@ -206,6 +209,18 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     ],
     // No Connecting combo now - the style picker lives in the settings panel.
     undefined,
+    // Layers icon → opens the Layers subpanel anchored beneath it (left of Maps).
+    {
+      getActiveInfo: () => {
+        const active = layerManager.all[layerManager.activeIdx];
+        return {
+          name: active ? prettyLayerName(active.config.name) : "Layer",
+          count: layerManager.all.length,
+        };
+      },
+      onOpen: (anchor) => showLayers(anchor),
+      subscribe: (fn) => layerManager.subscribe(fn),
+    },
     {
       getActiveInfo: () => {
         const { maps } = mapsControl.getInfo();

@@ -41,8 +41,8 @@ async function main() {
     // Open Layers (shortcut "l"), then add two more layers (3 total).
     await S("Input.dispatchKeyEvent", { type: "keyDown", key: "l", code: "KeyL", windowsVirtualKeyCode: 76, text: "l" });
     await S("Input.dispatchKeyEvent", { type: "keyUp", key: "l", code: "KeyL", windowsVirtualKeyCode: 76 });
-    if (!await waitFor(() => E("(() => { const p=document.querySelector('.layers-box'); return !!p && p.style.display!=='none'; })()"), 4000)) throw new Error("layers panel did not open");
-    for (let i = 0; i < 2; i++) { await E("document.querySelector('.layers-add-btn').click()"); await sleep(150); }
+    if (!await waitFor(() => E("(() => { const p=document.querySelector('.layers-popover'); return !!p && p.style.display!=='none'; })()"), 4000)) throw new Error("layers panel did not open");
+    for (let i = 0; i < 2; i++) { await E("document.querySelector('.layers-popover .layers-add-btn').click()"); await sleep(150); }
 
     const orderBefore = await E("[...document.querySelectorAll('.layers-list .layer-block')].map(b=>b.dataset.layerId)");
     console.log(`layers: ${orderBefore.length}, order: ${JSON.stringify(orderBefore)}`);
