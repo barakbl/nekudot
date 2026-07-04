@@ -15,6 +15,21 @@ export function squareOfScreen(maxW: number, maxH: number): CanvasSize {
   return { width: s, height: s };
 }
 
+// The largest whole-pixel canvas that fits the viewport (minus `border` per
+// side). The visual viewport can report sub-pixel CSS sizes (fractional
+// devicePixelRatio, or zoom), so floor - a max bound rounds down to never
+// overflow.
+export function screenMaxSize(
+  viewW: number,
+  viewH: number,
+  border: number,
+): CanvasSize {
+  return {
+    width: Math.max(1, Math.floor(viewW - border * 2)),
+    height: Math.max(1, Math.floor(viewH - border * 2)),
+  };
+}
+
 export function clampSize(
   size: CanvasSize,
   maxW: number,
