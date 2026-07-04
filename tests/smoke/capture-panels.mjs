@@ -95,7 +95,7 @@ try {
 
   // Memory Maps panel - the map list, web routing, and the highlight-colour swatch.
   await key("m", "KeyM", 77);
-  await shot(".maps-box", "panel-maps.png");
+  await shot(".maps-popover", "panel-maps.png");
   await key("m", "KeyM", 77);
 
   // Application settings panel (global: theme / input / advanced).

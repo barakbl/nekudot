@@ -549,9 +549,9 @@ const symmetryBox = createSymmetryBox(symmetry);
 document.body.appendChild(symmetryBox.el);
 registerWindow(symmetryBox.el);
 
-// The memory-maps editor, opened from the navbar Maps pill. Holds all the
-// per-map controls; the pill shows the active map's live point count + a
-// flash button (the name lives in its tooltips).
+// The memory-maps editor, opened as a subpanel from the navbar Maps icon. Holds
+// all the per-map controls plus the "Live view" toggle; the navbar icon lights
+// up while Live view is on (the active map's name/count live in its tooltip).
 const mapsControl = createMapsControl(
   layerManager,
   mapHighlighter.flash,
@@ -570,6 +570,15 @@ const mapsControl = createMapsControl(
         mapsBox.render();
       },
     }),
+  // "Live view": the persistent hot-map highlight, shared with the navbar icon.
+  () => mapHighlighter.isPinned(),
+  (on) => {
+    mapHighlighter.setPinned(on);
+    store.set("app.maps.pinHighlight", on);
+    // Flash once as it turns on, so you immediately see where the dots are.
+    if (on) mapHighlighter.flash(layerManager.selectedNeighborsMapIdx);
+    menu.refreshMapsPill(); // light/unlight the navbar cloud icon
+  },
 );
 // The routing "Connection" group lives in the Maps box now; build it for the
 // current brush (re-read on each render, so it tracks the active brush + maps).
@@ -577,14 +586,16 @@ const mapsBox = createMapsBox(mapsControl, () =>
   buildRoutingControls(appState.brush),
 );
 document.body.appendChild(mapsBox.el);
-registerWindow(mapsBox.el);
 
 // Show helpers for the boxes created above (see showSettings/showConnecting).
 const showLayers = () => showWindow(layersBox.el);
 const showSymmetry = () => showWindow(symmetryBox.el);
-const showMaps = () => {
-  showWindow(mapsBox.el);
-  mapsBox.render(); // fresh dot counts each time it opens
+// Maps is a navbar-anchored subpanel (like the colour picker), not a draggable
+// window: open it beneath the given anchor, or the navbar Maps icon when opened
+// from the "m" key / Windows menu. `menu` is read lazily (built below).
+const showMaps = (anchor?: HTMLElement) => {
+  const target = anchor ?? menu.mapsPillAnchor;
+  if (target) mapsBox.open(target);
 };
 
 // Async-restore paint state + undo stack from IDB on startup. Called here
@@ -1149,7 +1160,8 @@ const uiVisibility = createUiVisibility(() => [
   settingsPanel.el,
   layersBox.el,
   symmetryBox.el,
-  mapsBox.el,
+  // Maps is a transient navbar-anchored subpanel (like the colour picker), so it
+  // isn't part of the hide/restore-all-panels set.
   appSettingsBox.el,
   shortcutsPanel.el,
   zoomReadout.el,

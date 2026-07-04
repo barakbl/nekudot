@@ -3,19 +3,25 @@ import type { MapsControl } from "../layered/maps-box";
 import { showConfirm } from "../confirm";
 import { showChip } from "../chip";
 
-// Controller behind the memory-maps editor (the box opened from the navbar
-// Maps pill): wires its per-map actions (flash / select / rename / delete +
-// live dot counts) to the LayerManager, the flash highlighter and undo.
+// Controller behind the memory-maps editor (the subpanel opened from the navbar
+// Maps icon): wires its per-map actions (flash / select / rename / delete +
+// live dot counts) and the "Live view" toggle to the LayerManager, the flash
+// highlighter and undo.
 export function createMapsControl(
   layerManager: LayerManager,
   highlightMap: (index: number) => void,
   pushUndo: (description: string) => void,
   getHighlightColor: () => string,
   onPickHighlightColor: (anchor: HTMLElement) => void,
+  // "Live view" (the persistent hot-map highlight) shared with the navbar icon.
+  isLiveView: () => boolean,
+  setLiveView: (on: boolean) => void,
 ): MapsControl {
   return {
     getHighlightColor,
     onPickHighlightColor,
+    isLiveView,
+    setLiveView,
     getInfo: () => {
       const activeIdx = layerManager.selectedNeighborsMapIdx;
       return {
