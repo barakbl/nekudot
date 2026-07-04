@@ -34,7 +34,6 @@ import { bindTouchGestures } from "./app/touch-gestures";
 import { bindImagePaste } from "./app/image-paste";
 import { createAppSettingsBox } from "./app/app-settings-box";
 import { createFolderSync } from "./app/folder-sync";
-import { createFolderBox } from "./app/folder-box";
 import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
@@ -857,6 +856,20 @@ const appSettingsBox = createAppSettingsBox({
   },
   onExportSettings: () => void exportSettings(),
   onImportSettings: () => importSettings(),
+  // The Local-folder feature lives as a "Folder" tab here (was its own window).
+  folder: folderSync.supported
+    ? {
+        isConnected: () => folderSync.isConnected(),
+        folderName: () => folderSync.folderName(),
+        pendingFolderName: () => folderSync.pendingFolderName(),
+        currentFile: () => folderSync.currentArtworkFile(),
+        onConnect: () => void folderSync.connect(),
+        onDisconnect: () => void folderSync.disconnect(),
+        onSaveArtwork: () => void folderSync.syncArtwork(),
+        onSaveSettings: () => void folderSync.saveSettings(),
+        onLoadSettings: () => void folderSync.loadSettings(),
+      }
+    : null,
 });
 
 // Wipe every local data store + settings, then reload to the fresh (onboarding)
@@ -875,33 +888,22 @@ const resetToDefault = () =>
   });
 document.body.appendChild(appSettingsBox.el);
 registerWindow(appSettingsBox.el);
-const showAppSettings = () => showWindow(appSettingsBox.el);
+const showAppSettings = () => {
+  appSettingsBox.showTab("general"); // the generic entry lands on General
+  showWindow(appSettingsBox.el);
+};
 
-// The Local folder panel (Chrome folder sync). Built only when supported; its
-// refresh is driven by folder-sync's onChange, and showFolder is fed to the
-// navbar's Windows menu (the entry is hidden when unsupported).
-const folderBox = folderSync.supported
-  ? createFolderBox({
-      isConnected: () => folderSync.isConnected(),
-      folderName: () => folderSync.folderName(),
-      pendingFolderName: () => folderSync.pendingFolderName(),
-      currentFile: () => folderSync.currentArtworkFile(),
-      onConnect: () => void folderSync.connect(),
-      onDisconnect: () => void folderSync.disconnect(),
-      onSaveArtwork: () => void folderSync.syncArtwork(),
-      onSaveSettings: () => void folderSync.saveSettings(),
-      onLoadSettings: () => void folderSync.loadSettings(),
-    })
-  : null;
+// The Local folder feature now lives as the App-settings "Folder" tab (no
+// separate window). showFolder (navbar Windows menu, hidden when unsupported)
+// opens App settings straight to that tab.
 let showFolder: (() => void) | undefined;
-if (folderBox) {
-  document.body.appendChild(folderBox.el);
-  registerWindow(folderBox.el);
+if (folderSync.supported) {
+  refreshFolderUI = appSettingsBox.refreshFolder;
   showFolder = () => {
-    folderBox.refresh();
-    showWindow(folderBox.el);
+    appSettingsBox.showTab("folder");
+    appSettingsBox.refreshFolder();
+    showWindow(appSettingsBox.el);
   };
-  refreshFolderUI = folderBox.refresh;
 }
 // Re-attach a previously connected folder at boot (silent if still permitted).
 void folderSync.restore();
@@ -1149,7 +1151,6 @@ const uiVisibility = createUiVisibility(() => [
   symmetryBox.el,
   mapsBox.el,
   appSettingsBox.el,
-  ...(folderBox ? [folderBox.el] : []),
   shortcutsPanel.el,
   zoomReadout.el,
 ]);

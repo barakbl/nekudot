@@ -1,15 +1,12 @@
-import { createPanel } from "../ui/panel";
-
-export type FolderBox = {
+export type FolderPanel = {
   el: HTMLElement;
-  toggle: () => void;
   // Re-render after connection / current-file state changes.
   refresh: () => void;
 };
 
 // What the panel needs from the folder-sync controller (all read live so the
 // panel reflects the latest state on every refresh).
-export type FolderBoxHost = {
+export type FolderHost = {
   isConnected: () => boolean;
   folderName: () => string | null;
   pendingFolderName: () => string | null;
@@ -21,19 +18,13 @@ export type FolderBoxHost = {
   onLoadSettings: () => void;
 };
 
-// The Local folder window (Chrome folder sync): one home for connecting a folder
-// and saving/restoring there, so the feature isn't split between App settings and
-// the canvas menu. Built only when the File System Access API is available; it's
-// also the natural home for the future gallery (browse + open folder pieces).
-export function createFolderBox(host: FolderBoxHost): FolderBox {
-  const { panel } = createPanel({
-    className: "layers-box folder-box",
-    title: "Local folder",
-  });
-
+// The Local-folder content (Chrome folder sync): connect a folder and save /
+// restore there. It's the App-settings "Folder" tab - just the content, no
+// window chrome. Built only where the File System Access API exists; also the
+// future home of the gallery (browse + open folder pieces).
+export function createFolderPanel(host: FolderHost): FolderPanel {
   const body = document.createElement("div");
   body.className = "appset-body";
-  panel.appendChild(body);
 
   const desc = (text: string) => {
     const el = document.createElement("div");
@@ -71,6 +62,7 @@ export function createFolderBox(host: FolderBoxHost): FolderBox {
     const el = document.createElement("span");
     el.className = "appset-folder-name";
     el.textContent = text;
+    el.title = text; // full name on hover, since it ellipsizes when long
     return el;
   };
 
@@ -121,8 +113,5 @@ export function createFolderBox(host: FolderBoxHost): FolderBox {
   };
   refresh();
 
-  const toggle = () => {
-    panel.style.display = panel.style.display === "none" ? "" : "none";
-  };
-  return { el: panel, toggle, refresh };
+  return { el: body, refresh };
 }

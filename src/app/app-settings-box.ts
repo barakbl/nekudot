@@ -1,10 +1,12 @@
 import { createPanel } from "../ui/panel";
+import { createVerticalTabs } from "../ui/vertical-tabs";
 import { makeToggle } from "../ui/toggle";
 import { attachHelp } from "../help";
 import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
 import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
 import type { BrushCursorMode } from "./brush-cursor";
+import { createFolderPanel, type FolderHost } from "./folder-panel";
 
 // The canvas-cursor styles offered in App settings (see app/brush-cursor).
 const CURSOR_OPTIONS: { value: BrushCursorMode; label: string }[] = [
@@ -14,7 +16,15 @@ const CURSOR_OPTIONS: { value: BrushCursorMode; label: string }[] = [
   { value: "cross", label: "Cross only" },
 ];
 
-export type AppSettingsBox = { el: HTMLElement; toggle: () => void };
+export type AppSettingsBox = {
+  el: HTMLElement;
+  toggle: () => void;
+  // Show a specific vertical tab ("general" | "folder"); no-op when the panel
+  // has no tabs (e.g. folder sync unsupported, so General is all there is).
+  showTab: (id: string) => void;
+  // Re-render the Folder tab after folder-sync state changes; no-op without one.
+  refreshFolder: () => void;
+};
 
 const THEMES: Theme[] = ["auto", "light", "dark"];
 const THEME_GLYPH: Record<Theme, string> = { auto: "◐", light: "☀", dark: "☾" };
@@ -46,15 +56,18 @@ export function createAppSettingsBox(opts: {
   onExportSettings: () => void;
   // Pick a settings file and import it (replaces config, then reloads).
   onImportSettings: () => void;
+  // The Local-folder feature, folded in as a "Folder" tab. null when folder
+  // sync isn't available (no File System Access API), so only General shows.
+  folder?: FolderHost | null;
 }): AppSettingsBox {
   const { panel } = createPanel({
     className: "layers-box app-settings-box",
     title: "Application settings",
   });
 
+  // The General tab's content (all the app-wide settings).
   const body = document.createElement("div");
   body.className = "appset-body";
-  panel.appendChild(body);
 
   const sub = (text: string) => {
     const el = document.createElement("div");
@@ -349,8 +362,30 @@ export function createAppSettingsBox(opts: {
     row("What's new", whatsNew, "See the latest updates, told for artists - opens the website."),
   );
 
+  // With folder sync available, split the panel into vertical tabs: General
+  // (everything above) + Folder. Without it there's only General, so skip the
+  // tab chrome and mount the body directly - identical to before.
+  const folderPanel = opts.folder ? createFolderPanel(opts.folder) : null;
+  let showTab: (id: string) => void = () => {};
+  if (folderPanel) {
+    const vtabs = createVerticalTabs([
+      { id: "general", label: "General", content: body },
+      { id: "folder", label: "Folder", content: folderPanel.el },
+    ]);
+    panel.classList.add("has-vtabs");
+    panel.appendChild(vtabs.el);
+    showTab = vtabs.show;
+  } else {
+    panel.appendChild(body);
+  }
+
   const toggle = () => {
     panel.style.display = panel.style.display === "none" ? "" : "none";
   };
-  return { el: panel, toggle };
+  return {
+    el: panel,
+    toggle,
+    showTab,
+    refreshFolder: folderPanel ? folderPanel.refresh : () => {},
+  };
 }
