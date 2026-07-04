@@ -152,6 +152,21 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+// Speed-to-width taper for non-stylus strokes ("grace for mouse + finger"):
+// map a smoothed stroke speed (canvas px per ms) to a width multiplier - a
+// quick flick draws thin, a slow drag stays full. Full width at/below MIN,
+// thinning linearly to FLOOR at/above MAX.
+const SPEED_TAPER_MIN = 0.4;
+const SPEED_TAPER_MAX = 4.0;
+const SPEED_TAPER_FLOOR = 0.35;
+const SPEED_TAPER_STEP = 0.25; // per-sample EMA fraction that smooths raw speed
+
+export function speedTaperFactor(speed: number): number {
+  const span = SPEED_TAPER_MAX - SPEED_TAPER_MIN;
+  const t = Math.min(1, Math.max(0, (speed - SPEED_TAPER_MIN) / span));
+  return 1 - t * (1 - SPEED_TAPER_FLOOR);
+}
+
 export abstract class BrushBase {
   seed: number;
   private rng: () => number;
@@ -196,6 +211,19 @@ export abstract class BrushBase {
 
   private penSmoother = new PenSmoother();
   private pen: PenSample = MOUSE_SAMPLE;
+
+  // Speed-to-width taper (see speedTaperFactor). Non-pen only - a real pen
+  // already varies width by pressure. Per-brush opt-in via speedTaper (the
+  // Color Pen turns it on). Needs the event time threaded through stroke(), so
+  // it stays inert for callers that don't pass one (tests, settings preview).
+  protected speedTaper = false;
+  // How strongly speed thins the line (0..100): scales the taper depth, 0 = off,
+  // 100 = the full curve. A per-user dial, shown only while speedTaper is on.
+  protected speedTaperAmount = 100;
+  private speedPrevX = 0;
+  private speedPrevY = 0;
+  private speedPrevTime: number | null = null;
+  private smoothedSpeed = 0;
   // The toolbar Primary, latched once per sampled stroke (it can't change
   // mid-stroke). Tagged onto every deposited point so a connecting brush set to
   // "From mark" inherits the painted hue - read here once, not per deposit (a
@@ -266,7 +294,13 @@ export abstract class BrushBase {
   // web samples once per frame (Harmony's per-move model) instead of at the
   // hardware's report rate — feeding every sub-sample made the web build up
   // ~quadratically with the pointer's rate. The line still draws every sample.
-  stroke(x: number, y: number, sample = true, pen: PenSample = MOUSE_SAMPLE): void {
+  stroke(
+    x: number,
+    y: number,
+    sample = true,
+    pen: PenSample = MOUSE_SAMPLE,
+    time?: number,
+  ): void {
     // Smooth and latch this sample's pen state first: onStroke and connect()
     // below both read it (via penStyle()/the connection factors).
     this.pen = this.penSmoother.smooth(pen, this.penSmoothStep());
@@ -277,6 +311,9 @@ export abstract class BrushBase {
     if (this.streamlines()) {
       ({ x, y } = this.streamliner.push(x, y, this.streamlineStrength));
     }
+    // Track the drawn path's speed for the width taper (after streamlining, so
+    // it matches the segment actually drawn).
+    this.updateSpeed(x, y, time);
     this.connection?.setPenFactors(
       this.penWebDensity && this.pen.isPen
         ? penFactor(this.pen.pressure, DIAL_FLOOR, this.penGamma())
@@ -342,6 +379,31 @@ export abstract class BrushBase {
 
   // --- pen factors for the current sample (read inside onStroke) -------------
 
+  // EMA the raw inter-sample speed (canvas px / ms). `time` is the pointer
+  // event's timestamp; without it (tests / preview) the speed never updates, so
+  // the taper stays inert. The 1 ms floor guards a zero dt from coalesced
+  // sub-samples sharing a timestamp.
+  private updateSpeed(x: number, y: number, time?: number): void {
+    if (time === undefined) return;
+    if (this.speedPrevTime !== null) {
+      const dt = Math.max(1, time - this.speedPrevTime);
+      const raw = Math.hypot(x - this.speedPrevX, y - this.speedPrevY) / dt;
+      this.smoothedSpeed += SPEED_TAPER_STEP * (raw - this.smoothedSpeed);
+    }
+    this.speedPrevX = x;
+    this.speedPrevY = y;
+    this.speedPrevTime = time;
+  }
+
+  // Width multiplier from stroke speed, for non-pen strokes when the brush opts
+  // in. 1 (no effect) for a pen or when off.
+  protected speedWidthFactor(): number {
+    if (this.pen.isPen || !this.speedTaper) return 1;
+    // Scale the taper depth by the user's amount (0 = off, 100 = full curve).
+    const depth = this.speedTaperAmount / 100;
+    return 1 - depth * (1 - speedTaperFactor(this.smoothedSpeed));
+  }
+
   // Size multiplier (1 with a mouse or with the bindings off). Pressure and
   // tilt multiply when both are bound.
   protected penWidthFactor(): number {
@@ -367,7 +429,9 @@ export abstract class BrushBase {
   // pixel-identical to the pre-pen behaviour.
   protected penStyle(): { width?: number; alpha?: number } {
     const style: { width?: number; alpha?: number } = {};
-    const wf = this.penWidthFactor();
+    // Pen pressure/tilt (mouse: 1) and the non-pen speed taper (pen: 1) compose:
+    // exactly one is ever in play, so a stylus keeps pressure and a mouse gets grace.
+    const wf = this.penWidthFactor() * this.speedWidthFactor();
     if (wf !== 1) style.width = Math.max(0.5, this.host.strokeWidth() * wf);
     const af = this.penAlphaFactor();
     if (af !== 1) style.alpha = this.host.strokeAlpha() * af;
@@ -557,8 +621,36 @@ export abstract class BrushBase {
     this.streamliner.reset();
     this.hasConnectSample = false;
     this.penSmoother.reset();
+    this.speedPrevTime = null; // re-arm the speed taper for the next stroke
+    this.smoothedSpeed = 0;
     this.connection?.resetStroke();
     void this.pixelLog?.flush();
+  }
+
+  // The "Speed taper" toggle + its "Taper amount" dial. Brushes that want the
+  // taper (the Color Pen) spread this into getSettings().
+  protected speedTaperSettings(): BrushSetting[] {
+    return [
+      {
+        kind: "boolean",
+        key: "speedTaper",
+        label: "Speed taper",
+        value: this.speedTaper,
+        onChange: (v) => (this.speedTaper = v),
+      },
+      {
+        kind: "number",
+        key: "speedTaperAmount",
+        label: "Taper amount",
+        min: 0,
+        max: 100,
+        step: 1,
+        value: this.speedTaperAmount,
+        onChange: (v) => (this.speedTaperAmount = v),
+        // Only meaningful while the taper is on.
+        visibleWhen: { key: "speedTaper", when: (v) => v === true },
+      },
+    ];
   }
 
   // Store the pixel into the configured trail map and append its provenance row.

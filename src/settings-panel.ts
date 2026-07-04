@@ -51,6 +51,10 @@ const SETTING_HELP: Record<string, string> = {
   __opacity: "How solid the stroke is - lower lets overlapping passes build up.",
   // --- Brush-specific ---
   strokeDash: "Solid, dashed, or dotted stroke.",
+  speedTaper:
+    "Vary the line width by how fast you draw - a quick flick thins, a slow drag stays thick. Grace for a mouse or finger; a stylus ignores it (pressure already varies width).",
+  speedTaperAmount:
+    "How strongly speed thins the line - higher makes a fast stroke much thinner, lower keeps it subtle.",
   size: "Smallest-to-largest stamp size - your stroke speed picks a value between the two.",
   sensitivity:
     "How strongly stroke speed changes the stamp size. 0 keeps every stamp the same.",

@@ -63,14 +63,19 @@ export function bindDrawingInput(opts: {
   // / commit paths lay it lazily and a camera gesture can drop it untouched.
   let started = false;
   let beginPoint: { x: number; y: number } | null = null; // for the diagnostics probe
-  let pending: { x: number; y: number; pen: ReturnType<typeof sampleOf> } | null =
-    null;
+  let pending: {
+    x: number;
+    y: number;
+    pen: ReturnType<typeof sampleOf>;
+    time: number;
+  } | null = null;
 
   // Lay the stroke's first mark: freeze symmetry, open the wet buffer, draw the
   // first dab, then signal (e.g. arm GIF capture). Only call when not started.
   const beginStroke = (
     p: { x: number; y: number },
     pen: ReturnType<typeof sampleOf>,
+    time: number,
   ) => {
     const brush = opts.brush();
     started = true;
@@ -98,14 +103,14 @@ export function bindDrawingInput(opts: {
       });
     }
     brush.strokeStart(p.x, p.y);
-    brush.stroke(p.x, p.y, true, pen);
+    brush.stroke(p.x, p.y, true, pen, time);
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.
     opts.onStrokeStart?.();
   };
   // Promote a deferred touch stroke to a live one (no-op if already live / none).
   const ensureStarted = () => {
     if (pending && !started) {
-      beginStroke(pending, pending.pen);
+      beginStroke(pending, pending.pen, pending.time);
       pending = null;
     }
   };
@@ -136,9 +141,9 @@ export function bindDrawingInput(opts: {
     // point - which is what makes those multi-finger taps work. Mouse and pen
     // are unambiguous, so they draw at once.
     if (e.pointerType === "touch") {
-      pending = { x: p.x, y: p.y, pen };
+      pending = { x: p.x, y: p.y, pen, time: e.timeStamp };
     } else {
-      beginStroke(p, pen);
+      beginStroke(p, pen, e.timeStamp);
     }
   });
 
@@ -162,6 +167,7 @@ export function bindDrawingInput(opts: {
         q.y,
         !frameCadence || i === list.length - 1,
         sampleOf(ev),
+        ev.timeStamp,
       );
     }
   });

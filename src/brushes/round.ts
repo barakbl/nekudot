@@ -44,6 +44,9 @@ export class RoundBrush extends BrushBase {
     // Round is a connecting brush: attach the default connection (the navbar
     // combo / onSelect swaps it via selectArtStyle).
     this.initConnection(DEFAULT_ART_STYLE);
+    // Speed taper is available (the toggle) but OFF by default: the Web's core
+    // line hides behind the web, so tapering it shows nothing until you raise
+    // line opacity. Its real home is the Color Pen.
   }
 
   name() {
@@ -116,6 +119,7 @@ export class RoundBrush extends BrushBase {
           this.strokeDash = v as DashStyle;
         },
       },
+      ...this.speedTaperSettings(),
       ...(this.connection?.sliders() ?? []),
       ...this.penSettings(),
     ];
