@@ -48,7 +48,7 @@ async function main() {
     // Open Layers via the 'l' shortcut.
     for (const type of ["keyDown", "keyUp"])
       await S("Input.dispatchKeyEvent", { type, key: "l", code: "KeyL", windowsVirtualKeyCode: 76, nativeVirtualKeyCode: 76 });
-    const layersOpen = await waitFor(() => E(`(() => { const b = document.querySelector('.layers-box'); return !!b && getComputedStyle(b).display !== 'none'; })()`), 5000);
+    const layersOpen = await waitFor(() => E(`(() => { const b = document.querySelector('.layers-popover'); return !!b && getComputedStyle(b).display !== 'none'; })()`), 5000);
     console.log(`Layers panel opened: ${layersOpen ? "✓" : "✗"}`);
     await shot("bg-01-layers-open.png");
 

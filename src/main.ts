@@ -543,7 +543,6 @@ const layersBox = createLayersBox(
   (req) => palettePanel.open(req), // background swatch opens the colour palette
 );
 document.body.appendChild(layersBox.el);
-registerWindow(layersBox.el);
 
 const symmetryBox = createSymmetryBox(symmetry);
 document.body.appendChild(symmetryBox.el);
@@ -588,7 +587,13 @@ const mapsBox = createMapsBox(mapsControl, () =>
 document.body.appendChild(mapsBox.el);
 
 // Show helpers for the boxes created above (see showSettings/showConnecting).
-const showLayers = () => showWindow(layersBox.el);
+// Layers is a navbar-anchored subpanel (like Maps / the colour picker): open it
+// beneath the given anchor, or the navbar Layers icon (the "l" key / Windows
+// menu). `menu` is read lazily (built below).
+const showLayers = (anchor?: HTMLElement) => {
+  const target = anchor ?? menu.layersPillAnchor;
+  if (target) layersBox.open(target);
+};
 const showSymmetry = () => showWindow(symmetryBox.el);
 // Maps is a navbar-anchored subpanel (like the colour picker), not a draggable
 // window: open it beneath the given anchor, or the navbar Maps icon when opened
@@ -1158,10 +1163,9 @@ const showStartPage = () => {
 const uiVisibility = createUiVisibility(() => [
   menu.el,
   settingsPanel.el,
-  layersBox.el,
   symmetryBox.el,
-  // Maps is a transient navbar-anchored subpanel (like the colour picker), so it
-  // isn't part of the hide/restore-all-panels set.
+  // Layers and Maps are transient navbar-anchored subpanels (like the colour
+  // picker), so they aren't part of the hide/restore-all-panels set.
   appSettingsBox.el,
   shortcutsPanel.el,
   zoomReadout.el,

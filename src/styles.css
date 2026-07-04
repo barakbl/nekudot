@@ -290,15 +290,17 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   color: var(--text-icon);
 }
 
-/* Navbar Maps quick-access (card #88): a single cloud-of-dots icon that opens the
-   Maps subpanel anchored beneath it. No pill chrome - it's just the icon button. */
-.toolbar .maps-pill {
+/* Navbar Layers + Maps quick-access: single icons that open their subpanel
+   anchored beneath. No pill chrome - just the icon button. */
+.toolbar .maps-pill,
+.toolbar .layers-pill {
   padding: 0;
   gap: 0;
   background: none;
   border: none;
 }
-.toolbar .maps-pill-btn {
+.toolbar .maps-pill-btn,
+.toolbar .layers-pill-btn {
   width: 26px;
   height: 26px;
   color: var(--text-icon);
@@ -2072,6 +2074,58 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 @media (pointer: coarse) and (min-width: 641px) {
   .maps-popover {
     width: 320px;
+  }
+}
+
+/* Layers subpanel: a navbar-anchored popover like the Maps subpanel, opened from
+   the navbar Layers icon. Wider than Maps (rows carry a thumbnail + opacity
+   slider + actions); the layer-row styles below are unscoped so they carry over. */
+.layers-popover {
+  position: fixed;
+  top: 60px; /* default before JS positions it */
+  left: 16px;
+  /* Size to content (like the old window) so the layer-row's 1fr name column
+     shows in full instead of collapsing to an ellipsis under a fixed width. */
+  width: max-content;
+  min-width: 268px;
+  max-width: min(92vw, 420px);
+  box-sizing: border-box;
+  max-height: min(80vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px;
+  background: var(--panel-bg);
+  color: var(--text-body);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  z-index: 180;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-stronger) transparent;
+}
+.layers-popover h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+@media (max-width: 640px) {
+  .layers-popover {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 80vh;
+    padding: 16px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (pointer: coarse) and (min-width: 641px) {
+  .layers-popover {
+    width: 340px;
   }
 }
 /* Highlight-colour picker row: label + a swatch button that opens the palette. */

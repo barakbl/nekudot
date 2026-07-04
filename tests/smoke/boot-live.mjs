@@ -139,7 +139,7 @@ async function main() {
     ok("J1 returning user (prior data) boots to restored canvas, no Start page", !(await visible(".onboarding")) && (await alpha()) > 0, "onboarding hidden + paint present");
 
     // ---- F) every panel opens + renders (shortcut -> panel) ----------------
-    const panels = [["b", "KeyB", ".settings-panel"], ["l", "KeyL", ".layers-box"], ["m", "KeyM", ".maps-popover"], ["y", "KeyY", ".symmetry-box"], [",", "Comma", ".app-settings-box"], ["/", "Slash", ".shortcuts-panel"]];
+    const panels = [["b", "KeyB", ".settings-panel"], ["l", "KeyL", ".layers-popover"], ["m", "KeyM", ".maps-popover"], ["y", "KeyY", ".symmetry-box"], [",", "Comma", ".app-settings-box"], ["/", "Slash", ".shortcuts-panel"]];
     const opened = [];
     for (const [k, code, sel] of panels) {
       await key(k, code);
