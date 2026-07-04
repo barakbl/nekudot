@@ -2,6 +2,7 @@ import {
   clampSize,
   fullScreenSize,
   safeLoadSize,
+  screenMaxSize,
   type CanvasSize,
 } from "../canvas-size";
 import type { Theme } from "../menu";
@@ -27,10 +28,7 @@ export function createStage({ store }: { store: Store }) {
     const vv = window.visualViewport;
     const w = vv?.width ?? window.innerWidth;
     const h = vv?.height ?? window.innerHeight;
-    return {
-      width: Math.max(1, w - BORDER * 2),
-      height: Math.max(1, h - BORDER * 2),
-    };
+    return screenMaxSize(w, h, BORDER);
   };
 
   const persistedSize = safeLoadSize(store.get<unknown>(CANVAS_SIZE_KEY));
