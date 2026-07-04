@@ -1734,8 +1734,56 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 .app-settings-box {
   width: 280px;
 }
+/* Wider when it carries vertical tabs (the tab rail eats horizontal room). */
+.app-settings-box.has-vtabs {
+  width: 360px;
+}
 .appset-body {
   padding-top: 2px;
+}
+
+/* Vertical tabs: a left rail of tab buttons + a content panel that swaps. The
+   start of folding floating windows into tabbed surfaces (App settings is the
+   first host: General + Folder) so tablet users get fewer loose windows. */
+.vtabs {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.vtabs-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: none;
+  width: 72px;
+  padding: 2px;
+  background: var(--pill-bg);
+  border-radius: 8px;
+}
+.vtab {
+  text-align: left;
+  padding: 7px 9px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.vtab:hover {
+  color: var(--text-primary);
+}
+.vtab.active {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.vtab.active:hover {
+  background: var(--accent-hover);
+}
+.vtabs-panels {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .appset-sub {
   margin: 10px 0 2px;
@@ -1759,6 +1807,7 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   padding: 6px 0;
 }
 .appset-label {
+  flex: none; /* the label keeps its size; the control on the right shrinks */
   font-size: 12px;
   color: var(--text-body);
 }
@@ -1834,10 +1883,12 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
 .appset-io-actions {
   display: flex;
   gap: 8px;
+  min-width: 0; /* let the row shrink this side (filename ellipsizes, not clips) */
   margin: 2px 0 4px;
 }
 .appset-diag-btn,
 .appset-io-btn {
+  flex: none; /* buttons keep their size; the name beside them shrinks instead */
   font: inherit;
   font-size: 11px;
   cursor: pointer;
@@ -1895,12 +1946,14 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Connected folder name shown beside the Disconnect button. */
+/* Connected folder / file name shown beside its action button. Flex-shrinks and
+   ellipsizes so a long filename never pushes the button off the panel edge. */
 .appset-folder-name {
   align-self: center;
+  min-width: 0;
+  flex: 0 1 auto;
   font-size: 11px;
   color: var(--text-muted);
-  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
