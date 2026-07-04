@@ -58,6 +58,10 @@ export class ColorPenBrush extends BrushBase {
 
   constructor(host: PaintHost, seed?: number, store?: Store) {
     super(host, seed, store);
+    // Grace for mouse/touch: taper the line by stroke speed by default. The
+    // Color Pen is all line, so it reads on every stroke - direction moves
+    // colour, speed moves weight. A pen ignores it. Toggle + tune in settings.
+    this.speedTaper = true;
     const a = store?.get<number>(ANGLE_KEY);
     if (typeof a === "number") this.angle = a;
     const r = store?.get<number>(RANGE_KEY);
@@ -175,6 +179,7 @@ export class ColorPenBrush extends BrushBase {
           this.redrawWheel();
         },
       },
+      ...this.speedTaperSettings(),
       ...this.wheelSetting(),
       ...this.penSettings(),
     ];
