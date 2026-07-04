@@ -72,16 +72,16 @@ async function main() {
 
     console.log("\n■ Layers panel has no connection-marker button");
     await key(S, "l", "KeyL", 76);
-    await waitFor(() => E("getComputedStyle(document.querySelector('.layers-box:not(.maps-box)')).display !== 'none'"));
+    await waitFor(() => E("getComputedStyle(document.querySelector('.layers-box:not(.maps-popover)')).display !== 'none'"));
     await sleep(150);
     check("no .layer-conn-btn rendered", (await E("document.querySelectorAll('.layer-conn-btn').length")) === 0);
     check("layer rows still render", (await E("document.querySelectorAll('.layer-block').length")) >= 2);
 
     console.log("\n■ Maps panel WEB ROUTING is trimmed");
     await key(S, "m", "KeyM", 77);
-    await waitFor(() => E("getComputedStyle(document.querySelector('.maps-box')).display !== 'none'"));
+    await waitFor(() => E("getComputedStyle(document.querySelector('.maps-popover')).display !== 'none'"));
     await sleep(150);
-    const mapsText = await E("document.querySelector('.maps-box').textContent");
+    const mapsText = await E("document.querySelector('.maps-popover').textContent");
     check("no 'Memory Map From'", !mapsText.includes("Memory Map From"));
     check("no 'Memory Map trail'", !mapsText.includes("Memory Map trail"));
     check("no Classic/No-connect preset buttons", !mapsText.includes("No connect"));

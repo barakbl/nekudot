@@ -63,7 +63,9 @@ export type NavbarDeps = {
   connectingComboGroups: () => ConnectionOptionGroup[];
   showSettings: () => void;
   showLayers: () => void;
-  showMaps: () => void;
+  // Opens the Maps subpanel. Anchored to the given element when the navbar icon
+  // opens it; falls back to the navbar Maps icon (Windows menu / "m" shortcut).
+  showMaps: (anchor?: HTMLElement) => void;
   showSymmetry: () => void;
   showAppSettings: () => void;
   // Chrome folder sync: opens the Local folder panel. Omitted/false where the
@@ -210,16 +212,10 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
         const active = maps.find((m) => m.active);
         return { name: active?.name ?? "Map", dots: active?.dots ?? 0 };
       },
-      onOpen: () => showMaps(),
+      // The icon opens the Maps subpanel anchored beneath it; Live view (the
+      // hot-map highlight, toggled inside that panel) drives the lit state.
+      onOpen: (anchor) => showMaps(anchor),
       pinned: () => mapHighlighter.isPinned(),
-      onToggleHot: () => {
-        const on = !mapHighlighter.isPinned();
-        mapHighlighter.setPinned(on);
-        store.set("app.maps.pinHighlight", on);
-        // Flash once as it turns on, so you immediately see where the dots are.
-        if (on) mapHighlighter.flash(layerManager.selectedNeighborsMapIdx);
-        menu.refreshMapsPill();
-      },
       subscribe: (fn) => layerManager.subscribe(fn),
     },
     {

@@ -1,12 +1,13 @@
-// Real app: the navbar Maps pill (active map name + flash button) and the Maps
-// box it opens. The pill shows the active map's name; its flash button lights
-// the active map's dots on the canvas. Clicking the name opens a draggable box
-// (like Layers/Symmetry) listing every map with a live dot count (active bold,
-// each row a flash icon, names editable inline), plus a "+ New map" button.
-// Verifies: default name is "map-1"; the pill shows it; drawing raises the
-// active map's dots; "New map" creates an active map; per-map flash lights the
-// overlay; clicking a name renames it inline; Select swaps the active map;
-// delete goes through a confirm modal; the 'm' key toggles the box.
+// Real app: the navbar Maps cloud-of-dots icon (card #88) and the Maps subpanel it
+// opens - a navbar-anchored popover (like the colour picker), NOT a draggable
+// window. The icon opens/toggles the popover and lights up (.is-on) while "Live
+// view" is on. The popover pins an explainer, then a Live-view toggle, then "+ New
+// map" and the map list (live dot count, active bold, per-row flash, inline rename).
+// Verifies: default name is "map-1"; drawing raises the active map's dots; the
+// Live-view toggle lights the navbar icon + paints the active map's dots; "New
+// map" creates an active map; per-map flash lights the overlay; clicking a name
+// renames it inline; Select swaps the active map; delete goes through a confirm
+// modal; the 'm' key toggles the popover.
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -35,6 +36,10 @@ async function main() {
     const { sessionId } = await send("Target.attachToTarget", { targetId, flatten: true });
     const S = (m, p) => send(m, p, sessionId);
     await S("Page.enable"); await S("Runtime.enable");
+    // Skip the first-run onboarding takeover (it covers the canvas) so the stroke
+    // lands on the canvas and populates the active map. Runs before app JS on each
+    // navigation, so it survives the localStorage.clear() + reload below.
+    await S("Page.addScriptToEvaluateOnNewDocument", { source: "try{localStorage.setItem('app.onboarded','true')}catch(e){}" });
     await S("Emulation.setDeviceMetricsOverride", { width: 1100, height: 720, deviceScaleFactor: 1, mobile: false });
     const E = async (expr) => { const r = await S("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
     await S("Page.navigate", { url: PAGE });
@@ -45,20 +50,27 @@ async function main() {
     await sleep(400);
     mkdirSync(OUT, { recursive: true });
 
-    // The pill opens the box; the box is a panel toggled via display.
-    const openBox = () => E(`document.querySelector('.toolbar .maps-pill-open').click()`);
-    const boxOpen = () => E(`(() => { const b=document.querySelector('.maps-box'); return !!b && b.style.display!=='none'; })()`);
-    const pillName = () => E(`document.querySelector('.toolbar .maps-pill-label')?.textContent||''`);
-    const readRows = () => E(`[...document.querySelectorAll('.maps-box .maps-menu-row')].map(r=>({ name:r.querySelector('.maps-menu-name')?.textContent||'', dots:(()=>{const n=parseInt(r.querySelector('.maps-menu-dots')?.textContent||'',10);return isNaN(n)?-1:n;})(), active:r.classList.contains('active'), tag:!!r.querySelector('.maps-menu-tag'), select:!!r.querySelector('.maps-menu-select'), del:!!r.querySelector('.maps-menu-delete') })) `);
-    const clickSelect = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-select'); if(!b) return false; b.click(); return true; })()`);
-    const clickDelete = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-delete'); if(!b) return false; b.click(); return true; })()`);
-    const clickNewMap = () => E(`(() => { const b=document.querySelector('.maps-box .layers-add-btn'); if(!b) return false; b.click(); return true; })()`);
-    const clickFlashActive = () => E(`document.querySelector('.toolbar .maps-pill-flash').click()`);
-    const flashIconCount = () => E(`document.querySelectorAll('.maps-box .maps-menu-row .maps-menu-flash').length`);
-    const clickMapFlash = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-flash'); if(!b) return false; b.click(); return true; })()`);
+    // The cloud icon toggles the anchored popover (display driven). ensureOpen()
+    // clicks it only when closed so callers don't accidentally toggle it shut.
+    const boxOpen = () => E(`(() => { const b=document.querySelector('.maps-popover'); return !!b && b.style.display!=='none'; })()`);
+    const iconClick = () => E(`document.querySelector('.toolbar .maps-pill-btn').click()`);
+    const ensureOpen = async () => { if (!(await boxOpen())) { await iconClick(); await sleep(120); } };
+    // The active map's name now lives in the popover list (and the icon tooltip);
+    // read it from the active row so the assertions track what the user sees.
+    const activeName = () => E(`document.querySelector('.maps-popover .maps-menu-row.active .maps-menu-name')?.textContent||''`);
+    const iconLit = () => E(`!!document.querySelector('.toolbar .maps-pill-btn.is-on')`);
+    const readRows = () => E(`[...document.querySelectorAll('.maps-popover .maps-menu-row')].map(r=>({ name:r.querySelector('.maps-menu-name')?.textContent||'', dots:(()=>{const n=parseInt(r.querySelector('.maps-menu-dots')?.textContent||'',10);return isNaN(n)?-1:n;})(), active:r.classList.contains('active'), tag:!!r.querySelector('.maps-menu-tag'), select:!!r.querySelector('.maps-menu-select'), del:!!r.querySelector('.maps-menu-delete') })) `);
+    const clickSelect = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-popover .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-select'); if(!b) return false; b.click(); return true; })()`);
+    const clickDelete = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-popover .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-delete'); if(!b) return false; b.click(); return true; })()`);
+    const clickNewMap = () => E(`(() => { const b=document.querySelector('.maps-popover .layers-add-btn'); if(!b) return false; b.click(); return true; })()`);
+    // "Live view" toggle at the top of the popover (the old navbar flash button's
+    // job): turns the persistent hot-map highlight on/off + flashes once as it lights.
+    const clickLiveView = () => E(`(() => { const t=document.querySelector('.maps-live-row .toggle-switch'); if(!t) return false; t.click(); return true; })()`);
+    const flashIconCount = () => E(`document.querySelectorAll('.maps-popover .maps-menu-row .maps-menu-flash').length`);
+    const clickMapFlash = (name) => E(`(() => { const r=[...document.querySelectorAll('.maps-popover .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(name)}); const b=r&&r.querySelector('.maps-menu-flash'); if(!b) return false; b.click(); return true; })()`);
     const overlayLit = () => E(`(() => { const cs=[...document.querySelectorAll('.stage canvas')]; const ov=cs.reduce((a,b)=>(+getComputedStyle(b).zIndex||0)>(+getComputedStyle(a).zIndex||0)?b:a); const d=ov.getContext('2d').getImageData(0,0,ov.width,ov.height).data; let lit=0; for(let i=3;i<d.length;i+=4) if(d[i]>0) lit++; return lit; })()`);
     const renameMap = (oldName, newName) => E(`(() => {
-      const r=[...document.querySelectorAll('.maps-box .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(oldName)});
+      const r=[...document.querySelectorAll('.maps-popover .maps-menu-row')].find(x=>x.querySelector('.maps-menu-name')?.textContent===${JSON.stringify(oldName)});
       if(!r) return 'no-row';
       r.querySelector('.maps-menu-name').click();
       const inp=r.querySelector('.maps-menu-name-input');
@@ -68,78 +80,85 @@ async function main() {
       return 'ok';
     })()`);
 
-    // 1) pill present; default map is "map-1"; pill shows it; box opens on click
-    const hasPill = await E(`!!document.querySelector('.toolbar .maps-pill')`);
-    const pill1 = await pillName();
-    await openBox(); await sleep(120);
+    // 1) icon present; open the popover; Live-view row sits at the top; default
+    //    active map is "map-1" with 0 dots.
+    const hasPill = await E(`!!document.querySelector('.toolbar .maps-pill-btn')`);
+    await ensureOpen();
     const open1 = await boxOpen();
+    const liveRowPresent = await E(`(() => { const r=document.querySelector('.maps-popover .maps-live-row'); return !!(r && r.querySelector('.toggle-switch')); })()`);
+    const name1 = await activeName();
     const rows1 = await readRows();
-    console.log(`Pill: ${hasPill ? "✓" : "✗"}  pill name:"${pill1}"  Box open: ${open1 ? "✓" : "✗"}`);
+    console.log(`Icon: ${hasPill ? "✓" : "✗"}  popover open: ${open1 ? "✓" : "✗"}  live-view row:${liveRowPresent ? "✓" : "✗"}  active:"${name1}"`);
     console.log(`Initial -> ${JSON.stringify(rows1)}`);
 
-    // 2) draw a stroke into the active first map
+    // 2) draw a stroke into the active first map. Close the popover first so the
+    //    stroke lands on bare canvas - an open anchored popover absorbs clicks on
+    //    itself (like the colour picker) - then reopen to read the fresh count.
+    if (await boxOpen()) { await iconClick(); await sleep(120); }
     const pts = []; for (let x = 200; x <= 900; x += 6) pts.push([x, 380 + 90 * Math.sin((x - 200) / 80)]);
     await S("Input.dispatchMouseEvent", { type: "mousePressed", x: pts[0][0], y: pts[0][1], button: "left", clickCount: 1, buttons: 1 });
     for (let i = 1; i < pts.length; i++) await S("Input.dispatchMouseEvent", { type: "mouseMoved", x: pts[i][0], y: pts[i][1], button: "left", buttons: 1 });
     await S("Input.dispatchMouseEvent", { type: "mouseReleased", x: pts.at(-1)[0], y: pts.at(-1)[1], button: "left", clickCount: 1, buttons: 1 });
-    await sleep(200);
-    // box stays open; reopen so the list re-renders with fresh dot counts
-    await openBox(); await sleep(60); await openBox(); await sleep(120);
+    await sleep(300);
+    await ensureOpen();
     const rows2 = await readRows();
     const active2 = rows2.find((r) => r.active);
     console.log(`After draw -> ${JSON.stringify(rows2)}`);
 
-    // 3) Flash Active map via the navbar pill button
-    await clickFlashActive();
-    await sleep(120);
+    // 3) Live view: the top toggle lights the navbar icon + paints/flashes the
+    //    active map's dots; toggling off unlights the icon.
+    await clickLiveView(); await sleep(150);
     const litActive = await overlayLit();
-    console.log(`Flash Active (pill): lit:${litActive}`);
+    const iconLitOn = await iconLit();
+    await clickLiveView(); await sleep(150);
+    const iconLitOff = await iconLit();
+    console.log(`Live view on: lit:${litActive} iconLit:${iconLitOn ? "✓" : "✗"}  off -> iconLit:${iconLitOff ? "✗(still on)" : "✓(off)"}`);
 
-    // 4) New map -> creates an active map; box stays open
+    // 4) New map -> creates an active map; popover stays open
     const newClicked = await clickNewMap();
     await sleep(120);
     const afterNewOpen = await boxOpen();
     const rows3 = await readRows();
-    const pill3 = await pillName();
-    console.log(`New map: ${newClicked ? "✓" : "✗"}  box stays open:${afterNewOpen ? "✓" : "✗"}  pill:"${pill3}"  -> ${JSON.stringify(rows3)}`);
+    const name3 = await activeName();
+    console.log(`New map: ${newClicked ? "✓" : "✗"}  popover stays open:${afterNewOpen ? "✓" : "✗"}  active:"${name3}"  -> ${JSON.stringify(rows3)}`);
 
-    // 5) per-map flash icons; flashing a row flashes that map (box stays open)
+    // 5) per-map flash icons; flashing a row flashes that map (popover stays open)
     const icons = await flashIconCount();
     const perMapFlashed = await clickMapFlash("map-1");
     await sleep(120);
     const litPerMap = await overlayLit();
     const stillOpenAfterFlash = await boxOpen();
-    console.log(`Flash icons:${icons}  flashed map-1:${perMapFlashed ? "✓" : "✗"}  lit:${litPerMap}  box open:${stillOpenAfterFlash ? "✓" : "✗"}`);
+    console.log(`Flash icons:${icons}  flashed map-1:${perMapFlashed ? "✓" : "✗"}  lit:${litPerMap}  popover open:${stillOpenAfterFlash ? "✓" : "✗"}`);
 
     // 6) inline rename: click map-2's name, type "Faces", Enter
     const renamed = await renameMap("map-2", "Faces");
     await sleep(80);
     const rows4 = await readRows();
-    const pill4 = await pillName();
-    console.log(`Rename map-2 -> Faces: ${renamed}  pill:"${pill4}"  -> ${JSON.stringify(rows4)}`);
+    const name4 = await activeName();
+    console.log(`Rename map-2 -> Faces: ${renamed}  active:"${name4}"  -> ${JSON.stringify(rows4)}`);
 
-    // 7) Select map-1 -> becomes active; box stays open; chip + flash give
-    //    feedback; the pill reflects the new active map.
+    // 7) Select map-1 -> becomes active; popover stays open; chip + flash give
+    //    feedback; the active row reflects the new active map.
     const selClicked = await clickSelect("map-1");
     await sleep(120);
     const selStillOpen = await boxOpen();
     const chipText = await E(`document.querySelector('.undo-chip')?.textContent || ''`);
     const selLit = await overlayLit();
-    const pill5 = await pillName();
+    const name5 = await activeName();
     const rows5 = await readRows();
     await S("Page.captureScreenshot", { format: "png" }).then((s) => writeFileSync(join(OUT, "maps-menu.png"), Buffer.from(s.data, "base64")));
-    console.log(`Select map-1: ${selClicked ? "✓" : "✗"}  box open:${selStillOpen ? "✓" : "✗"}  chip:"${chipText}"  flash lit:${selLit}  pill:"${pill5}"`);
+    console.log(`Select map-1: ${selClicked ? "✓" : "✗"}  popover open:${selStillOpen ? "✓" : "✗"}  chip:"${chipText}"  flash lit:${selLit}  active:"${name5}"`);
     console.log(`After select -> ${JSON.stringify(rows5)}`);
 
-    // 8) the standalone Neighbors-map box is gone; verify no such element exists.
-    const noBox = await E(`!document.querySelector('.neighbors-map-box')`);
-    // and the 'm' shortcut now toggles the Maps box (open after step 7).
+    // 8) no draggable Maps window / standalone Neighbors box; the 'm' shortcut
+    //    toggles the anchored popover (open after step 7).
+    const noBox = await E(`!document.querySelector('.maps-box') && !document.querySelector('.neighbors-map-box')`);
     const pressM = async () => { for (const t of ["keyDown", "keyUp"]) await S("Input.dispatchKeyEvent", { type: t, key: "m", code: "KeyM", windowsVirtualKeyCode: 77, nativeVirtualKeyCode: 77 }); };
-    await pressM(); await sleep(80);
+    await pressM(); await sleep(120);
     const closedByKey = !(await boxOpen());
-    await pressM(); await sleep(80);
+    await pressM(); await sleep(120);
     const openedByKey = await boxOpen();
-    console.log(`No old box element: ${noBox ? "✓" : "✗"}  'm' toggles box -> closed:${closedByKey ? "✓" : "✗"} reopened:${openedByKey ? "✓" : "✗"}`);
+    console.log(`No draggable box: ${noBox ? "✓" : "✗"}  'm' toggles popover -> closed:${closedByKey ? "✓" : "✗"} reopened:${openedByKey ? "✓" : "✗"}`);
 
     // 9) delete a map via the list -> confirm modal -> removed. With 2 maps each
     //    row has a delete button; deleting Faces leaves only map-1 (no delete on
@@ -159,30 +178,31 @@ async function main() {
     const map1Row5 = rows5.find((r) => r.name === "map-1");
     const facesRow5 = rows5.find((r) => r.name === "Faces");
     const ok =
-      hasPill && pill1 === "map-1" && open1 &&
+      hasPill && open1 && liveRowPresent && name1 === "map-1" &&
       rows1.length === 1 && rows1[0].name === "map-1" && rows1[0].active && rows1[0].dots === 0 &&
       active2 && active2.name === "map-1" && active2.dots > 0 &&
-      litActive > 0 &&
-      newClicked && afterNewOpen && rows3.length === 2 && pill3 === "map-2" &&
+      // Live view: on lights the icon + overlay; off unlights it.
+      litActive > 0 && iconLitOn && !iconLitOff &&
+      newClicked && afterNewOpen && rows3.length === 2 && name3 === "map-2" &&
       rows3.some((r) => r.name === "map-2" && r.active && r.dots === 0) &&
       rows3.some((r) => r.name === "map-1" && !r.active && r.dots > 0) &&
       icons === 2 && perMapFlashed && litPerMap > 0 && stillOpenAfterFlash &&
-      renamed === "ok" && pill4 === "Faces" &&
+      renamed === "ok" && name4 === "Faces" &&
       // after rename: Faces active (tag, no Select); map-1 inactive (Select, no tag)
       !!facesRow4 && facesRow4.active && facesRow4.tag && !facesRow4.select &&
       !!map1Row4 && !map1Row4.active && map1Row4.select && !map1Row4.tag &&
-      // Select map-1: box stays open, chips "Selected ...", flashes the map,
-      // pill updates, and the roles swap (map-1 active, Faces selectable).
-      selClicked && selStillOpen && chipText.includes("map-1") && selLit > 0 && pill5 === "map-1" &&
+      // Select map-1: popover stays open, chips "Selected ...", flashes the map,
+      // the active row updates, and the roles swap (map-1 active, Faces selectable).
+      selClicked && selStillOpen && chipText.includes("map-1") && selLit > 0 && name5 === "map-1" &&
       !!map1Row5 && map1Row5.active && map1Row5.tag &&
       !!facesRow5 && !facesRow5.active && facesRow5.select &&
-      // no old box; 'm' toggles the Maps box
+      // no draggable box; 'm' toggles the anchored popover
       noBox && closedByKey && openedByKey &&
       // delete via confirm modal: Faces removed, only map-1 left (no delete btn)
       delBtnsAt2 && delClicked && modalShown &&
       rowsFinal.length === 1 && rowsFinal[0].name === "map-1" && !rowsFinal[0].del;
     console.log(`\n✓ screenshot → ${join(OUT, "maps-menu.png")}`);
-    console.log(ok ? "✓ PASS — pill shows active map; box opens with map-N naming; New map; per-map flash; rename; select; delete (confirm); 'm' toggles box" : "✗ FAIL");
+    console.log(ok ? "✓ PASS — cloud icon opens the anchored popover; Live-view toggle lights the icon; New map; per-map flash; rename; select; delete (confirm); 'm' toggles popover" : "✗ FAIL");
     await send("Target.closeTarget", { targetId });
     return ok ? 0 : 1;
   } finally { try { ws?.close(); } catch {} br.kill("SIGKILL"); dev.kill("SIGKILL"); }

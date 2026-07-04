@@ -1,5 +1,4 @@
 import { attachMenu } from "./ui/menu";
-import { showChip } from "./chip";
 
 export type MenuOption<T extends string> = {
   value: T;
@@ -85,14 +84,14 @@ export type BrushStyleTree = {
   onPick: (style: string) => void; // select that brush + apply the style
 };
 
-// The navbar Maps quick-access: a small pill showing the active map's live point
-// count plus a single "hot map" toggle. Clicking the count opens the full Maps
-// box (see maps-box.ts); the map's name lives in the tooltips.
+// The navbar Maps quick-access: a single cloud-of-dots icon. Clicking it opens
+// the Maps subpanel (see maps-box.ts) anchored under the icon; the icon lights up
+// while "Live view" is on so you know a map is showing on the canvas. The active
+// map's name + live count live in the tooltip.
 export type MapsPillControl = {
   getActiveInfo: () => { name: string; dots: number }; // active map, read live
-  onOpen: () => void; // click the count → open/toggle the Maps box
-  pinned: () => boolean; // whether the persistent "hot map" highlight is on
-  onToggleHot: () => void; // the button → toggle the hot map (flashes as it turns on)
+  onOpen: (anchor: HTMLElement) => void; // click → open/close the Maps subpanel
+  pinned: () => boolean; // whether "Live view" (the hot-map highlight) is on
   subscribe: (fn: () => void) => () => void; // refresh when maps change
 };
 
@@ -134,6 +133,7 @@ export function createMenu<T extends string>(
   setSecondaryColor: (v: string) => void;
   refreshHistoryState: () => void;
   refreshMapsPill: () => void;
+  mapsPillAnchor: HTMLElement | null; // navbar Maps icon; the subpanel anchors here
   toggleCanvasMenu: () => void;
 } {
   const bar = document.createElement("div");
@@ -152,9 +152,11 @@ export function createMenu<T extends string>(
   }
   if (windows && windows.length) bar.appendChild(makeWindowsMenu(windows));
   let refreshMapsPill = () => {};
+  let mapsPillAnchor: HTMLElement | null = null;
   if (maps) {
     const pill = makeMapsPill(maps);
     refreshMapsPill = pill.refresh;
+    mapsPillAnchor = pill.anchor;
     bar.appendChild(pill.el);
   }
   const swatch = makeColorSwatch(colors);
@@ -233,6 +235,7 @@ export function createMenu<T extends string>(
     setSecondaryColor: swatch.setSecondary,
     refreshHistoryState,
     refreshMapsPill,
+    mapsPillAnchor,
     toggleCanvasMenu,
   };
 }
@@ -367,115 +370,56 @@ function makeWindowsMenu(items: WindowEntry[]): HTMLElement {
   return wrap;
 }
 
-// Navbar Maps quick-access (card #87): a compact pill = the live-highlight (flash)
-// toggle + a chevron. Clicking the flash toggles the cloud-point highlight and
-// shows a chip with the live count; the chevron opens a small menu with the count
-// and a "Show map" action (opens the Maps box). The count stays in sync via
-// control.subscribe + an explicit refresh after strokes — see Menu.refreshMapsPill.
+// Navbar Maps quick-access (card #88): a single cloud-of-dots icon that opens the
+// Maps subpanel anchored beneath it. The icon lights up (.is-on) while "Live view"
+// is on. Tooltip carries the active map's name + count, kept in sync via
+// control.subscribe + a refresh after strokes (Menu.refreshMapsPill).
 function makeMapsPill(control: MapsPillControl): {
   el: HTMLElement;
+  anchor: HTMLElement; // the icon button - the subpanel opens beneath it
   refresh: () => void;
 } {
   const wrap = document.createElement("span");
   wrap.className = "pill maps-pill";
 
-  // Flash toggle: turns the persistent cloud-point highlight on/off (lit while
-  // on) and pops a chip naming the live point count.
-  const flash = document.createElement("button");
-  flash.type = "button";
-  flash.className = "icon-btn maps-pill-flash";
-  flash.innerHTML =
-    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">' +
-    '<circle cx="8" cy="8" r="5.2"/>' +
-    '<circle cx="8" cy="8" r="1.4" fill="currentColor" stroke="none"/>' +
-    '<path d="M8 0.5 V2.5 M8 13.5 V15.5 M0.5 8 H2.5 M13.5 8 H15.5" stroke-linecap="round"/>' +
-    "</svg>";
-  flash.addEventListener("click", (e) => {
-    e.stopPropagation();
-    control.onToggleHot();
-    const { dots } = control.getActiveInfo();
-    showChip(
-      control.pinned()
-        ? `Showing cloud dots live - currently ${dots} ${dots === 1 ? "dot" : "dots"}`
-        : "Cloud dots highlight off",
-    );
-  });
-
-  // Chevron opens a small menu: the live point count + a "Show map" action.
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "maps-pill-more";
-  const chevron = document.createElement("span");
-  chevron.className = "chevron";
-  chevron.textContent = "⌄";
-  chevron.setAttribute("aria-hidden", "true");
-  trigger.appendChild(chevron);
-
-  const popover = document.createElement("div");
-  popover.className = "brush-popover maps-pill-popover";
-
-  // Info row: the point-cloud glyph (dots joined by faint connections - what a
-  // memory map is) + the live "<n> points" count.
-  const info = document.createElement("div");
-  info.className = "maps-pop-info";
-  const icon = document.createElement("span");
-  icon.className = "maps-pill-icon";
-  icon.innerHTML =
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  // The point-cloud glyph (dots joined by faint connections - what a memory map
+  // is). One click opens the Maps subpanel; a second click closes it.
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "icon-btn maps-pill-btn";
+  btn.innerHTML =
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M5.5 16.5 L10 6.5 L18.5 10.5 L14 17.5 Z M10 6.5 L14 17.5" stroke-width="1.1" stroke-opacity="0.55"/>' +
     '<circle cx="5.5" cy="16.5" r="2" fill="currentColor" stroke="none"/>' +
     '<circle cx="10" cy="6.5" r="2" fill="currentColor" stroke="none"/>' +
     '<circle cx="18.5" cy="10.5" r="2" fill="currentColor" stroke="none"/>' +
     '<circle cx="14" cy="17.5" r="2" fill="currentColor" stroke="none"/>' +
     "</svg>";
-  const count = document.createElement("span");
-  count.className = "maps-pop-count";
-  info.append(icon, count);
-  popover.appendChild(info);
-
-  // Divider, then the "Memory map settings" action → opens the full Maps box.
-  // A div row (like the other combo options) so it doesn't pick up native button
-  // chrome.
-  const sep = document.createElement("div");
-  sep.className = "combo-sep";
-  sep.setAttribute("role", "separator");
-  popover.appendChild(sep);
-  const showRow = document.createElement("div");
-  showRow.className = "brush-option maps-pop-show";
-  showRow.setAttribute("role", "menuitem");
-  showRow.tabIndex = -1;
-  showRow.textContent = "Memory map settings";
-  popover.appendChild(showRow);
-
-  wrap.append(flash, trigger, popover);
-  const menu = attachMenu({ trigger, menu: popover, container: wrap });
-  showRow.addEventListener("click", (e) => {
+  btn.addEventListener("click", (e) => {
     e.stopPropagation();
-    control.onOpen();
-    menu.close();
+    control.onOpen(btn);
   });
+  wrap.appendChild(btn);
 
   const refresh = () => {
     const { name, dots } = control.getActiveInfo();
-    count.textContent = `${dots} ${dots === 1 ? "dot" : "dots"}`;
-    const isPinned = control.pinned();
-    flash.classList.toggle("is-on", isPinned);
-    flash.setAttribute("aria-pressed", String(isPinned));
-    flash.setAttribute(
+    const live = control.pinned();
+    btn.classList.toggle("is-on", live);
+    const count = `${dots} ${dots === 1 ? "dot" : "dots"}`;
+    btn.setAttribute(
       "aria-label",
-      isPinned ? `Hide ${name} cloud dots` : `Show ${name} cloud dots live`,
+      live
+        ? `Memory maps (Live view on) - ${name}, ${count}`
+        : `Memory maps - ${name}, ${count}`,
     );
-    flash.title = isPinned
-      ? `Cloud dots showing - ${name} (click to hide)`
-      : `Show ${name} cloud dots live`;
-    trigger.setAttribute("aria-label", `${name}: ${dots} dots - open map menu`);
-    trigger.title = `${name} - ${dots} dots`;
-    showRow.setAttribute("aria-label", `Memory map settings (${name})`);
+    btn.title = live
+      ? `${name} - ${count} · Live view on (open memory maps)`
+      : `${name} - ${count} (open memory maps)`;
   };
   control.subscribe(refresh);
   refresh();
 
-  return { el: wrap, refresh };
+  return { el: wrap, anchor: btn, refresh };
 }
 
 function makeCanvasMenu(opts: CanvasMenuOptions): {

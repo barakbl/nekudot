@@ -11,6 +11,8 @@ function control(): MapsControl {
     onRenameMap: () => {},
     onSelectMap: () => {},
     onDeleteMap: () => {},
+    isLiveView: () => false,
+    setLiveView: () => {},
     getHighlightColor: () => "#ffcc00",
     onPickHighlightColor: () => {},
     subscribe: () => () => {},
