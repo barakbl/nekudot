@@ -4,9 +4,11 @@ import { RoundBrush } from "../src/brushes/round";
 import type { IRenderer } from "../src/renderer";
 import type { NeighborFinder, Pixel } from "../src/neighbor-finder";
 
-// Regression guard for the first-run "white-out" fix (#88): the mandala start
-// opens Round in the Bloomer style, whose old defaults saturated the canvas to
-// white. Pins the fix invariants, not the tuned numbers, so the look can retune.
+// Regression guard for the first-run "white-out" fix (#88). The mandala start
+// now opens Round in the softer Shaded style, but Bloomer stays a shipped,
+// user-selectable style whose old defaults saturated the canvas to white - so
+// keep pinning that its defaults stay tame (the invariants, not the tuned
+// numbers, so the look can retune).
 
 const noopRenderer = () =>
   new Proxy({}, { get: () => () => {} }) as unknown as IRenderer;
@@ -78,7 +80,7 @@ function fiveConvergingStrokes(override?: Record<string, number>) {
   return { lines: counts.web, points: finder.livePixelCount() };
 }
 
-describe("mandala first-run recipe (#88 white-out fix)", () => {
+describe("Bloomer style stays tame (former mandala recipe, #88 white-out fix)", () => {
   it("the shipped Bloomer style keeps the fix invariants", () => {
     const brush = new RoundBrush(createBareHost(noopRenderer(), makeFinder()), 1);
     brush.selectArtStyle("bloom");

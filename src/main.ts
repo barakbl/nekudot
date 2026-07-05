@@ -1065,7 +1065,7 @@ const startMandala = (color?: string): void => {
       layerManager.setBackground({ color: MANDALA_BG, transparent: false });
       applyStageBackground();
       selectBrush("Round"); // the connecting brush that weaves the kaleidoscope
-      setArtStyle("bloom"); // first stroke fills into a full mandala
+      setArtStyle("shaded"); // soft, distance-faded tone - builds up gently, not a bright bloom
       menu.setMainColor("#ffffff"); // a light stroke reads on the dark canvas
       symmetry.setMode("radial");
       const round = brushes["Round"];
