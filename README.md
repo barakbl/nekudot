@@ -126,8 +126,10 @@ terms of the GPL v3+. This matches [Harmony](https://mrdoob.github.io/harmony/)
 
 ## Privacy
 
-Your drawings never leave your browser - Nekudot has no accounts and no server
-for your work. The website (including the app) uses
-[Umami](https://umami.is) to count **anonymous** page views: a privacy-friendly,
-cookieless analytics tool that records rough visit counts and referrers only, with
-no cookies, no personal data and no cross-site tracking.
+We don't track anything you draw or make - your work stays in your browser, and
+Nekudot has no accounts and no server for it. The only thing measured is traffic:
+the website and the app use [Umami](https://umami.is) to count **anonymous** page
+views - rough visit counts and referrers only, with no cookies, no personal data
+and no cross-site tracking or fingerprinting. Because it sets no cookies and stores
+no personal data, it needs no cookie-consent banner and is designed to comply with
+the GDPR.

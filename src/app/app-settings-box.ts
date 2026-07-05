@@ -301,14 +301,15 @@ export function createAppSettingsBox(opts: {
   whatsNew.rel = "noopener";
   whatsNew.textContent = "What's new →";
 
-  // Analytics disclosure - the site + app count anonymous page views with Umami.
-  // The label states it; the link opens the full statement on the License page.
-  const analytics = document.createElement("a");
-  analytics.className = "appset-link";
-  analytics.href = "/license.html";
-  analytics.target = "_blank";
-  analytics.rel = "noopener";
-  analytics.textContent = "Anonymous, cookieless (Umami) →";
+  // Privacy: a pointer to the website's canonical statement. We don't track your
+  // work - only anonymous, cookieless page views (Umami). Keeps the detail in one
+  // place rather than repeating it in the panel.
+  const privacy = document.createElement("a");
+  privacy.className = "appset-link";
+  privacy.href = "/license.html#analytics";
+  privacy.target = "_blank";
+  privacy.rel = "noopener";
+  privacy.textContent = "Privacy note →";
 
   body.append(
     sub("Appearance"),
@@ -370,9 +371,9 @@ export function createAppSettingsBox(opts: {
     row("Version", version),
     row("What's new", whatsNew, "See the latest updates, told for artists - opens the website."),
     row(
-      "Analytics",
-      analytics,
-      "The site and app count anonymous page views with Umami - no cookies, no personal data, no cross-site tracking. Your drawings never leave your browser. Opens the full statement on the website.",
+      "Privacy",
+      privacy,
+      "We don't track anything you draw - your work stays in your browser. The site and app count only anonymous, cookieless page views (Umami). Opens the full statement on the website.",
     ),
   );
 
