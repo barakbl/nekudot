@@ -123,3 +123,11 @@ version 3 or later**. You're free to use, study, share and modify it under the
 terms of the GPL v3+. This matches [Harmony](https://mrdoob.github.io/harmony/)
 (© 2010 Ricardo Cabello, GPL v3+), from which several web styles are ported. See
 [LICENSE](LICENSE) and [AUTHORS](AUTHORS).
+
+## Privacy
+
+Your drawings never leave your browser - Nekudot has no accounts and no server
+for your work. The website (including the app) uses
+[Umami](https://umami.is) to count **anonymous** page views: a privacy-friendly,
+cookieless analytics tool that records rough visit counts and referrers only, with
+no cookies, no personal data and no cross-site tracking.
