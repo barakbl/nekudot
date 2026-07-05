@@ -106,6 +106,14 @@
       "file": "chroma.ts",
       "info": "Short, inset crossing lines in random darkened tones that build a metallic sheen - a port of the chrome brush in Harmony.",
       "strokeAlpha": 0.1
+    },
+    {
+      "name": "longfur",
+      "webWeight": { "light": { "strands": 1, "density": 40, "links": 20 }, "heavy": { "strands": 3, "density": 90, "links": 0 } },
+      "label": "Long Fur",
+      "file": "longfur.ts",
+      "info": "Long wispy hairs that overshoot the dots they link - a port of the longfur brush in Harmony.",
+      "strokeAlpha": 0
     }
   ],
   "More": [
