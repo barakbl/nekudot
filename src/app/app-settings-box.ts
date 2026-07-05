@@ -301,6 +301,16 @@ export function createAppSettingsBox(opts: {
   whatsNew.rel = "noopener";
   whatsNew.textContent = "What's new →";
 
+  // Privacy: a pointer to the website's canonical statement. We don't track your
+  // work - only anonymous, cookieless page views (Umami). Keeps the detail in one
+  // place rather than repeating it in the panel.
+  const privacy = document.createElement("a");
+  privacy.className = "appset-link";
+  privacy.href = "/license.html#analytics";
+  privacy.target = "_blank";
+  privacy.rel = "noopener";
+  privacy.textContent = "Privacy note →";
+
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -360,6 +370,11 @@ export function createAppSettingsBox(opts: {
     sub("About"),
     row("Version", version),
     row("What's new", whatsNew, "See the latest updates, told for artists - opens the website."),
+    row(
+      "Privacy",
+      privacy,
+      "We don't track anything you draw - your work stays in your browser. The site and app count only anonymous, cookieless page views (Umami). Opens the full statement on the website.",
+    ),
   );
 
   // With folder sync available, split the panel into vertical tabs: General
