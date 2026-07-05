@@ -49,7 +49,7 @@ async function main() {
     const openCombo = () => E(`document.querySelector('.connect-pill .brush-popover').classList.add('open')`);
     const closeCombo = () => E(`document.querySelector('.connect-pill .brush-popover').classList.remove('open')`);
 
-    // 1) built-in (Airy) → single save button
+    // 1) built-in (Sketchy) → single save button
     await ensurePanel();
     const builtinBtns = await saveButtons();
     console.log(`Built-in active — save buttons: [${builtinBtns.join(" | ")}]  (expect one "Save as preset")`);

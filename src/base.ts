@@ -788,7 +788,7 @@ export abstract class BrushBase {
   // --- persistence -----------------------------------------------------------
   // Two domains, keyed under "brush.<name>":
   //   - art-style dials  -> ".style.<styleName>" holds the whole flat, so each
-  //     style keeps its own look (density for Shading ≠ density for String Art).
+  //     style keeps its own look (density for Shaded ≠ density for Web).
   //   - everything else  -> ".<key>" holds the plain value (brush params,
   //     routing). Unchanged layout, so existing saved settings keep loading.
   // The panel calls persistSetting after a change; restore runs once at boot.

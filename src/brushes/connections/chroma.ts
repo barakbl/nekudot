@@ -1,3 +1,5 @@
+// Port of the chrome brush of Harmony by mr.doob (Ricardo Cabello) -
+// https://github.com/mrdoob/harmony (GPL-3-or-later).
 import { ConnectionBase } from "./base";
 import type { ConnectingFlat } from "../../connecting-types";
 import type { LineStyle } from "../../renderer";

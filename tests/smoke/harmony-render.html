@@ -32,7 +32,7 @@
         return cv;
       }
       const wrap=document.getElementById('wrap');
-      for(const [kind,label] of [['sketchy','Harmony sketchy (≈Airy)'],['web','Harmony web (≈String Art)'],['shaded','Harmony shaded (≈Shading)']]){
+      for(const [kind,label] of [['sketchy','Harmony sketchy (≈Sketchy)'],['web','Harmony web (≈Web)'],['shaded','Harmony shaded (≈Shaded)']]){
         const lab=document.createElement('div'); lab.className='lab'; lab.textContent=label+' — same gesture, '+PASSES+' passes'; wrap.appendChild(lab);
         wrap.appendChild(render(kind));
       }

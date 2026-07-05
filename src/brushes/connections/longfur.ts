@@ -1,10 +1,12 @@
+// Port of the longfur brush of Harmony by mr.doob (Ricardo Cabello) -
+// https://github.com/mrdoob/harmony (GPL-3-or-later).
 import { ConnectionBase } from "./base";
 import type { ConnectingFlat } from "../../connecting-types";
 import type { LineStyle } from "../../renderer";
 import type { Pixel } from "../../neighbor-finder";
 import type { BrushSetting } from "../../base";
 
-// Long Fur: a port of mrdoob's Harmony "longfur" brush. Like fur it draws a hair
+// Longfur: a port of mr.doob's Harmony "longfur" brush. Like fur it draws a hair
 // to each nearby dot, but every hair OVERSHOOTS both ends by a random fraction of
 // its own length (Harmony's symmetric `size = -Math.random()`) and frays its far
 // tip a couple of px - so the strands run long and wispy past the dots they

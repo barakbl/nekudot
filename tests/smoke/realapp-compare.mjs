@@ -110,7 +110,7 @@ async function main() {
       await sleep(150);
     };
 
-    const STYLES = [{ label: "Airy", kind: "sketchy" }, { label: "Shading", kind: "shaded" }, { label: "String Art", kind: "web" }];
+    const STYLES = [{ label: "Sketchy", kind: "sketchy" }, { label: "Shaded", kind: "shaded" }, { label: "Web", kind: "web" }];
     mkdirSync(OUT, { recursive: true });
 
     for (const st of STYLES) {

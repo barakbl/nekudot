@@ -26,7 +26,7 @@ export function create(c: BrushContext): RoundBrush {
 
 // Art style applied when Round is first used / on selection. The art style is
 // otherwise chosen from the navbar Connecting combo (persisted under app.artStyle).
-// "shaded" (the Shading style): dense distance-faded lines, no core line.
+// "shaded" (the Shaded style): dense distance-faded lines, no core line.
 export const DEFAULT_ART_STYLE = "shaded";
 
 // The Round brush: a continuous round-capped line plus the connecting web. It is
@@ -99,7 +99,7 @@ export class RoundBrush extends BrushBase {
   }
 
   // Stroke-line opacity for the active connection style, matching its Harmony
-  // counterpart (Airy 0.05, String Art 0.5, Shading 0 = no line). Falls back to
+  // counterpart (Sketchy 0.05, Web 0.5, Shaded 0 = no line). Falls back to
   // a faint 0.1 for styles that don't pin one. Keeps the line from burying the
   // connecting web; raise Opacity in Brush settings for a bolder line.
   getSelectOpacity(): number {

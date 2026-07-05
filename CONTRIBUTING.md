@@ -70,6 +70,6 @@ npm run build:app  # rebuilds docs/app/index.html
 
 ## License
 
-Nekudot is released under the **GNU GPL v2**. By contributing, you agree that
+Nekudot is released under the **GNU GPL v3**. By contributing, you agree that
 your contributions are licensed under the same terms. See
 [LICENSE](LICENSE) and [AUTHORS](AUTHORS).

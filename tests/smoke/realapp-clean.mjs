@@ -1,5 +1,5 @@
 // CLEAN real-app test: clear storage, load once, draw exactly ONE pass with the
-// default brush/connection (Round + Airy), screenshot + sample line darkness.
+// default brush/connection (Round + Sketchy), screenshot + sample line darkness.
 // No reselect clicks, no reloads → no persisted-paint pollution. Compares to a
 // Harmony sketchy port fed the identical points.
 import { spawn } from "node:child_process";
@@ -46,9 +46,9 @@ async function main() {
     await E(`window.__rec=[]; const _s=CanvasRenderingContext2D.prototype.stroke; CanvasRenderingContext2D.prototype.stroke=function(){ window.__rec.push([Math.round(this.globalAlpha*1000)/1000, this.lineWidth]); return _s.apply(this,arguments); };`);
 
     // select a connection style if requested (clean canvas, so no pollution)
-    const STYLE = process.env.STYLE || "Airy";
-    const KIND = { "Airy": "airy", "Shading": "shading", "String Art": "stringart" }[STYLE] || "airy";
-    if (STYLE !== "Airy") {
+    const STYLE = process.env.STYLE || "Sketchy";
+    const KIND = { "Sketchy": "airy", "Shaded": "shading", "Web": "stringart" }[STYLE] || "airy";
+    if (STYLE !== "Sketchy") {
       await E(`(() => { const pill=document.querySelector('.connect-pill'); pill.click(); const opt=[...pill.querySelectorAll('.brush-option')].find(o=>o.querySelector('.opt-label')?.textContent===${JSON.stringify(STYLE)}); opt&&opt.click(); })()`);
       await sleep(200);
       // close the popover so it doesn't pollute the screenshot

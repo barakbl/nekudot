@@ -62,7 +62,7 @@ async function main() {
     const E = async (expr) => { const r = await S("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
     if (!(await waitFor(() => E(`!!document.querySelector('.stage canvas')`), 30000))) throw new Error("app did not load");
     await E(HELPERS);
-    await E(`window.__selectConnection("Airy")`);
+    await E(`window.__selectConnection("Sketchy")`);
     await sleep(200);
     await E(`window.__resetSC()`);
 

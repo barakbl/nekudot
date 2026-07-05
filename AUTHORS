@@ -2,11 +2,14 @@ Nekudot is written and maintained by:
 
   Barak Bloch <barak.bloch@gmail.com>
 
-The core idea behind Nekudot — turning strokes into a web by connecting
-nearby points — comes from Ricardo Cabello (mrdoob) and his Harmony sketch
+The core idea behind Nekudot - turning strokes into a web by connecting
+nearby points - comes from Ricardo Cabello (mrdoob) and his Harmony sketch
 tool (https://mrdoob.github.io/harmony/). Nekudot is an independent
-reimplementation of that idea; credit for the original concept is his.
+reimplementation of that idea, and several connecting web styles (Sketchy,
+Web, Shaded, Chrome, Longfur) are direct ports of Harmony's brushes. Harmony
+is (C) 2010 Ricardo Cabello, licensed GPL-3-or-later; credit for the original
+concept and those brushes is his.
 
 Copyright for the Nekudot source code is held by its contributors, listed
 above. Authorship of individual changes is recorded in the git history.
-See the README for license terms (GNU GPL v2).
+See the README for license terms (GNU GPL v3 or later).
