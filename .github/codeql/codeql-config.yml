@@ -1,0 +1,12 @@
+name: "CodeQL config"
+
+# The live smoke harnesses under tests/smoke/ drive a headless Chrome over the
+# DevTools protocol: they build a JS expression string and inject hardcoded CSS
+# selectors / labels into it with JSON.stringify(...). CodeQL's
+# js/bad-code-sanitization flags that idiom because JSON.stringify is not a
+# complete code sanitizer - but every interpolated value here is a trusted
+# constant defined in the test file, so there is no injection path. These are
+# manual, dev-only tools (not shipped, not run in CI), so keep the scanner
+# focused on the product code in src/ and skip the harnesses.
+paths-ignore:
+  - tests/smoke
