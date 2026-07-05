@@ -301,6 +301,15 @@ export function createAppSettingsBox(opts: {
   whatsNew.rel = "noopener";
   whatsNew.textContent = "What's new →";
 
+  // Analytics disclosure - the site + app count anonymous page views with Umami.
+  // The label states it; the link opens the full statement on the License page.
+  const analytics = document.createElement("a");
+  analytics.className = "appset-link";
+  analytics.href = "/license.html";
+  analytics.target = "_blank";
+  analytics.rel = "noopener";
+  analytics.textContent = "Anonymous, cookieless (Umami) →";
+
   body.append(
     sub("Appearance"),
     row("Theme", seg),
@@ -360,6 +369,11 @@ export function createAppSettingsBox(opts: {
     sub("About"),
     row("Version", version),
     row("What's new", whatsNew, "See the latest updates, told for artists - opens the website."),
+    row(
+      "Analytics",
+      analytics,
+      "The site and app count anonymous page views with Umami - no cookies, no personal data, no cross-site tracking. Your drawings never leave your browser. Opens the full statement on the website.",
+    ),
   );
 
   // With folder sync available, split the panel into vertical tabs: General
