@@ -5,7 +5,7 @@ import { connectionGroups } from "../src/brushes/connections/registry";
 import type { IRenderer } from "../src/renderer";
 import type { NeighborFinder, Pixel } from "../src/neighbor-finder";
 
-// Long Fur (src/brushes/connections/longfur.ts) ports Harmony's "longfur" brush:
+// Longfur (src/brushes/connections/longfur.ts) ports Harmony's "longfur" brush:
 // each web hair overshoots BOTH ends by a random fraction of its length, so
 // strands run long and wispy past the dots they bridge. These lock the port's
 // registration/geometry and the defining behaviour - lines that reach beyond the
@@ -27,7 +27,7 @@ function makeFinder(): NeighborFinder {
   };
 }
 
-// Draw a short crossing stroke of Long Fur and capture each web line's two
+// Draw a short crossing stroke of Longfur and capture each web line's two
 // endpoints (args 1 + 2 of host.drawConnectionToLayer) + its drawn length.
 function webLines(seed = 1, override?: Record<string, string | number>) {
   const segs: { a: Pixel; b: Pixel; len: number }[] = [];
@@ -56,11 +56,11 @@ function webLines(seed = 1, override?: Record<string, string | number>) {
 
 const REACH = 55;
 
-describe("Long Fur connection (Harmony longfur port)", () => {
+describe("Longfur connection (Harmony longfur port)", () => {
   it("registers in the Classic group with the longfur.ts glyph + geometry", () => {
     const classic = connectionGroups().find((g) => g.group === "Classic")!;
     const def = classic.defs.find((d) => d.name === "longfur")!;
-    expect(def.label).toBe("Long Fur");
+    expect(def.label).toBe("Longfur");
     expect(def.icon).toContain("Q5 6 7 2"); // a strand path from longfur.ts's icon
 
     const c = webLines().brush.activeConnection()!;

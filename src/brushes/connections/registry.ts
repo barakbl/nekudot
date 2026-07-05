@@ -2,7 +2,7 @@ import type { ConnectionBase, ConnectionDeps, ConnectionSpec } from "./base";
 import connectionsIndex from "./connections.json";
 
 // connections.json is grouped: { "Classic": [...], "More": [...], "Custom": [] }.
-// A data-only style (Airy, String Art, Shading, Arc, Lace) declares its icon +
+// A data-only style (Sketchy, Web, Shaded, Lace) declares its icon +
 // slider values in its JSON row and runs on the generic class (classic.ts); a
 // code style (Fur) points `file` at its own module, which supplies behaviour
 // (drawHair…) and may export its own `icon`. The "Custom" group is empty in the

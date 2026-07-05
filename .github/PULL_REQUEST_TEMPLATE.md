@@ -33,7 +33,7 @@ testable, and you understand it and stand behind it.
 
 <sub>A gentle, friendly heads-up: not every contribution can be merged - it
 depends on quality, fit, and the direction of the project, and that is never
-personal. Because Nekudot is free software under the **GNU GPL v2**, you are
+personal. Because Nekudot is free software under the **GNU GPL v3**, you are
 always free (and warmly encouraged) to **fork it and maintain your own version**.
 New here? Don't worry about getting everything perfect - open the PR and we'll
 help. See [CONTRIBUTING](https://github.com/barakbl/nekudot/blob/main/CONTRIBUTING.md).</sub>

@@ -55,7 +55,7 @@ describe("Chroma connection (Harmony chrome port)", () => {
   it("registers in the Classic group with the chroma.ts glyph + chrome geometry", () => {
     const classic = connectionGroups().find((g) => g.group === "Classic")!;
     const def = classic.defs.find((d) => d.name === "chroma")!;
-    expect(def.label).toBe("Chroma");
+    expect(def.label).toBe("Chrome");
     expect(def.icon).toContain("M3 6 L10 10"); // the icon exported by chroma.ts
 
     const c = webLines("chroma").brush.activeConnection()!;

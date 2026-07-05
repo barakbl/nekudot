@@ -17,7 +17,7 @@
     <div id="grid"></div>
     <script type="module">
       // Faithful side-by-side: the REAL Nekudot engine vs a port of mrdoob's
-      // Harmony brushes, identical gesture, for Airy/StringArt/Shading. Columns
+      // Harmony brushes, identical gesture, for Sketchy/StringArt/Shaded. Columns
       // expose where they diverge and whether a fix matches Harmony.
       import { CanvasRenderer } from "/src/renderer.ts";
       import { createNeighborFinder } from "/src/neighbor-finder.ts";
@@ -114,9 +114,9 @@
       const FRAME = 6;   // realistic per-frame mouse spacing
       const DENSE = 1.5; // oversampled (coalesced) spacing
       const STYLES = [
-        { row: "Airy",       nek: "classic", harm: "sketchy", baseAlpha: 0.05, tuned: { alpha: 0.05, sampleSpacing: 0 } },
-        { row: "String Art", nek: "web",     harm: "web",     baseAlpha: 0.5,  tuned: { alpha: 0.1, density: 10, radius: 50, sampleSpacing: 0 } },
-        { row: "Shading",    nek: "shaded",  harm: "shaded",  baseAlpha: 0,    tuned: { sampleSpacing: 0 } },
+        { row: "Sketchy",       nek: "classic", harm: "sketchy", baseAlpha: 0.05, tuned: { alpha: 0.05, sampleSpacing: 0 } },
+        { row: "Web", nek: "web",     harm: "web",     baseAlpha: 0.5,  tuned: { alpha: 0.1, density: 10, radius: 50, sampleSpacing: 0 } },
+        { row: "Shaded",    nek: "shaded",  harm: "shaded",  baseAlpha: 0,    tuned: { sampleSpacing: 0 } },
       ];
       const COLS = [
         { head: "Harmony (ref, 6px)", kind: "harm", spacing: FRAME },

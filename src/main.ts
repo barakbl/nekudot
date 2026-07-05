@@ -935,7 +935,7 @@ const selectBrush = (key: string) => {
   appState.brush.onSelect();
   // Recall the opacity this brush/style was last left at (remembered per context),
   // else the style's preferred opacity, else fully opaque - so switching brushes
-  // no longer wipes a manual opacity, and Shading still starts at 0 by default.
+  // no longer wipes a manual opacity, and Shaded still starts at 0 by default.
   const op = recallOpacity();
   appOpacity.set(op);
   // renderActiveBrush re-renders both boxes (reading the live opacity) and syncs

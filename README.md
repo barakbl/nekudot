@@ -1,6 +1,6 @@
 # Nekudot
 
-[![License: GPL v2](https://img.shields.io/badge/license-GPL%20v2-blue.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL%20v3-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/barakbl/nekudot)](https://github.com/barakbl/nekudot/releases)
 [![Try it live](https://img.shields.io/badge/try%20it-nekudot.app-e7b24e)](https://nekudot.app/app/)
 
@@ -35,8 +35,8 @@ single connected structure rather than a stack of independent lines.
 - **Connecting brushes** - Round & Handfree bloom into webs; the mark builds up
   at a steady rate however fast you draw (tuned to match Harmony).
 - **Grouped connections** - pick a style from the navbar combo: **Classic**
-  (Airy, String Art, Shading - the three Harmony looks), **More** (Fur, Lace,
-  Arc) and your own **Custom** presets. The gear opens per-style dials
+  (Sketchy, Web, Shaded, Chrome, Longfur - ports of Harmony's brushes), **More**
+  (Fur, Lace, Arc) and your own **Custom** presets. The gear opens per-style dials
   (density, reach, opacity, line shape, dash, arc, stipple…).
 - **Custom presets** - save a look you like (dials + line opacity), update or
   branch off an existing one, and **import / export** presets as `.preset` files
@@ -101,8 +101,11 @@ The same docs live in this repo under [`docs/`](docs/) (`about.html` and `book/`
 The central idea - turning each stroke into a web by drawing lines between
 nearby points - is **Ricardo Cabello's (mrdoob)**, from his
 [Harmony](https://mrdoob.github.io/harmony/) sketch tool. Nekudot is an
-independent reimplementation of that idea in TypeScript; the concept and the
-original Harmony code are his, and full credit for the inspiration goes to him.
+independent reimplementation of that idea in TypeScript, and several of the
+Classic web styles - **Sketchy, Web, Shaded, Chrome and Longfur** - are direct
+ports of Harmony's brushes of the same names. Harmony is © 2010 Ricardo Cabello,
+released under the GPL (v3 or later); the concept and those brushes are his, and
+full credit goes to him. Nekudot matches that license (see below).
 
 ## Contributing
 
@@ -116,5 +119,7 @@ part you agree to follow it.
 Copyright (C) 2026 Barak Bloch
 
 Nekudot is free software, released under the **GNU General Public License,
-version 2**. You're free to use, study, share and modify it under the terms of
-the GPL v2. See [LICENSE](LICENSE) and [AUTHORS](AUTHORS).
+version 3 or later**. You're free to use, study, share and modify it under the
+terms of the GPL v3+. This matches [Harmony](https://mrdoob.github.io/harmony/)
+(© 2010 Ricardo Cabello, GPL v3+), from which several web styles are ported. See
+[LICENSE](LICENSE) and [AUTHORS](AUTHORS).
