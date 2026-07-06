@@ -15,6 +15,21 @@ describe("brush registry", () => {
     expect(isKnownBrush("Not A Brush")).toBe(false);
     expect(isKnownBrush("")).toBe(false);
   });
+
+  it("lists each menu group in shortcut order (drives the toolbar menu order)", () => {
+    // BRUSH_DEFS order IS the menu order (consecutive same-group entries are
+    // wrapped into a sub-group), so within every group shortcuts must ascend; a
+    // brush with no shortcut (the Eraser) sorts last.
+    const groups = new Map<string, number[]>();
+    for (const d of BRUSH_DEFS) {
+      const g = d.menuGroup ?? "(top)";
+      const rank = d.shortcut ? parseInt(d.shortcut, 10) : Infinity;
+      (groups.get(g) ?? groups.set(g, []).get(g)!).push(rank);
+    }
+    for (const [, ranks] of groups) {
+      expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+    }
+  });
 });
 
 describe("pixel-log brush_type validation (registry-backed)", () => {
