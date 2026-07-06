@@ -1,9 +1,60 @@
 [
-  { "name": "Round", "label": "Web", "file": "round.ts", "shortcut": "1", "connections": true, "info": "The heart of the app - a round line plus the connecting web." },
-  { "name": "Shapes", "file": "shapes.ts", "shortcut": "2", "menuGroup": "Other", "info": "Speed-sized squares or circles stamped along the stroke - pick the shape in its settings." },
-  { "name": "Spray", "file": "spray.ts", "shortcut": "4", "menuGroup": "Other", "info": "Airbrush: scatters specks within a radius, building density as you dwell. Feeds the memory map (throttled) so connecting brushes can web over it." },
-  { "name": "Marker", "file": "marker.ts", "shortcut": "8", "menuGroup": "Other", "info": "A chisel-tip marker stroke." },
-  { "name": "Color Pen", "file": "color-pen.ts", "shortcut": "5", "menuGroup": "Other", "info": "A round pen with no connecting web. Lays a living, varied run of colour pulled from a gradient or palette as you draw - the pen's direction of travel walks the gradient. For lively, harmonious colour and texture, not picking one exact shade." },
-  { "name": "Invisible", "label": "Seed", "file": "invisible.ts", "shortcut": "9", "menuGroup": "Other", "info": "Sows dots for the web to grow on - each glows briefly, but the layer stays blank." },
-  { "name": "Eraser", "file": "eraser.ts", "menuGroup": "Other", "connections": true, "info": "Rubs out the layer with a round stroke. Can also erase connections — turn on a connect mode in Connecting settings (defaults to no connect)." }
+  {
+    "name": "Round",
+    "label": "Web",
+    "file": "round.ts",
+    "shortcut": "1",
+    "connections": true,
+    "info": "The heart of the app - a round line plus the connecting web."
+  },
+  {
+    "name": "Shapes",
+    "file": "shapes.ts",
+    "shortcut": "2",
+    "menuGroup": "Other",
+    "info": "Speed-sized squares or circles stamped along the stroke - pick the shape in its settings."
+  },
+  {
+    "name": "Wisp",
+    "file": "wisp.ts",
+    "shortcut": "3",
+    "menuGroup": "Other",
+    "info": "A live plume of soft puffs that rise, drift, grow and fade as you draw - for atmosphere, mist and distant foliage. Colour it from a gradient or palette and the plume walks the ramp as it billows. Size sets the spread, Opacity the thickness; Density, Rise, Direction, Lifespan and Turbulence shape the smoke (aim it any way with Direction - up by default)."
+  },
+  {
+    "name": "Spray",
+    "file": "spray.ts",
+    "shortcut": "4",
+    "menuGroup": "Other",
+    "info": "Airbrush: scatters specks within a radius, building density as you dwell. Feeds the memory map (throttled) so connecting brushes can web over it."
+  },
+  {
+    "name": "Color Pen",
+    "file": "color-pen.ts",
+    "shortcut": "5",
+    "menuGroup": "Other",
+    "info": "A round pen with no connecting web. Lays a living, varied run of colour pulled from a gradient or palette as you draw - the pen's direction of travel walks the gradient. For lively, harmonious colour and texture, not picking one exact shade."
+  },
+  {
+    "name": "Marker",
+    "file": "marker.ts",
+    "shortcut": "8",
+    "menuGroup": "Other",
+    "info": "A chisel-tip marker stroke."
+  },
+  {
+    "name": "Invisible",
+    "label": "Seed",
+    "file": "invisible.ts",
+    "shortcut": "9",
+    "menuGroup": "Other",
+    "info": "Sows dots for the web to grow on - each glows briefly, but the layer stays blank."
+  },
+  {
+    "name": "Eraser",
+    "file": "eraser.ts",
+    "menuGroup": "Other",
+    "connections": true,
+    "info": "Rubs out the layer with a round stroke. Can also erase connections — turn on a connect mode in Connecting settings (defaults to no connect)."
+  }
 ]
