@@ -1,0 +1,131 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>replay-twice — real-engine pixel determinism</title>
+    <style>
+      body { margin: 0; background: #2b2b2b; color: #ddd; font: 12px system-ui; }
+      #grid { display: grid; grid-template-columns: repeat(4, max-content); gap: 12px; padding: 14px; }
+      figure { margin: 0; text-align: center; }
+      canvas { display: block; border: 1px solid #555; background: #fff; }
+      figcaption.bad { color: #ff6b6b; }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <script type="module">
+      // Vector-replay roadmap P0.1, headless-Chrome half. Renders each brush x
+      // connection style TWICE through the REAL Canvas2D engine under fully-pinned
+      // inputs (fixed seed + fixed event stream + fixed rAF cadence + frozen clock)
+      // and checks the two canvases are byte-identical. This is Property A (pinned
+      // determinism) at the PIXEL level - the belt to the node harness's draw-call
+      // suspenders. It deliberately does NOT test replay-safety (Property B): that
+      // needs real display timing and lives in tests/replay-determinism.test.ts.
+      import { CanvasRenderer } from "/src/renderer.ts";
+      import { createNeighborFinder } from "/src/neighbor-finder.ts";
+      import { createBareHost } from "/src/paint-host.ts";
+      import { BRUSH_DEFS } from "/src/brushes/registry.ts";
+      import { connectionGroups } from "/src/brushes/connections/registry.ts";
+      import { MOUSE_SAMPLE } from "/src/pen.ts";
+
+      const W = 220, H = 180, SEED = 0x9e3779b9;
+
+      // Same scripted stroke as tests/_replay-harness.ts.
+      const EVENTS = Array.from({ length: 24 }, (_, i) => ({
+        x: 60 + i * 6 + 10 * Math.sin(i * 0.7),
+        y: 60 + 12 * Math.cos(i * 0.9) + (i % 5) * 3,
+        time: 1000 + i * 16,
+      }));
+
+      // A controllable clock + rAF, installed identically for both runs so Spray /
+      // Wisp are driven with a pinned frame cadence (else the real display clock
+      // would make them differ - which is the point of the SEPARATE node Property-B
+      // check, not of this pinned-determinism one).
+      function installEnv() {
+        let clock = 1000, queue = [], nextId = 1;
+        const cancelled = new Set();
+        globalThis.requestAnimationFrame = (cb) => { const id = nextId++; queue.push([id, cb]); return id; };
+        globalThis.cancelAnimationFrame = (id) => cancelled.add(id);
+        performance.now = () => clock;
+        Date.now = () => clock;
+        return {
+          advance: () => { clock += 16; },
+          pump: () => { const b = queue; queue = []; for (const [id, cb] of b) if (!cancelled.has(id)) { clock += 16; cb(clock); } },
+        };
+      }
+
+      function render(brushName, style) {
+        const canvas = document.createElement("canvas");
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const renderer = new CanvasRenderer(ctx, { dpr: 1 });
+        renderer.fillBackground("#ffffff");
+        renderer.setStrokeStyle("#111111");
+        const finder = createNeighborFinder("quadtree", []);
+        const host = createBareHost(renderer, finder);
+        const def = BRUSH_DEFS.find((d) => d.name === brushName);
+        const brush = def.create({ host, store: undefined, getInvisibleOverlay: () => new Proxy({}, { get: () => () => {} }) });
+        if (style) brush.selectArtStyle(style);
+        brush.setSeed(SEED);
+        const env = installEnv();
+        brush.strokeStart(EVENTS[0].x, EVENTS[0].y);
+        env.pump();
+        for (let i = 1; i < EVENTS.length; i++) {
+          env.advance();
+          brush.stroke(EVENTS[i].x, EVENTS[i].y, true, MOUSE_SAMPLE, EVENTS[i].time);
+          env.pump();
+        }
+        brush.strokeEnd();
+        env.pump();
+        return { canvas, data: ctx.getImageData(0, 0, W, H).data };
+      }
+
+      function fnv1a(data) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < data.length; i++) { h ^= data[i]; h = Math.imul(h, 0x01000193); }
+        return (h >>> 0).toString(16).padStart(8, "0");
+      }
+      function same(a, b) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+      }
+      function painted(data) {
+        let n = 0;
+        for (let i = 0; i < data.length; i += 4)
+          if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) n++;
+        return n;
+      }
+
+      const styles = connectionGroups().flatMap((g) => (g.group === "Custom" ? [] : g.defs.map((d) => d.name)));
+      const cases = [
+        ...styles.map((s) => ({ id: `Round / ${s}`, brush: "Round", style: s })),
+        ...["Shapes", "Spray", "Wisp", "Marker", "Color Pen", "Invisible", "Eraser"].map((b) => ({ id: b, brush: b })),
+      ];
+
+      const grid = document.getElementById("grid");
+      const results = [];
+      for (const c of cases) {
+        const fig = document.createElement("figure");
+        const cap = document.createElement("figcaption");
+        try {
+          const a = render(c.brush, c.style);
+          const b = render(c.brush, c.style);
+          const identical = same(a.data, b.data);
+          results.push({ id: c.id, identical, hash: fnv1a(a.data), painted: painted(a.data) });
+          fig.appendChild(a.canvas);
+          cap.textContent = `${c.id} ${identical ? "=" : "DIFF"}`;
+          if (!identical) cap.className = "bad";
+        } catch (e) {
+          results.push({ id: c.id, error: String((e && e.message) || e) });
+          cap.className = "bad";
+          cap.textContent = `${c.id} ERROR: ${(e && e.message) || e}`;
+        }
+        fig.appendChild(cap);
+        grid.appendChild(fig);
+      }
+      window.__results = results;
+      window.__done = true;
+    </script>
+  </body>
+</html>
