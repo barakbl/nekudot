@@ -107,6 +107,9 @@ export function bindDrawingInput(opts: {
     // cumulatively across the session). Seed before strokeStart, so the start dab
     // and the shared connection stream both draw from it. (vector-replay P0.2)
     brush.setSeed((Math.random() * 0x100000000) >>> 0);
+    // Freeze the toolbar colours (and hand them to the connection engine) so this
+    // stroke's look can't shift if the palette changes mid-stroke. (vector-replay P0.4)
+    brush.captureStrokeContext();
     brush.strokeStart(p.x, p.y);
     brush.stroke(p.x, p.y, true, pen, time);
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.

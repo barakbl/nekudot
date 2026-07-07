@@ -224,11 +224,13 @@ export abstract class BrushBase {
   private speedPrevY = 0;
   private speedPrevTime: number | null = null;
   private smoothedSpeed = 0;
-  // The toolbar Primary, latched once per sampled stroke (it can't change
-  // mid-stroke). Tagged onto every deposited point so a connecting brush set to
-  // "From mark" inherits the painted hue - read here once, not per deposit (a
-  // Spray frame deposits many points; store.get is an uncached localStorage read).
+  // The toolbar Primary/Secondary, frozen once at the stroke's start by
+  // captureStrokeContext (they can't change mid-stroke). strokeColor is tagged
+  // onto every deposited point so a connecting brush set to "From mark" inherits
+  // the painted hue; both feed the brushes that draw with a colour. Frozen (not
+  // read per sample) so a stroke's pixels don't depend on live UI state.
   private strokeColor: string | undefined;
+  private strokeSecondaryColor: string | undefined;
 
   // Position smoothing ("Streamline"), opt-in per brush via streamlines(). Off
   // by default so every existing brush — and the connecting web sampler — stays
@@ -286,6 +288,34 @@ export abstract class BrushBase {
 
   strokeStart(_x: number, _y: number): void {}
 
+  // Freeze the toolbar colours for this stroke, so its pixels depend only on the
+  // colours at pointer-down - not on live UI state read mid-stroke (deterministic
+  // replay, vector-replay P0.4). Called at stroke start by the input funnel (and
+  // the preview + test harness), NOT from strokeStart(): brushes override
+  // strokeStart without super, so a shared latch can't live there. The frozen pair
+  // is pushed to the connection engine, which colours its web lines to match.
+  captureStrokeContext(): void {
+    this.strokeColor = this.store?.get<string>("app.color.main");
+    this.strokeSecondaryColor = this.store?.get<string>("app.color.secondary");
+    this.connection?.freezeColors(this.strokeColor, this.strokeSecondaryColor);
+  }
+
+  // The Primary in effect for this stroke: the value frozen by captureStrokeContext
+  // if it ran, else the live toolbar colour - so a path that never freezes (some
+  // tests, the preview before this hook) keeps the old read-the-store behaviour. No
+  // default: depositPixel skips tagging when there's no colour (bare host).
+  private currentPrimary(): string | undefined {
+    return this.strokeColor ?? this.store?.get<string>("app.color.main");
+  }
+  // Primary/Secondary for brushes that DRAW with a colour, with the historic
+  // defaults for a bare host. Frozen-then-live, same as currentPrimary.
+  protected frozenPrimary(): string {
+    return this.currentPrimary() ?? "#000000";
+  }
+  protected frozenSecondary(): string {
+    return (this.strokeSecondaryColor ?? this.store?.get<string>("app.color.secondary")) ?? "#888888";
+  }
+
   // Template: deposit the point, run the child's stroke logic, then let the
   // connection (if any) weave its web.
   // sample=false marks a sub-frame (coalesced) point: draw the visible mark but
@@ -304,7 +334,6 @@ export abstract class BrushBase {
     // Smooth and latch this sample's pen state first: onStroke and connect()
     // below both read it (via penStyle()/the connection factors).
     this.pen = this.penSmoother.smooth(pen, this.penSmoothStep());
-    this.strokeColor = this.store?.get<string>("app.color.main");
     // Streamline the path (opt-in): replace the raw point so draw, deposit and
     // the web all use the same smoothed coordinate. Runs on every sample
     // (including coalesced sub-frames) so the trajectory uses all the data.
@@ -670,7 +699,8 @@ export abstract class BrushBase {
     // Primary latch), so a connecting brush set to "From mark" inherits the
     // colour actually laid here - in a single pass, with any brush, not just
     // after a Color Pen run. The Color Pen's onStroke overrides this per segment.
-    if (this.strokeColor) px.color = this.strokeColor;
+    const primary = this.currentPrimary();
+    if (primary) px.color = primary;
     if (log) this.logPixel(x, y, mapId);
     return px;
   }

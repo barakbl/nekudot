@@ -21,6 +21,7 @@
 // the artwork and are deliberately not recorded - the harness hands those a noop
 // renderer, so only permanent marks + deposits count.
 
+import type { BrushBase } from "../src/base";
 import { BRUSH_DEFS, type BrushContext } from "../src/brushes/registry";
 import { createBareHost, GEOMETRY_METHODS, type PaintHost } from "../src/paint-host";
 import { connectionGroups } from "../src/brushes/connections/registry";
@@ -184,10 +185,56 @@ export function recordCase(brushName: string, style: string | undefined, spec: E
   const brush = def.create(ctx);
   if (style) brush.selectArtStyle(style);
   brush.setSeed(SEED); // fixed per-stroke seed (the P0.2 mechanism, exercised here)
+  brush.captureStrokeContext(); // freeze the (empty here) colour context (P0.4)
 
   return withEnv(spec, (clk) => {
     brush.strokeStart(EVENTS[0].x, EVENTS[0].y);
     clk.pump();
+    for (let i = 1; i < EVENTS.length; i++) {
+      clk.advanceSample();
+      brush.stroke(EVENTS[i].x, EVENTS[i].y, true, MOUSE_SAMPLE, EVENTS[i].time);
+      clk.pump();
+    }
+    brush.strokeEnd();
+    clk.pump();
+    return log;
+  });
+}
+
+// vector-replay P0.4 support. Record a case against a LIVE colour store, optionally
+// flipping the toolbar colour right after the first sample. captureStrokeContext
+// freezes the colour at the stroke's start, so a mid-stroke flip must NOT change
+// the recorded geometry - that invariance is the P0.4 acceptance. `flipTo` omitted =
+// a constant store (the reference run). Colours ride the recorded draw args (line /
+// fill colour), so a brush reading them live would diverge on the flip.
+export type ColorPair = { main: string; secondary: string };
+function colorStore(initial: ColorPair): { store: Store; set: (c: ColorPair) => void } {
+  let cur = initial;
+  const store = {
+    get: (k: string) =>
+      k === "app.color.main" ? cur.main : k === "app.color.secondary" ? cur.secondary : undefined,
+    set: () => {},
+  } as unknown as Store;
+  return { store, set: (c) => (cur = c) };
+}
+export function recordCaseColor(
+  brushName: string,
+  style: string | undefined,
+  opts: { color: ColorPair; flipTo?: ColorPair; configure?: (brush: BrushBase) => void },
+): string[] {
+  const def = BRUSH_DEFS.find((d) => d.name === brushName);
+  if (!def) throw new Error(`unknown brush: ${brushName}`);
+  const { host, log } = recordingHost();
+  const { store, set } = colorStore(opts.color);
+  const brush = def.create({ host, store, getInvisibleOverlay: () => noopRenderer() });
+  if (style) brush.selectArtStyle(style);
+  opts.configure?.(brush); // e.g. pick a primary-driven colour source
+  brush.setSeed(SEED);
+  brush.captureStrokeContext(); // freezes opts.color
+  return withEnv(ENV_A, (clk) => {
+    brush.strokeStart(EVENTS[0].x, EVENTS[0].y);
+    clk.pump();
+    if (opts.flipTo) set(opts.flipTo); // mutate the store mid-stroke; must be ignored
     for (let i = 1; i < EVENTS.length; i++) {
       clk.advanceSample();
       brush.stroke(EVENTS[i].x, EVENTS[i].y, true, MOUSE_SAMPLE, EVENTS[i].time);
@@ -223,6 +270,7 @@ export function recordSecondStroke(
   const brush = def.create(ctx);
   if (style) brush.selectArtStyle(style);
   const play = (): void => {
+    brush.captureStrokeContext(); // per-stroke colour latch (no-op with empty store)
     brush.strokeStart(EVENTS[0].x, EVENTS[0].y);
     for (let i = 1; i < EVENTS.length; i++) {
       brush.stroke(EVENTS[i].x, EVENTS[i].y, true, MOUSE_SAMPLE, EVENTS[i].time);

@@ -67,7 +67,7 @@ export default class ChromaConnection extends ConnectionBase {
   }
 
   private shimmer(base: string | undefined): string {
-    const hex = base ?? this.deps.store?.get<string>("app.color.main") ?? "#ffffff";
+    const hex = base ?? this.mainColorRaw() ?? "#ffffff";
     const [r, g, b] = parseHex(hex);
     return toHex(r * this.random(), g * this.random(), b * this.random());
   }

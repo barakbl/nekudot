@@ -42,6 +42,7 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
       strokeEnd: () => void strokeEnds++,
       bufferedStroke: () => false,
       setSeed() {},
+      captureStrokeContext() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     input = bindDrawingInput({
@@ -96,6 +97,7 @@ describe("drawing input: penEnabled gate", () => {
       strokeEnd() {},
       bufferedStroke: () => false,
       setSeed() {},
+      captureStrokeContext() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -142,6 +144,7 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
       strokeEnd() {},
       bufferedStroke: () => false,
       setSeed() {},
+      captureStrokeContext() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     const input = bindDrawingInput({
@@ -217,6 +220,7 @@ describe("drawing input: penOnly palm rejection", () => {
       strokeEnd() {},
       bufferedStroke: () => false,
       setSeed() {},
+      captureStrokeContext() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -273,6 +277,7 @@ describe("drawing input: ready gate (boot paint-restore)", () => {
       strokeEnd() {},
       bufferedStroke: () => false,
       setSeed() {},
+      captureStrokeContext() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -321,6 +326,7 @@ describe("drawing input: per-stroke RNG reseed (P0.2)", () => {
         events.push("seed");
         seeds.push(s);
       },
+      captureStrokeContext: () => void events.push("capture"),
       strokeStart: () => void events.push("start"),
       stroke() {},
       strokeEnd() {},
@@ -339,13 +345,14 @@ describe("drawing input: per-stroke RNG reseed (P0.2)", () => {
     return { stage, events, seeds };
   };
 
-  it("reseeds exactly once per stroke, immediately before strokeStart", () => {
+  it("reseeds + freezes context once per stroke, in order before strokeStart", () => {
     const { stage, events } = setup();
     stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
     stage.fire("pointerup", { pointerId: 1 });
     stage.fire("pointerdown", { button: 0, pointerId: 2, offsetX: 7, offsetY: 7 });
     stage.fire("pointerup", { pointerId: 2 });
-    expect(events).toEqual(["seed", "start", "seed", "start"]);
+    // setSeed -> captureStrokeContext -> strokeStart, once each per stroke.
+    expect(events).toEqual(["seed", "capture", "start", "seed", "capture", "start"]);
   });
 
   it("applies an integer 32-bit unsigned seed", () => {
