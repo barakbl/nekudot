@@ -261,6 +261,6 @@ export class ShapesBrush extends BrushBase {
   private resolveFillColor(): string | undefined | null {
     if (this.fillMode === "none") return null;
     if (this.fillMode === "main") return undefined; // renderer uses strokeStyle
-    return this.store?.get<string>("app.color.secondary") ?? "#888888";
+    return this.frozenSecondary();
   }
 }

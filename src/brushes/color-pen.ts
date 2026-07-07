@@ -95,8 +95,8 @@ export class ColorPenBrush extends BrushBase {
     this.travel.push(x, y);
     const heading = this.relative ? this.travel.relative() : this.travel.absolute();
     const t = headingToT(heading, this.range, this.angle);
-    const primary = this.store?.get<string>("app.color.main") ?? "#000000";
-    const secondary = this.store?.get<string>("app.color.secondary") ?? "#888888";
+    const primary = this.frozenPrimary();
+    const secondary = this.frozenSecondary();
     const color = connectionLineColor(this.source, t, primary, secondary) ?? primary;
     // Tag the deposited cloud point with the hue we just drew, so a connecting
     // brush that later weaves toward it can inherit the colour (its "From mark"

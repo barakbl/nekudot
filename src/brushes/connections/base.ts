@@ -137,6 +137,13 @@ export class ConnectionBase {
   protected connectType: LineConnectType = "quadraticCurve";
   protected connectionDash: DashStyle = "solid";
   protected connectionColorSource = "main"; // one of CONNECTION_COLOR_OPTIONS
+  // Toolbar Primary/Secondary frozen at this stroke's start (via BrushBase.
+  // captureStrokeContext -> freezeColors), so web lines take the colours from
+  // pointer-down, not whatever the UI holds mid-stroke - needed for deterministic
+  // replay. Undefined between strokes, when the accessors fall back to the live
+  // store (so any path that doesn't freeze keeps its old behaviour).
+  private frozenMain: string | undefined;
+  private frozenSecondary: string | undefined;
   // Per-line canvas blend (globalCompositeOperation). "source-over" = normal, the
   // default for every style so their output is unchanged; Chroma defaults it to
   // "lighten" for a metallic sheen. Persisted via the flat, shown as a Blend dial.
@@ -304,6 +311,8 @@ export class ConnectionBase {
 
   resetStroke(): void {
     this.strokeCutoffId = null;
+    this.frozenMain = undefined;
+    this.frozenSecondary = undefined;
   }
 
   // Bloom: a density-targeted point multiplier. After a real deposit, top the
@@ -490,11 +499,25 @@ export class ConnectionBase {
     h.drawConnectionToLayer(h.activeConnectionLayerId(), p1, p2, s, this.connectType);
   }
 
+  // Freeze the toolbar colours for the coming stroke. Called via BrushBase.
+  // captureStrokeContext at stroke start; cleared in resetStroke.
+  freezeColors(main: string | undefined, secondary: string | undefined): void {
+    this.frozenMain = main;
+    this.frozenSecondary = secondary;
+  }
+
+  // The Primary - frozen for this stroke if captured, else the live store, with NO
+  // default so Chroma can keep its own "#ffffff" fallback.
+  protected mainColorRaw(): string | undefined {
+    return this.frozenMain ?? this.deps.store?.get<string>("app.color.main");
+  }
   private primaryColor(): string {
-    return this.deps.store?.get<string>("app.color.main") ?? "#000000";
+    return this.mainColorRaw() ?? "#000000";
   }
   private secondaryColor(): string {
-    return this.deps.store?.get<string>("app.color.secondary") ?? "#888888";
+    return (
+      this.frozenSecondary ?? this.deps.store?.get<string>("app.color.secondary") ?? "#888888"
+    );
   }
 
   // The colour for one web line, by the line's angle (0..1 around the circle).

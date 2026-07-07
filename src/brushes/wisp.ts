@@ -188,8 +188,8 @@ export class WispBrush extends BrushBase {
     const p = this.pressure;
     const n = Math.max(1, Math.round((1 + p * 5) * this.density));
     const dynamic = this.source !== "main"; // solid Primary keeps colour undefined
-    const primary = dynamic ? this.store?.get<string>("app.color.main") ?? "#000000" : "";
-    const secondary = dynamic ? this.store?.get<string>("app.color.secondary") ?? "#888888" : "";
+    const primary = dynamic ? this.frozenPrimary() : "";
+    const secondary = dynamic ? this.frozenSecondary() : "";
     const spread = this.colorSpread / 100;
     const { dirX, dirY, perpX, perpY } = this.axes();
     for (let i = 0; i < n; i++) {
