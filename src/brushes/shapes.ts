@@ -7,6 +7,7 @@ import {
   type DashStyle,
 } from "../base";
 import { COLOR_SOURCE_LABELS, colorSourceIcons } from "./color-source";
+import { MOUSE_SAMPLE, type PenSample } from "../pen";
 import type { Pixel } from "../neighbor-finder";
 import type { BrushContext } from "./registry";
 
@@ -50,6 +51,8 @@ export class ShapesBrush extends BrushBase {
   private placedY = 0;
   private placedSize = 0;
   private placedT = 0;
+  private placedTInit = false;
+  private curTime: number | undefined;
 
   protected shape: ShapeKind = "squares";
   protected fillMode: FillMode = "none";
@@ -68,7 +71,22 @@ export class ShapesBrush extends BrushBase {
     this.placedX = x;
     this.placedY = y;
     this.placedSize = 0;
-    this.placedT = performance.now();
+    this.placedT = performance.now(); // fallback; a recorded timestamp overrides it
+    this.placedTInit = false;
+    this.curTime = undefined;
+  }
+
+  // Size from the recorded sample time, not the wall clock, so replay (and any
+  // display refresh rate) reproduces the same sizes.
+  stroke(x: number, y: number, sample = true, pen: PenSample = MOUSE_SAMPLE, time?: number): void {
+    if (time !== undefined) {
+      this.curTime = time;
+      if (!this.placedTInit) {
+        this.placedT = time;
+        this.placedTInit = true;
+      }
+    }
+    super.stroke(x, y, sample, pen, time);
   }
 
   protected onStroke(x: number, y: number, _current: Pixel): void {
@@ -77,7 +95,7 @@ export class ShapesBrush extends BrushBase {
     const dist = Math.hypot(dx, dy);
     if (dist === 0) return;
 
-    const now = performance.now();
+    const now = this.curTime ?? performance.now();
     const dt = Math.max(1, now - this.placedT);
     const speed = dist / dt;
     // Map speed → size through a gamma curve. t is the linear (0..1) position;

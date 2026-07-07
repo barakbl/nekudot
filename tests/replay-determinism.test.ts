@@ -5,11 +5,11 @@ import { buildCases, runCase, type Case, type CaseResult } from "./_replay-harne
 // depends on. See tests/_replay-harness.ts for the method (Property A = pinned
 // determinism, Property B = replay-safety under a perturbed clock + frame cadence).
 //
-// KNOWN_REPLAY_UNSAFE is the baseline the roadmap shrinks: Shapes reads
-// performance.now() (P0.3 fix), Spray + Wisp count rAF frames (P0.5a / P0.5b).
-// When a fix lands, REMOVE the brush here - this test then enforces its new
-// replay-safety, so the fix can't silently regress.
-const KNOWN_REPLAY_UNSAFE = new Set(["Shapes", "Spray", "Wisp"]);
+// KNOWN_REPLAY_UNSAFE is the baseline the roadmap shrinks: Spray + Wisp count
+// rAF frames (P0.5a / P0.5b). Shapes was fixed in P0.3 (it now sizes from the
+// recorded sample time, not the wall clock). When a fix lands, REMOVE the brush
+// here - this test then enforces its new replay-safety, so it can't regress.
+const KNOWN_REPLAY_UNSAFE = new Set(["Spray", "Wisp"]);
 
 const results: Array<{ c: Case } & CaseResult> = buildCases().map((c) => ({ c, ...runCase(c) }));
 
