@@ -102,6 +102,11 @@ export function bindDrawingInput(opts: {
         at: `${Math.round(p.x)},${Math.round(p.y)}`,
       });
     }
+    // Give each stroke its own RNG seed so its randomness depends only on the
+    // seed, not on how many draws prior strokes made (the stream used to run
+    // cumulatively across the session). Seed before strokeStart, so the start dab
+    // and the shared connection stream both draw from it. (vector-replay P0.2)
+    brush.setSeed((Math.random() * 0x100000000) >>> 0);
     brush.strokeStart(p.x, p.y);
     brush.stroke(p.x, p.y, true, pen, time);
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.

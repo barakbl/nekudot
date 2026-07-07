@@ -41,6 +41,7 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
       stroke() {},
       strokeEnd: () => void strokeEnds++,
       bufferedStroke: () => false,
+      setSeed() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     input = bindDrawingInput({
@@ -94,6 +95,7 @@ describe("drawing input: penEnabled gate", () => {
         void samples.push(pen),
       strokeEnd() {},
       bufferedStroke: () => false,
+      setSeed() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -139,6 +141,7 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
       stroke() {},
       strokeEnd() {},
       bufferedStroke: () => false,
+      setSeed() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     const input = bindDrawingInput({
@@ -213,6 +216,7 @@ describe("drawing input: penOnly palm rejection", () => {
       stroke() {},
       strokeEnd() {},
       bufferedStroke: () => false,
+      setSeed() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -268,6 +272,7 @@ describe("drawing input: ready gate (boot paint-restore)", () => {
       stroke() {},
       strokeEnd() {},
       bufferedStroke: () => false,
+      setSeed() {},
       supportsConnecting: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
@@ -300,6 +305,57 @@ describe("drawing input: ready gate (boot paint-restore)", () => {
     stage.fire("pointerdown", { button: 0, pointerId: 2, offsetX: 5, offsetY: 5 });
     stage.fire("pointerup", { pointerId: 2 });
     expect(ends()).toBe(1); // now it draws
+  });
+});
+
+// vector-replay P0.2: the funnel gives every stroke its own RNG seed, applied
+// right before strokeStart, so a stroke's randomness never depends on how many
+// random draws prior strokes made.
+describe("drawing input: per-stroke RNG reseed (P0.2)", () => {
+  const setup = () => {
+    const stage = makeStage();
+    const events: string[] = [];
+    const seeds: number[] = [];
+    const brush = {
+      setSeed: (s: number) => {
+        events.push("seed");
+        seeds.push(s);
+      },
+      strokeStart: () => void events.push("start"),
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => true,
+      onStrokeEnd() {},
+    });
+    return { stage, events, seeds };
+  };
+
+  it("reseeds exactly once per stroke, immediately before strokeStart", () => {
+    const { stage, events } = setup();
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointerup", { pointerId: 1 });
+    stage.fire("pointerdown", { button: 0, pointerId: 2, offsetX: 7, offsetY: 7 });
+    stage.fire("pointerup", { pointerId: 2 });
+    expect(events).toEqual(["seed", "start", "seed", "start"]);
+  });
+
+  it("applies an integer 32-bit unsigned seed", () => {
+    const { stage, seeds } = setup();
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(seeds).toHaveLength(1);
+    expect(Number.isInteger(seeds[0])).toBe(true);
+    expect(seeds[0]).toBeGreaterThanOrEqual(0);
+    expect(seeds[0]).toBeLessThan(0x100000000);
   });
 });
 

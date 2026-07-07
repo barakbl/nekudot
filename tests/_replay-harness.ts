@@ -199,6 +199,45 @@ export function recordCase(brushName: string, style: string | undefined, spec: E
   });
 }
 
+// vector-replay P0.2 support. Draw two strokes on one brush + host, returning
+// only the SECOND stroke's geometry. Stroke 1 is identical across every call, so
+// the cloud + deposit ids stroke 2 sees are identical too - isolating the one
+// variable probed here: the RNG position at stroke 2's start. `preSeed` moves the
+// RNG between the strokes (a stand-in for prior strokes drawing a different count);
+// `reseed` applies the per-stroke boundary seed the live funnel now sets. With the
+// reseed, preSeed can't change the output; without it, an RNG-using style leaks it.
+const FIRST_STROKE_SEED = 0x12345678;
+export function recordSecondStroke(
+  brushName: string,
+  style: string | undefined,
+  opts: { preSeed?: number; reseed: boolean },
+): string[] {
+  const def = BRUSH_DEFS.find((d) => d.name === brushName);
+  if (!def) throw new Error(`unknown brush: ${brushName}`);
+  const { host, log } = recordingHost();
+  const ctx: BrushContext = {
+    host,
+    store: undefined as unknown as Store,
+    getInvisibleOverlay: () => noopRenderer(),
+  };
+  const brush = def.create(ctx);
+  if (style) brush.selectArtStyle(style);
+  const play = (): void => {
+    brush.strokeStart(EVENTS[0].x, EVENTS[0].y);
+    for (let i = 1; i < EVENTS.length; i++) {
+      brush.stroke(EVENTS[i].x, EVENTS[i].y, true, MOUSE_SAMPLE, EVENTS[i].time);
+    }
+    brush.strokeEnd();
+  };
+  brush.setSeed(FIRST_STROKE_SEED); // stroke 1: identical every call
+  play();
+  const mark = log.length; // keep the cloud; measure only stroke 2
+  if (opts.preSeed !== undefined) brush.setSeed(opts.preSeed);
+  if (opts.reseed) brush.setSeed(SEED);
+  play(); // stroke 2
+  return log.slice(mark);
+}
+
 const eq = (a: string[], b: string[]): boolean =>
   a.length === b.length && a.every((v, i) => v === b[i]);
 
