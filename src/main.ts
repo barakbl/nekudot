@@ -4,6 +4,8 @@ import { SymmetryController } from "./symmetry/controller";
 import { makeSymmetryProxy } from "./symmetry/proxy";
 import { createSymmetryBox } from "./symmetry/box";
 import { startClipRecording, notifyClipStrokeStart } from "./clip/record-flow";
+import { openClipPreview } from "./clip/preview-box";
+import { produceReplayClip } from "./clip/frame-producer-replay";
 import { bindShortcuts, createShortcutsPanel } from "./shortcuts";
 import { createZoomReadout } from "./app/zoom-readout";
 import { createSettingsPanel, buildRoutingControls } from "./settings-panel";
@@ -192,14 +194,31 @@ const backgroundColorForPreviews = (): string => {
 };
 const exportBackground = (): string => backgroundColorForPreviews();
 
-// Start a GIF recording (menu item + the "r" shortcut). Arms now; capture
-// begins on the first stroke (see clip/record-flow).
-const recordClip = () =>
+// Start a GIF recording (menu item + the "r" shortcut). When the shadow event log
+// is on, export the WHOLE recorded session as a process video by replaying the log
+// offscreen (vector-replay P3.1) - the first user-visible replay payoff. Otherwise
+// (or if nothing's recorded) fall back to the live screen-grab recorder, which
+// arms now and captures from the first stroke (see clip/record-flow).
+const recordClip = async (): Promise<void> => {
+  if (eventRecorder.recording) {
+    const clip = await produceReplayClip({
+      events: await eventRecorder.drain(),
+      size: layerManager.currentSize,
+      layers: layerManager.getConfig(),
+      dpr,
+      background: exportBackground,
+    });
+    if (clip) {
+      openClipPreview(clip);
+      return;
+    }
+  }
   startClipRecording({
     manager: layerManager,
     getBackgroundColor: exportBackground,
     container: viewportEl,
   });
+};
 
 // ---- overlays + symmetry ----------------------------------------------------
 
