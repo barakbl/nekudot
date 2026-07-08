@@ -467,6 +467,110 @@ describe("drawing input: live animation pump (Spray/Wisp dwell)", () => {
   });
 });
 
+// vector-replay P1.2: the funnel taps the event recorder at stroke begin / each
+// sample / stroke end - but only when a recorder is present and recording, so a
+// session with the flag off does zero recording work.
+describe("drawing input: event-log recorder taps (P1.2)", () => {
+  const spyRecorder = () => {
+    const calls = { begin: [] as { ctx: Record<string, unknown> }[], sample: 0, end: 0 };
+    const recorder = {
+      recording: true,
+      strokeBegin: (ctx: Record<string, unknown>) => void calls.begin.push({ ctx }),
+      strokeSample: () => void calls.sample++,
+      strokeEnd: () => void calls.end++,
+    };
+    return { recorder, calls };
+  };
+  const setup = (recorder?: unknown) => {
+    const stage = makeStage();
+    const brush = {
+      strokeStart() {},
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+      setSeed() {},
+      captureStrokeContext() {},
+      animates: () => false,
+      strokeSnapshot: () => ({
+        brush: "Round",
+        seed: 7,
+        color: { main: "#ffffff", secondary: "#888888" },
+        settings: { density: 40 },
+        erase: false,
+      }),
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: {
+        beginStroke() {},
+        active: () => false,
+        snapshot: () => ({ tool: null, params: { centerX: 0.5, centerY: 0.5 } }),
+      } as unknown as SymmetryController,
+      layerManager: {
+        currentSize: { width: 100, height: 100 },
+        activeLayerId: () => "L1",
+        strokeWidth: () => 24,
+        strokeAlpha: () => 0.8,
+      } as unknown as LayerManager,
+      penEnabled: () => true,
+      onStrokeEnd() {},
+      recorder: recorder as never,
+    });
+    return { stage };
+  };
+  const move = (id: number) => ({
+    pointerId: id,
+    getCoalescedEvents: () => [],
+    clientX: 7,
+    clientY: 8,
+    timeStamp: 20,
+  });
+
+  it("taps begin / sample / end for a stroke, with the assembled context", () => {
+    const { recorder, calls } = spyRecorder();
+    const { stage } = setup(recorder);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointermove", move(1));
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(calls.begin).toHaveLength(1);
+    expect(calls.begin[0].ctx).toMatchObject({
+      brush: "Round",
+      seed: 7,
+      layer: "L1",
+      size: 24,
+      alpha: 0.8,
+      erase: false,
+      pen: true,
+      symmetry: { tool: null },
+    });
+    expect(calls.sample).toBeGreaterThanOrEqual(1);
+    expect(calls.end).toBe(1);
+  });
+
+  it("does nothing when the recorder isn't recording (zero work)", () => {
+    const { recorder, calls } = spyRecorder();
+    recorder.recording = false;
+    const { stage } = setup(recorder);
+    stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+    stage.fire("pointermove", move(1));
+    stage.fire("pointerup", { pointerId: 1 });
+    expect(calls.begin).toHaveLength(0);
+    expect(calls.sample).toBe(0);
+    expect(calls.end).toBe(0);
+  });
+
+  it("no recorder wired at all -> no crash", () => {
+    const { stage } = setup(undefined);
+    expect(() => {
+      stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+      stage.fire("pointerup", { pointerId: 1 });
+    }).not.toThrow();
+  });
+});
+
 // Regression: an artist on iPad (iOS 17 Safari) saw no lines because
 // PointerEvent.getCoalescedEvents() - which only shipped in Safari 18 - was
 // called unguarded, throwing on every pointermove and aborting the draw.

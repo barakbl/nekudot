@@ -22,10 +22,12 @@
 export function bindDurability(deps: {
   drawingInput: { commitActiveStroke: () => void };
   pixelLog: { flush: () => Promise<void> };
+  eventLog?: { flush: () => Promise<void> }; // shadow event log (vector-replay)
 }): void {
   const persistOnHide = () => {
     deps.drawingInput.commitActiveStroke();
     void deps.pixelLog.flush();
+    void deps.eventLog?.flush();
   };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") persistOnHide();

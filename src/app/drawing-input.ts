@@ -2,8 +2,19 @@ import type { BrushBase } from "../base";
 import type { LayerManager } from "../layered/manager";
 import type { SymmetryController } from "../symmetry/controller";
 import type { Viewport } from "./viewport";
+import type { StrokeContext } from "../log/events";
 import { readPenSample, MOUSE_SAMPLE } from "../pen";
 import { dlog, isDiagnostics } from "../diagnostics";
+
+// The slice of the event recorder the pointer loop taps (vector-replay P1.2). Kept
+// as an interface so drawing-input doesn't depend on the recorder's internals, and
+// stays entirely absent when recording is off (`recording` false -> zero taps).
+export interface StrokeRecorder {
+  readonly recording: boolean;
+  strokeBegin(ctx: StrokeContext, sample: { x: number; y: number; pressure: number; time: number }): void;
+  strokeSample(x: number, y: number, pressure: number, time: number, web: boolean): void;
+  strokeEnd(): void;
+}
 
 // Pointer wiring for the stage: start/feed/end brush strokes. Freezes the
 // symmetry transforms per stroke, opens the wet-stroke buffer around
@@ -46,6 +57,8 @@ export function bindDrawingInput(opts: {
   ready?: () => boolean;
   onStrokeStart?: () => void; // fired when a stroke begins (e.g. arm GIF capture)
   onStrokeEnd: (brush: BrushBase) => void; // previews/persist/undo, in main
+  // Shadow event-log recorder (vector-replay). Absent / not recording -> no taps.
+  recorder?: StrokeRecorder;
 }): { commitActiveStroke: () => void; cancelActiveStroke: () => void } {
   const { stage, viewport, symmetry, layerManager } = opts;
   let drawingId: number | null = null;
@@ -136,6 +149,24 @@ export function bindDrawingInput(opts: {
     brush.strokeStart(p.x, p.y);
     brush.stroke(p.x, p.y, true, pen, time);
     startAnimation(brush); // keep frame-driven brushes building during a dwell
+    if (opts.recorder?.recording) {
+      const snap = brush.strokeSnapshot(); // colours already frozen above
+      opts.recorder.strokeBegin(
+        {
+          brush: snap.brush,
+          seed: snap.seed,
+          layer: layerManager.activeLayerId(),
+          color: snap.color,
+          size: layerManager.strokeWidth(),
+          alpha: layerManager.strokeAlpha(),
+          erase: snap.erase,
+          settings: snap.settings,
+          symmetry: symmetry.snapshot(),
+          pen: opts.penEnabled(),
+        },
+        { x: p.x, y: p.y, pressure: pen.pressure, time },
+      );
+    }
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.
     opts.onStrokeStart?.();
   };
@@ -191,16 +222,14 @@ export function bindDrawingInput(opts: {
     // draws through every sub-sample, so the line stays smooth; non-connecting
     // brushes deposit every sample as before.
     const frameCadence = brush.supportsConnecting();
+    const rec = opts.recorder?.recording ? opts.recorder : null;
     for (let i = 0; i < list.length; i++) {
       const ev = list[i];
       const q = at(ev);
-      brush.stroke(
-        q.x,
-        q.y,
-        !frameCadence || i === list.length - 1,
-        sampleOf(ev),
-        ev.timeStamp,
-      );
+      const web = !frameCadence || i === list.length - 1; // the recorded web-sample flag (G4)
+      const pen = sampleOf(ev);
+      brush.stroke(q.x, q.y, web, pen, ev.timeStamp);
+      rec?.strokeSample(q.x, q.y, pen.pressure, ev.timeStamp, web);
     }
   });
 
@@ -211,6 +240,7 @@ export function bindDrawingInput(opts: {
     if (!started) return; // nothing was ever drawn (e.g. a dropped deferred tap)
     const brush = opts.brush();
     brush.strokeEnd();
+    if (opts.recorder?.recording) opts.recorder.strokeEnd();
     // Commit the buffered line onto the active layer (one uniform-alpha composite)
     // before previews/persist read the layer. (Matches the start latch.)
     if (buffered) layerManager.endStroke();

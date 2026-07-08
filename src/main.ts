@@ -23,6 +23,8 @@ import { createSizePicker } from "./layered/size-picker";
 import { saveArtwork } from "./save-artwork";
 import { NEKUDOT_ARTWORK_SUFFIX } from "./nekudot-schema";
 import { pixelLog } from "./pixel-log";
+import { EventRecorder } from "./log/recorder";
+import { EventLogStore } from "./log/store";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./ui/window-stack";
 import { createPalettePanel } from "./colors/panel";
@@ -269,6 +271,7 @@ type AppState = {
   penEnabled: boolean; // pen pressure/tilt support; off = stylus draws like a mouse, Pen section hidden
   penOnly: boolean; // palm rejection: touch never draws, only pen/mouse; off by default
   pixelLogEnabled: boolean; // pixel-log writing (future features); off by default
+  eventLogEnabled: boolean; // shadow event-log recording (vector-replay); off by default
   diagnosticsEnabled: boolean; // opt-in field diagnostics
   smoothGradients: boolean; // OKLCH "smooth" gradient blend space vs sRGB; default on
   singleKeyShortcuts: boolean; // bare-key shortcuts (b/c/y/1-9…); off disables them (WCAG 2.1.4)
@@ -280,6 +283,7 @@ const appState: AppState = {
   penEnabled: store.get<boolean>("app.penEnabled") ?? true,
   penOnly: store.get<boolean>("app.penOnly") ?? false,
   pixelLogEnabled: store.get<boolean>("app.pixelLog") ?? false,
+  eventLogEnabled: store.get<boolean>("app.eventLog") ?? false,
   diagnosticsEnabled: store.get<boolean>("app.diag") ?? false,
   smoothGradients: store.get<boolean>("app.gradient.oklch") ?? true,
   singleKeyShortcuts: store.get<boolean>("app.shortcuts.singleKey") ?? true,
@@ -297,6 +301,20 @@ document.body.classList.toggle("desktop-mode", appState.desktopMode);
 // Apply the persisted pixel-log setting (App settings; off by default - it is
 // for future features and otherwise just grows storage, see pixel-log.ts).
 pixelLog.setEnabled(appState.pixelLogEnabled);
+
+// Shadow event-log recorder (vector-replay, record-only). Off by default behind
+// app.eventLog; when on it taps the draw loop and writes P1.1 events to IDB. No UI
+// toggle yet - enabled via the flag until process-export (Phase 3) surfaces it.
+const eventRecorder = new EventRecorder({
+  store: typeof indexedDB === "undefined" ? null : new EventLogStore(),
+  appVersion: typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev",
+  dpr: () => (typeof window === "undefined" ? 1 : window.devicePixelRatio),
+  artworkInit: () => {
+    const size = layerManager.currentSize;
+    return { width: size.width, height: size.height, layers: layerManager.getConfig() };
+  },
+});
+eventRecorder.setEnabled(appState.eventLogEnabled);
 
 // Brush settings preview: a big window (Preview button in the settings panel)
 // with a Playground tab (draw freely) and a Preview tab that replays a scripted
@@ -1232,6 +1250,7 @@ const drawingInput = bindDrawingInput({
   gestureActive: () => touchGestures?.active() ?? false,
   penOnly: () => appState.penOnly, // "Pen only draws" palm rejection (App settings)
   ready: () => bootRestored, // hold input until the boot paint-restore settles
+  recorder: eventRecorder, // shadow event log (no-op taps unless app.eventLog is on)
   onStrokeStart: notifyClipStrokeStart, // first stroke starts an armed GIF capture
   onStrokeEnd: (b) => {
     layersBox.refreshPreviews();
@@ -1283,4 +1302,4 @@ onViewportChange = () => {
 
 // Wired last in boot: it commits the in-progress stroke + flushes the pixel log
 // when the tab hides, so it needs the drawing input (assigned above).
-bindDurability({ drawingInput, pixelLog });
+bindDurability({ drawingInput, pixelLog, eventLog: eventRecorder });
