@@ -47,6 +47,10 @@ export interface ReplayWorld {
   applyInit?(init: { width: number; height: number; layers: unknown }): void;
   applyConfig?(ev: Extract<LogEvent, { t: "config" }>): void;
   clearCanvas?(): void;
+  // Draw a pasted image. The bitmap for ev.hash must be pre-resolved (blob fetch +
+  // createImageBitmap are async; replay() is sync), so a world implements this only
+  // when it has the bitmaps (the offscreen world). Missing hash -> skipped.
+  pasteImage?(ev: Extract<LogEvent, { t: "paste" }>): void;
   // Wet-stroke buffer hooks (a continuous partial-alpha stroke composites at one
   // uniform alpha). The engine decides `buffered` the way the funnel does
   // (bufferedStroke && !symmetry.active()); a bare host has no buffer, so omits them.
@@ -130,9 +134,10 @@ export function replay(
         world.clearCanvas?.();
         break;
       case "paste":
+        world.pasteImage?.(ev); // draw the pasted image (needs a pre-resolved bitmap)
+        break;
       case "legacy":
-        // Pixel-state ops: handled by a world that carries bitmaps; a no-op for
-        // the point-cloud/bare-host gate. (config/paste taps are a P1.2 follow-up.)
+        // Imported pre-log bitmaps: nothing to replay (no input). A no-op.
         break;
     }
     opts.onProgress?.(i + 1, total);
