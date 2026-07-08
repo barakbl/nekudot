@@ -44,6 +44,7 @@ describe("drawing input: commitActiveStroke (hide/close durability)", () => {
       setSeed() {},
       captureStrokeContext() {},
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     input = bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -99,6 +100,7 @@ describe("drawing input: penEnabled gate", () => {
       setSeed() {},
       captureStrokeContext() {},
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -146,6 +148,7 @@ describe("drawing input: deferred touch start + camera gesture guards", () => {
       setSeed() {},
       captureStrokeContext() {},
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     const input = bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -222,6 +225,7 @@ describe("drawing input: penOnly palm rejection", () => {
       setSeed() {},
       captureStrokeContext() {},
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -279,6 +283,7 @@ describe("drawing input: ready gate (boot paint-restore)", () => {
       setSeed() {},
       captureStrokeContext() {},
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -332,6 +337,7 @@ describe("drawing input: per-stroke RNG reseed (P0.2)", () => {
       strokeEnd() {},
       bufferedStroke: () => false,
       supportsConnecting: () => false,
+      animates: () => false,
     } as unknown as BrushBase;
     bindDrawingInput({
       stage: stage as unknown as HTMLElement,
@@ -363,6 +369,101 @@ describe("drawing input: per-stroke RNG reseed (P0.2)", () => {
     expect(Number.isInteger(seeds[0])).toBe(true);
     expect(seeds[0]).toBeGreaterThanOrEqual(0);
     expect(seeds[0]).toBeLessThan(0x100000000);
+  });
+});
+
+// vector-replay P0.5: frame-driven brushes (Spray/Wisp) whose animates() is true
+// get a per-frame pump - the funnel calls brush.animate(performance.now()) while
+// the stroke is held, so their dwell keeps building when no pointer events fire.
+describe("drawing input: live animation pump (Spray/Wisp dwell)", () => {
+  const withFakeRaf = (run: (raf: { flush: () => void; pending: () => number }) => void) => {
+    const g = globalThis as unknown as {
+      requestAnimationFrame: (cb: FrameRequestCallback) => number;
+      cancelAnimationFrame: (id: number) => void;
+    };
+    const saved = { raf: g.requestAnimationFrame, caf: g.cancelAnimationFrame };
+    let queue: Array<[number, FrameRequestCallback]> = [];
+    let id = 1;
+    const cancelled = new Set<number>();
+    g.requestAnimationFrame = (cb) => {
+      const i = id++;
+      queue.push([i, cb]);
+      return i;
+    };
+    g.cancelAnimationFrame = (i) => void cancelled.add(i);
+    try {
+      run({
+        flush: () => {
+          const batch = queue;
+          queue = [];
+          for (const [i, cb] of batch) if (!cancelled.has(i)) cb(0);
+        },
+        pending: () => queue.filter(([i]) => !cancelled.has(i)).length,
+      });
+    } finally {
+      g.requestAnimationFrame = saved.raf;
+      g.cancelAnimationFrame = saved.caf;
+    }
+  };
+
+  const setup = (animates: boolean) => {
+    const stage = makeStage();
+    let animCalls = 0;
+    const brush = {
+      strokeStart() {},
+      stroke() {},
+      strokeEnd() {},
+      bufferedStroke: () => false,
+      supportsConnecting: () => false,
+      setSeed() {},
+      captureStrokeContext() {},
+      animates: () => animates,
+      animate: () => void animCalls++,
+    } as unknown as BrushBase;
+    bindDrawingInput({
+      stage: stage as unknown as HTMLElement,
+      viewport: idViewport,
+      brush: () => brush,
+      symmetry: { beginStroke() {}, active: () => false } as unknown as SymmetryController,
+      layerManager: { currentSize: { width: 100, height: 100 } } as unknown as LayerManager,
+      penEnabled: () => true,
+      onStrokeEnd() {},
+    });
+    return { stage, calls: () => animCalls };
+  };
+
+  it("pumps animate() each frame while an animating stroke is held", () => {
+    withFakeRaf((raf) => {
+      const { stage, calls } = setup(true);
+      stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+      raf.flush(); // one frame
+      raf.flush(); // another frame (the pump reschedules itself)
+      expect(calls()).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("stops pumping on stroke end (no dangling rAF, no more animate)", () => {
+    withFakeRaf((raf) => {
+      const { stage, calls } = setup(true);
+      stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+      raf.flush();
+      const after = calls();
+      stage.fire("pointerup", { pointerId: 1 });
+      raf.flush(); // any still-queued frame must not call animate now
+      expect(calls()).toBe(after);
+      expect(raf.pending()).toBe(0);
+    });
+  });
+
+  it("never pumps for a non-animating brush (Round etc.)", () => {
+    withFakeRaf((raf) => {
+      const { stage, calls } = setup(false);
+      stage.fire("pointerdown", { button: 0, pointerId: 1, offsetX: 5, offsetY: 5 });
+      raf.flush();
+      raf.flush();
+      expect(calls()).toBe(0);
+      expect(raf.pending()).toBe(0);
+    });
   });
 });
 

@@ -70,6 +70,29 @@ export function bindDrawingInput(opts: {
     time: number;
   } | null = null;
 
+  // Live animation pump for the frame-driven brushes (Spray, Wisp). No pointer
+  // events fire while the hand holds still, so a per-frame rAF loop drives their
+  // dwell buildup by calling brush.animate(performance.now()) - the same clock the
+  // sample timestamps use, so the fixed-timestep physics agrees live vs replay.
+  // Only runs for a brush whose animates() opts in; a no-op for every other brush.
+  let animRaf = 0;
+  let animBrush: BrushBase | null = null;
+  const pumpAnimation = () => {
+    if (animBrush === null) return;
+    animBrush.animate(performance.now());
+    animRaf = requestAnimationFrame(pumpAnimation);
+  };
+  const startAnimation = (brush: BrushBase) => {
+    if (animRaf || typeof requestAnimationFrame === "undefined" || !brush.animates()) return;
+    animBrush = brush;
+    animRaf = requestAnimationFrame(pumpAnimation);
+  };
+  const stopAnimation = () => {
+    animBrush = null;
+    if (animRaf && typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(animRaf);
+    animRaf = 0;
+  };
+
   // Lay the stroke's first mark: freeze symmetry, open the wet buffer, draw the
   // first dab, then signal (e.g. arm GIF capture). Only call when not started.
   const beginStroke = (
@@ -112,6 +135,7 @@ export function bindDrawingInput(opts: {
     brush.captureStrokeContext();
     brush.strokeStart(p.x, p.y);
     brush.stroke(p.x, p.y, true, pen, time);
+    startAnimation(brush); // keep frame-driven brushes building during a dwell
     // Signal AFTER the first mark so an armed GIF recorder's first frame has it.
     opts.onStrokeStart?.();
   };
@@ -183,6 +207,7 @@ export function bindDrawingInput(opts: {
   const finish = () => {
     drawingId = null;
     pending = null;
+    stopAnimation(); // no-op unless a frame-driven brush was pumping
     if (!started) return; // nothing was ever drawn (e.g. a dropped deferred tap)
     const brush = opts.brush();
     brush.strokeEnd();

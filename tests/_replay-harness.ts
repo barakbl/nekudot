@@ -246,6 +246,37 @@ export function recordCaseColor(
   });
 }
 
+// vector-replay P0.5 support. Simulate a DWELL for a frame-driven brush (Spray /
+// Wisp): feed samples at ONE point with timestamps advancing by sampleDtMs over
+// durationMs, and count the feeder points it deposited (addPixel). With the fixed
+// virtual timestep this count is a function of the DURATION, not the sample/frame
+// rate - so a 60 Hz and a 120 Hz stream over the same span deposit the same amount
+// (the old rAF loop deposited per frame, so a 120 Hz display built ~2x as fast).
+export function dwellDeposits(
+  brushName: string,
+  opts: { durationMs: number; sampleDtMs: number },
+): number {
+  const def = BRUSH_DEFS.find((d) => d.name === brushName);
+  if (!def) throw new Error(`unknown brush: ${brushName}`);
+  const { host, log } = recordingHost();
+  const brush = def.create({
+    host,
+    store: undefined as unknown as Store,
+    getInvisibleOverlay: () => noopRenderer(),
+  });
+  brush.setSeed(SEED);
+  brush.captureStrokeContext();
+  const x = 50;
+  const y = 50;
+  const t0 = 1000;
+  brush.strokeStart(x, y);
+  for (let t = 0; t <= opts.durationMs + 1e-6; t += opts.sampleDtMs) {
+    brush.stroke(x, y, true, MOUSE_SAMPLE, t0 + t);
+  }
+  brush.strokeEnd();
+  return log.filter((e) => e.startsWith("addPixel")).length;
+}
+
 // vector-replay P0.2 support. Draw two strokes on one brush + host, returning
 // only the SECOND stroke's geometry. Stroke 1 is identical across every call, so
 // the cloud + deposit ids stroke 2 sees are identical too - isolating the one

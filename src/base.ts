@@ -288,6 +288,17 @@ export abstract class BrushBase {
 
   strokeStart(_x: number, _y: number): void {}
 
+  // Live animation pump for the frame-driven brushes (Spray, Wisp): while a stroke
+  // is held the input funnel calls this each frame with performance.now(), so the
+  // plume/airbrush keeps building during a dwell (no pointer events fire when the
+  // hand is still). Default no-op; animates() gates whether the funnel pumps at all.
+  // The physics itself steps on a fixed virtual timestep (see fixed-timestep.ts),
+  // fed by this clock live and by the recorded sample times in replay.
+  animate(_now: number): void {}
+  animates(): boolean {
+    return false;
+  }
+
   // Freeze the toolbar colours for this stroke, so its pixels depend only on the
   // colours at pointer-down - not on live UI state read mid-stroke (deterministic
   // replay, vector-replay P0.4). Called at stroke start by the input funnel (and
