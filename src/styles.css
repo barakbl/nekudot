@@ -3331,6 +3331,30 @@ body.help-mode .help-icon {
   background: var(--accent);
   transition: width 0.1s linear;
 }
+/* Format picker: a small segmented control (GIF / MP4 / WebM). */
+.clip-format-group {
+  display: flex;
+  gap: 6px;
+}
+.clip-format-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-stronger);
+  border-radius: 7px;
+  background: var(--pill-bg);
+  color: var(--text-body);
+  cursor: pointer;
+}
+.clip-format-btn:hover:not(.active) {
+  background: var(--pill-hover);
+}
+.clip-format-btn.active {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: default;
+}
 
 /* ===== Onboarding / Start page ===========================================
    Shown on first run and after a data reset (reopenable from the Shortcuts
