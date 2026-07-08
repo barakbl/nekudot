@@ -30,6 +30,7 @@ const ALLOWED = new Set([
   "app/opacity-controller.ts", // the ONLY sanctioned caller of the LayerManager channel
   "brush-preview.ts", // its own offscreen preview renderer, not a layer
   "paint-host.ts", // pass-through of the renderer-level setGlobalAlpha
+  "replay/offscreen.ts", // offscreen replay: sets alpha per stroke from the recorded ctx.alpha (no slider / no app.opacity to keep in sync)
 ]);
 
 const SRC_DIR = fileURLToPath(new URL("../src", import.meta.url));
