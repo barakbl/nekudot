@@ -27,6 +27,7 @@ import { NEKUDOT_ARTWORK_SUFFIX } from "./nekudot-schema";
 import { pixelLog } from "./pixel-log";
 import { EventRecorder } from "./log/recorder";
 import { EventLogStore } from "./log/store";
+import { BlobStore, hashBlob } from "./log/blobs";
 import { RecorderTelemetry } from "./log/telemetry";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./ui/window-stack";
@@ -342,6 +343,28 @@ const eventRecorder = new EventRecorder({
   telemetry: eventTelemetry,
 });
 eventRecorder.setEnabled(appState.eventLogEnabled);
+
+// Content-hash blob store for pasted images (vector-replay): a PasteImage event
+// carries only the hash; the bytes live here so replay can redraw them.
+const eventBlobs = typeof indexedDB === "undefined" ? null : new BlobStore();
+// Record a pasted image: content-hash the bytes, store the blob, emit PasteImage.
+const recordPasteEvent = async (
+  file: File,
+  box: { x: number; y: number; w: number; h: number },
+): Promise<void> => {
+  if (!eventRecorder.recording || !eventBlobs) return;
+  const hash = await hashBlob(file);
+  await eventBlobs.put(hash, file);
+  eventRecorder.event({
+    t: "paste",
+    hash,
+    x: box.x,
+    y: box.y,
+    width: box.w,
+    height: box.h,
+    layer: layerManager.activeLayerId(),
+  });
+};
 
 // Vector-replay test seam (P2.2): when recording is on, expose the live layer
 // manager so the replay-equivalence smoke can flatten the live artwork and compare
@@ -1353,9 +1376,10 @@ const imagePaste = bindImagePaste({
   viewport,
   layerManager,
   dpr,
-  onBaked: () => {
+  onBaked: (paste) => {
     pushUndo(`Paste image on ${activeLayerName()}`);
     layersBox.refreshPreviews();
+    void recordPasteEvent(paste.file, paste.box); // vector-replay paste tap
   },
 });
 onViewportChange = () => {
