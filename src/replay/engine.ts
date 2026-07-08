@@ -59,8 +59,11 @@ export interface ReplayOptions {
   until?: number;
   // Called after each event with (eventsDone, eventsToReplay).
   onProgress?: (done: number, total: number) => void;
-  // Reserved for the P3 clip pipeline (per-frame capture); accepted, not yet used.
-  frameSink?: unknown;
+  // Per-stroke frame hook for the process-video clip pipeline (P3.1): fired after
+  // each stroke's `end`, with the stroke's virtual-time (anchor-relative ms). The
+  // producer captures the current offscreen artwork state; a natural build-up
+  // boundary. (Finer per-frame timing / idle-gap collapse is P3.2.)
+  frameSink?: (timeMs: number) => void;
 }
 
 // Drive `events` through `world`. Deterministic and synchronous. Unknown/absent
@@ -114,6 +117,7 @@ export function replay(
         if (brush) {
           brush.strokeEnd();
           world.endBuffer?.(buffered); // composite the wet buffer (funnel order: after strokeEnd)
+          opts.frameSink?.(time); // a completed-stroke frame boundary (P3.1)
         }
         brush = null;
         ctx = null;
