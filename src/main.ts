@@ -324,6 +324,14 @@ const eventRecorder = new EventRecorder({
 });
 eventRecorder.setEnabled(appState.eventLogEnabled);
 
+// Vector-replay test seam (P2.2): when recording is on, expose the live layer
+// manager so the replay-equivalence smoke can flatten the live artwork and compare
+// it to an offscreen replay of the same log. Gated on app.eventLog (off by
+// default), so it never exists in a normal session.
+if (appState.eventLogEnabled && typeof window !== "undefined") {
+  (window as unknown as { __replay?: { layerManager: LayerManager } }).__replay = { layerManager };
+}
+
 // Brush settings preview: a big window (Preview button in the settings panel)
 // with a Playground tab (draw freely) and a Preview tab that replays a scripted
 // stroke whenever a setting changes. Both run a THROWAWAY brush of the current

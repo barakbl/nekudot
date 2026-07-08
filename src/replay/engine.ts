@@ -47,6 +47,11 @@ export interface ReplayWorld {
   applyInit?(init: { width: number; height: number; layers: unknown }): void;
   applyConfig?(ev: Extract<LogEvent, { t: "config" }>): void;
   clearCanvas?(): void;
+  // Wet-stroke buffer hooks (a continuous partial-alpha stroke composites at one
+  // uniform alpha). The engine decides `buffered` the way the funnel does
+  // (bufferedStroke && !symmetry.active()); a bare host has no buffer, so omits them.
+  beginBuffer?(buffered: boolean): void;
+  endBuffer?(buffered: boolean): void;
 }
 
 export interface ReplayOptions {
@@ -69,6 +74,7 @@ export function replay(
   const total = Math.min(events.length, opts.until ?? events.length);
   let brush: BrushBase | null = null;
   let ctx: StrokeContext | null = null;
+  let buffered = false; // whether the open stroke uses the wet buffer
   let time = 0; // absolute (anchor-relative) ms of the last fed sample
 
   for (let i = 0; i < total; i++) {
@@ -81,11 +87,14 @@ export function replay(
       case "init":
         world.applyInit?.({ width: ev.width, height: ev.height, layers: ev.layers });
         break;
-      case "begin":
-        brush = beginStroke(world, ev);
+      case "begin": {
+        const started = beginStroke(world, ev);
+        brush = started.brush;
+        buffered = started.buffered;
         ctx = ev.ctx;
         time = ev.time;
         break;
+      }
       case "samples": {
         if (!brush || !ctx) break; // a batch with no open stroke: skip
         const pen = ctx.pen;
@@ -102,9 +111,13 @@ export function replay(
         break;
       }
       case "end":
-        brush?.strokeEnd();
+        if (brush) {
+          brush.strokeEnd();
+          world.endBuffer?.(buffered); // composite the wet buffer (funnel order: after strokeEnd)
+        }
         brush = null;
         ctx = null;
+        buffered = false;
         break;
       case "config":
         world.applyConfig?.(ev);
@@ -127,11 +140,15 @@ export function replay(
 // latch → funnel-owned world state → brush hydrate (style/dials/seed) → freeze
 // colours → strokeStart → first sample (the begin point is fed as sample 1, web
 // true, just like the live path).
-function beginStroke(world: ReplayWorld, ev: Extract<LogEvent, { t: "begin" }>): BrushBase {
+function beginStroke(
+  world: ReplayWorld,
+  ev: Extract<LogEvent, { t: "begin" }>,
+): { brush: BrushBase; buffered: boolean } {
   const ctx = ev.ctx;
   const brush = world.createBrush(ctx.brush);
   const x = dequantizeCoord(ev.x);
   const y = dequantizeCoord(ev.y);
+  const pen = synthPenQuantized(ctx.pen, ev.p);
 
   world.symmetry.setMode(ctx.symmetry.tool ?? "none");
   world.symmetry.setCenter({
@@ -146,11 +163,13 @@ function beginStroke(world: ReplayWorld, ev: Extract<LogEvent, { t: "begin" }>):
     layer: ctx.layer,
   });
   world.symmetry.beginStroke(x, y, world.currentSize());
-  hydrateBrush(brush, ctx, world.store); // seed + style + dials + store colours
+  hydrateBrush(brush, ctx, world.store); // seed + style + dials + store colours (before bufferedStroke reads the dials)
+  const buffered = brush.bufferedStroke(pen) && !world.symmetry.active();
   brush.captureStrokeContext(); // freeze the colours just written to the store
+  world.beginBuffer?.(buffered); // open the wet buffer, funnel order (before strokeStart)
   brush.strokeStart(x, y);
-  brush.stroke(x, y, true, synthPenQuantized(ctx.pen, ev.p), ev.time);
-  return brush;
+  brush.stroke(x, y, true, pen, ev.time);
+  return { brush, buffered };
 }
 
 function numOr(v: unknown, fallback: number): number {
