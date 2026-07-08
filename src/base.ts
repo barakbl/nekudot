@@ -319,6 +319,7 @@ export abstract class BrushBase {
     brush: string;
     seed: number;
     color: { main: string; secondary: string };
+    style?: string;
     settings: Record<string, string | number | boolean>;
     erase: boolean;
   } {
@@ -329,6 +330,10 @@ export abstract class BrushBase {
         main: this.strokeColor ?? "#000000",
         secondary: this.strokeSecondaryColor ?? "#888888",
       },
+      // The connection style NAME - `settings` (toFlat) carries only class-agnostic
+      // dials, so replay needs this to re-instantiate the right connection CLASS
+      // before applying them (P2.1). Undefined for non-connecting brushes.
+      style: this.connection?.styleName(),
       settings: this.connection ? this.connection.toFlat() : {},
       erase: this.erases(),
     };

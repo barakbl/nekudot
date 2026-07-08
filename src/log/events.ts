@@ -63,6 +63,12 @@ export const StrokeContextSchema = z.object({
   size: z.number().finite().nonnegative().max(MAX_SIZE),
   alpha: z.number().finite().min(0).max(1),
   erase: z.boolean(),
+  // The connection art-style NAME (e.g. "shaded"/"fur"/"chroma"). The dials in
+  // `settings` are class-agnostic, but Fur/Chroma/... weave differently per CLASS,
+  // so replay must re-instantiate the right connection before applying the dials
+  // (P2.1). Optional + version-tolerant: pre-P2.1 logs omit it, and the replayer
+  // falls back to the brush's default style. Absent for non-connecting brushes.
+  style: z.string().min(1).max(64).optional(),
   settings: flat, // the ConnectingFlat dial snapshot (P0.4)
   symmetry: z.object({ tool: z.string().max(64).nullable(), params: flat }),
   pen: z.boolean(), // pen support (pen-mode) on for this stroke
