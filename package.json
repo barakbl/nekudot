@@ -44,6 +44,7 @@
     "smoke:export": "node tests/smoke/export-share-live.mjs",
     "smoke:replay": "node tests/smoke/replay-twice.mjs",
     "smoke:replay-equivalence": "node tests/smoke/replay-equivalence.mjs",
+    "smoke:replay-bench": "node tests/smoke/replay-bench.mjs",
     "render-presets": "node tests/smoke/render-presets.mjs",
     "smoke-render": "node tests/smoke/all-render.mjs",
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"

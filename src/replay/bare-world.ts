@@ -72,9 +72,12 @@ export function createBareReplayWorld(opts?: {
   host?: PaintHost;
   store?: Store;
   size?: CanvasSize;
+  // Inject a finder for a compute-only bench (e.g. the real quadtree) - defaults to
+  // the simple in-memory finder. Ignored when `host` is supplied.
+  finder?: NeighborFinder;
 }): ReplayWorld {
   const store = opts?.store ?? new MemoryStore();
-  const host = opts?.host ?? createBareHost(noopRenderer(), createMemoryFinder());
+  const host = opts?.host ?? createBareHost(noopRenderer(), opts?.finder ?? createMemoryFinder());
   const size = opts?.size ?? { width: 1920, height: 1080 };
   return {
     host,
