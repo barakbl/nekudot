@@ -144,6 +144,24 @@ export class EventRecorder {
     return [...persisted, ...this.pending];
   }
 
+  // Discard everything recorded and start a fresh session on the next stroke. The
+  // log is a single append-only store that survives reloads, so without this it
+  // accumulates every past drawing - and Record would replay that whole history
+  // instead of the current one. Called when the drawing is replaced (new / load)
+  // and when recording is turned on, so the log always represents THIS drawing.
+  async reset(): Promise<void> {
+    // Drop in-memory state first so nothing new gets flushed while we wipe.
+    this.pending = [];
+    this.batch = emptyBatch();
+    this.inStroke = false;
+    this.sessionStarted = false;
+    this.anchor = 0;
+    this.lastTime = 0;
+    this.lastFlush = 0;
+    await this.chain; // let any in-flight append land, then clear it too
+    if (this.deps.store) await this.deps.store.clear();
+  }
+
   private ensureSession(time: number): void {
     if (this.sessionStarted) return;
     this.sessionStarted = true;

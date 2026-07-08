@@ -8,6 +8,7 @@ function makeDeps(): ResetGateDeps {
     resetLayers: vi.fn(),
     resizeCanvas: vi.fn(),
     forgetSyncFile: vi.fn(),
+    resetEventLog: vi.fn(),
     clearContent: vi.fn(),
     resetArtStyle: vi.fn(),
     persistSize: vi.fn(),
@@ -28,6 +29,7 @@ describe("reset gate", () => {
     });
     expect(deps.resetLayers).toHaveBeenCalledWith(SIZE);
     expect(deps.forgetSyncFile).toHaveBeenCalledTimes(1); // the bug this gate prevents
+    expect(deps.resetEventLog).toHaveBeenCalledTimes(1); // so Record won't replay the old drawing
     expect(deps.clearContent).toHaveBeenCalledTimes(1);
     expect(deps.resetArtStyle).not.toHaveBeenCalled();
     expect(deps.resizeCanvas).not.toHaveBeenCalled(); // keeps the current size
@@ -82,18 +84,24 @@ describe("reset gate", () => {
     expect(order).toEqual(["beforeUndo", "clearHistory", "pushUndo"]);
   });
 
-  it("always forgets the sync file and pushes undo, in every mode", () => {
+  it("always forgets the sync file, resets the event log, and pushes undo, in every mode", () => {
+    // The invariant: no soft-reset variant may skip these coordinated wipes. The
+    // event log is required + unconditional here so a future path (or a new option
+    // flag) can't reintroduce "Record replays the previous drawing".
     for (const resize of [true, false]) {
-      const deps = makeDeps();
-      createResetGate(deps)({
-        size: SIZE,
-        undoLabel: "x",
-        clearHistory: resize,
-        resetArtStyle: false,
-        resize,
-      });
-      expect(deps.forgetSyncFile).toHaveBeenCalledTimes(1);
-      expect(deps.pushUndo).toHaveBeenCalledTimes(1);
+      for (const resetArtStyle of [true, false]) {
+        const deps = makeDeps();
+        createResetGate(deps)({
+          size: SIZE,
+          undoLabel: "x",
+          clearHistory: resize,
+          resetArtStyle,
+          resize,
+        });
+        expect(deps.forgetSyncFile).toHaveBeenCalledTimes(1);
+        expect(deps.resetEventLog).toHaveBeenCalledTimes(1);
+        expect(deps.pushUndo).toHaveBeenCalledTimes(1);
+      }
     }
   });
 });

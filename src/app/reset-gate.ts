@@ -12,6 +12,9 @@ export type ResetGateDeps = {
   resetLayers: (size: CanvasSize) => void;
   resizeCanvas: (size: CanvasSize) => void;
   forgetSyncFile: () => void;
+  // Wipe the process event log so Record replays THIS fresh drawing, not the one
+  // that was on the canvas before the reset.
+  resetEventLog: () => void;
   clearContent: () => void;
   resetArtStyle: () => void;
   persistSize: (size: CanvasSize) => void;
@@ -35,6 +38,7 @@ export function createResetGate(deps: ResetGateDeps) {
     deps.resetLayers(opts.size);
     if (opts.resize) deps.resizeCanvas(opts.size);
     deps.forgetSyncFile();
+    deps.resetEventLog();
     if (opts.resetArtStyle) deps.resetArtStyle();
     else deps.clearContent();
     deps.persistSize(opts.size);
