@@ -42,10 +42,14 @@ function fakeStore(): EventLogBackend & { rows: unknown[] } {
   const rows: unknown[] = [];
   return {
     rows,
-    append: async (r) => void rows.push(...r),
+    append: async (r) => {
+      rows.push(...r);
+    },
     load: async () => [...rows],
     count: async () => rows.length,
-    clear: async () => void (rows.length = 0),
+    clear: async () => {
+      rows.length = 0;
+    },
     replaceAll: async (r) => {
       rows.length = 0;
       rows.push(...r);
@@ -137,12 +141,18 @@ describe("event recorder (vector-replay P1.2)", () => {
     const pts: { id: number; x: number; y: number }[] = [];
     let n = 0;
     const finder = {
-      addPixel: (x: number, y: number) => (pts.push({ id: n, x, y }), { id: n++, x, y }),
+      addPixel: (x: number, y: number) => {
+        const p = { id: n++, x, y };
+        pts.push(p);
+        return p;
+      },
       findNeighbors: () => [],
       allPixels: () => [...pts],
       pixelCount: () => n,
       livePixelCount: () => pts.length,
-      clear: () => void (pts.length = 0),
+      clear: () => {
+        pts.length = 0;
+      },
     } as unknown as NeighborFinder;
     const def = BRUSH_DEFS.find((d) => d.name === "Round")!;
     const brush = def.create({

@@ -109,12 +109,13 @@ export class EventRecorder {
   // Persist the pending buffer through the FIFO chain. Safe to call any time
   // (hide, stroke end); a no-op when disabled, empty, or storeless.
   flush(): Promise<void> {
-    if (!this.deps.store || this.pending.length === 0) return Promise.resolve();
+    const store = this.deps.store;
+    if (!store || this.pending.length === 0) return Promise.resolve();
     const rows = this.pending;
     this.pending = [];
     return this.enqueue(async () => {
       try {
-        await this.deps.store!.append(rows);
+        await store.append(rows);
       } catch (e) {
         this.pending = [...rows, ...this.pending]; // requeue in order for the next flush
         console.warn("EventRecorder.flush failed", e);
