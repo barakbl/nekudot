@@ -961,8 +961,16 @@ const appSettingsBox = createAppSettingsBox({
       });
     }
   },
+  // Process recording (app.eventLog): logs strokes + config/paste so a whole-session
+  // process video (GIF) can be exported from Record GIF. Off by default.
+  eventLog: appState.eventLogEnabled,
+  onToggleEventLog: (on) => {
+    appState.eventLogEnabled = on;
+    store.set("app.eventLog", on);
+    eventRecorder.setEnabled(on);
+  },
   // Gate 1 recording telemetry (P1.3), read on demand when the Diagnostics group
-  // is opened. `recording` drives the empty-state hint (no UI toggle for the flag).
+  // is opened. `recording` drives the empty-state hint.
   recorderTelemetry: () => eventTelemetry.snapshot(),
   eventLogRecording: () => eventRecorder.recording,
   onResetToDefault: () => {
