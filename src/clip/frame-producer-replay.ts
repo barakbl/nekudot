@@ -2,9 +2,10 @@ import type { CanvasSize } from "../canvas-size";
 import { downscaleToMaxDim } from "../export";
 import { LogEventSchema, type LogEvent } from "../log/events";
 import type { LayersConfig } from "../layered/schema";
+import { BlobStore } from "../log/blobs";
 import { replay } from "../replay/engine";
 import { MemoryStore } from "../replay/bare-world";
-import { createOffscreenReplayWorld } from "../replay/offscreen";
+import { createOffscreenReplayWorld, resolvePasteBitmaps } from "../replay/offscreen";
 import { collapsedActivityMs, planFrames } from "./replay-timeline";
 import { CAPTURE_FPS, MAX_DIM, maxSeconds, type Clip } from "./recorder";
 
@@ -39,12 +40,17 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   // store, so seed a MemoryStore from localStorage (keeps symmetry/colour params)
   // rather than handing them the live store and clobbering the app's saved layers.
   const store = seedFromLocalStorage();
+  // Pre-resolve pasted-image bitmaps (async) before the sync replay pass.
+  const pasteBitmaps = events.some((e) => e.t === "paste")
+    ? await resolvePasteBitmaps(events, new BlobStore())
+    : undefined;
   const { world, manager } = createOffscreenReplayWorld({
     width: input.size.width,
     height: input.size.height,
     layers: input.layers,
     dpr: input.dpr,
     store,
+    pasteBitmaps,
   });
 
   const { width, height } = downscaleToMaxDim(input.size, MAX_DIM, { clampToOne: true });

@@ -1,5 +1,6 @@
 import { BRUSH_DEFS } from "../brushes/registry";
 import type { CanvasSize } from "../canvas-size";
+import type { LogEvent } from "../log/events";
 import { LayerManager } from "../layered/manager";
 import type { LayersConfig } from "../layered/schema";
 import { makeSymmetryProxy } from "../symmetry/proxy";
@@ -32,6 +33,9 @@ export function createOffscreenReplayWorld(opts: {
   layers?: LayersConfig;
   dpr?: number;
   store: Store;
+  // Pre-resolved bitmaps for PasteImage events (keyed by hash) - replay() is sync,
+  // so the caller resolves blobs->bitmaps first (see resolvePasteBitmaps).
+  pasteBitmaps?: Map<string, ImageBitmap>;
 }): OffscreenReplay {
   const dpr = opts.dpr ?? 1;
   const size: CanvasSize = { width: opts.width, height: opts.height };
@@ -77,6 +81,21 @@ export function createOffscreenReplayWorld(opts: {
     },
     applyInit: ({ width, height, layers }) =>
       manager.applyConfig(layers as LayersConfig, { width, height }),
+    // A mid-session ConfigOp (layer/map/background change): reconcile PIXEL-
+    // PRESERVINGLY (init already built the start state destructively; wiping here
+    // would erase everything drawn so far).
+    applyConfig: (ev) => {
+      if (!ev.layers) return;
+      const size = ev.width !== undefined && ev.height !== undefined ? { width: ev.width, height: ev.height } : undefined;
+      manager.reconcileConfig(ev.layers, size);
+    },
+    pasteImage: (ev) => {
+      const bmp = opts.pasteBitmaps?.get(ev.hash);
+      if (!bmp) return; // blob missing/unresolved -> can't reproduce; skip
+      const idx = manager.getConfig().layers.findIndex((l) => l.id === ev.layer);
+      if (idx >= 0) manager.setActive(idx);
+      manager.drawImageRect(bmp, ev.x, ev.y, ev.width, ev.height);
+    },
     beginBuffer: (b) => {
       if (b) manager.beginStroke();
     },
@@ -111,4 +130,27 @@ export function flattenToImageData(manager: LayerManager): ImageData {
   }
   ctx.globalAlpha = 1;
   return ctx.getImageData(0, 0, w, h);
+}
+
+// Pre-resolve every PasteImage's blob to an ImageBitmap (keyed by hash) so the sync
+// replay() can draw them. Deduped by hash; a missing/unreadable blob is skipped (its
+// paste is then a no-op on replay). Pass the result as createOffscreenReplayWorld's
+// `pasteBitmaps`.
+export async function resolvePasteBitmaps(
+  events: readonly LogEvent[],
+  blobs: { get(hash: string): Promise<Blob | undefined> },
+): Promise<Map<string, ImageBitmap>> {
+  const hashes = new Set<string>();
+  for (const e of events) if (e.t === "paste") hashes.add(e.hash);
+  const map = new Map<string, ImageBitmap>();
+  for (const hash of hashes) {
+    const blob = await blobs.get(hash);
+    if (!blob) continue;
+    try {
+      map.set(hash, await createImageBitmap(blob));
+    } catch {
+      // unreadable blob -> leave unresolved; the paste is skipped on replay
+    }
+  }
+  return map;
 }

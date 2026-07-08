@@ -13,7 +13,9 @@ export function bindImagePaste(opts: {
   viewport: Viewport; // client<->canvas mapping + current scale
   layerManager: LayerManager; // bake target + canvas size
   dpr: number;
-  onBaked: () => void; // pushUndo + refresh previews, in main
+  // pushUndo + refresh previews, in main. Carries the source File + placed box so
+  // main can record the paste to the event log (vector-replay).
+  onBaked: (paste: { file: File; box: { x: number; y: number; w: number; h: number } }) => void;
 }): { dispose: () => void; handleCameraChange: () => void } {
   const { stage, viewport, layerManager, dpr } = opts;
 
@@ -21,7 +23,7 @@ export function bindImagePaste(opts: {
   const HIT = 11; // on-screen handle hit radius (px)
   const MIN = 16; // min image size in canvas px
 
-  type Img = { src: CanvasImageSource; w: number; h: number };
+  type Img = { src: CanvasImageSource; w: number; h: number; file: File };
   type Box = { x: number; y: number; w: number; h: number };
   const CORNERS = ["tl", "tr", "br", "bl"] as const;
   type Corner = (typeof CORNERS)[number];
@@ -90,8 +92,9 @@ export function bindImagePaste(opts: {
     if (!session) return;
     const { img, box } = session;
     layerManager.drawImageRect(img.src, box.x, box.y, box.w, box.h);
+    const baked = { file: img.file, box: { x: box.x, y: box.y, w: box.w, h: box.h } };
     end();
-    opts.onBaked();
+    opts.onBaked(baked);
   };
 
   const end = () => {
@@ -227,7 +230,7 @@ export function bindImagePaste(opts: {
     if ("createImageBitmap" in window) {
       try {
         const b = await createImageBitmap(file);
-        return { src: b, w: b.width, h: b.height };
+        return { src: b, w: b.width, h: b.height, file };
       } catch {
         /* fall through to the <img> path */
       }
@@ -235,7 +238,7 @@ export function bindImagePaste(opts: {
     return new Promise((res) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
-      img.onload = () => res({ src: img, w: img.naturalWidth, h: img.naturalHeight });
+      img.onload = () => res({ src: img, w: img.naturalWidth, h: img.naturalHeight, file });
       img.onerror = () => {
         URL.revokeObjectURL(url);
         res(null);
