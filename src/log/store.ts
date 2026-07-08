@@ -33,6 +33,16 @@ export class EventLogStore implements EventLogBackend {
     },
   });
 
+  // Optional flush-stall meter (P1.3 telemetry): the synchronous main-thread cost
+  // of a batch is the IDB structured-clone at store.add(), so it's timed HERE (the
+  // recorder can't see it - store.add runs after an awaited db-open, off the
+  // recorder's synchronous span). Left unset in tests / when telemetry is off.
+  private readonly onWriteCost?: (syncMs: number, rows: number) => void;
+
+  constructor(opts?: { onWriteCost?: (syncMs: number, rows: number) => void }) {
+    this.onWriteCost = opts?.onWriteCost;
+  }
+
   private async write(fn: (tx: IDBTransaction) => void): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
@@ -45,11 +55,16 @@ export class EventLogStore implements EventLogBackend {
   }
 
   // Append rows in insertion order. No eviction - the log is append-only truth.
+  // The add() loop is where IDB structured-clones each row on the main thread, so
+  // it's the flush's real stall; the meter times exactly that span.
   async append(rows: unknown[]): Promise<void> {
     if (rows.length === 0) return;
+    const meter = this.onWriteCost;
     return this.write((tx) => {
       const store = tx.objectStore(ROWS_STORE);
+      const t0 = meter ? performance.now() : 0;
       for (const row of rows) store.add(row);
+      if (meter) meter(performance.now() - t0, rows.length);
     });
   }
 

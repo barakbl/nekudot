@@ -25,6 +25,7 @@ import { NEKUDOT_ARTWORK_SUFFIX } from "./nekudot-schema";
 import { pixelLog } from "./pixel-log";
 import { EventRecorder } from "./log/recorder";
 import { EventLogStore } from "./log/store";
+import { RecorderTelemetry } from "./log/telemetry";
 import { showChip } from "./chip";
 import { registerWindow, showWindow } from "./ui/window-stack";
 import { createPalettePanel } from "./colors/panel";
@@ -305,14 +306,21 @@ pixelLog.setEnabled(appState.pixelLogEnabled);
 // Shadow event-log recorder (vector-replay, record-only). Off by default behind
 // app.eventLog; when on it taps the draw loop and writes P1.1 events to IDB. No UI
 // toggle yet - enabled via the flag until process-export (Phase 3) surfaces it.
+// The telemetry sink collects the Gate 1 numbers (P1.3), surfaced in App settings
+// -> Diagnostics; the store feeds it flush-stall timings, the recorder the rest.
+const eventTelemetry = new RecorderTelemetry();
 const eventRecorder = new EventRecorder({
-  store: typeof indexedDB === "undefined" ? null : new EventLogStore(),
+  store:
+    typeof indexedDB === "undefined"
+      ? null
+      : new EventLogStore({ onWriteCost: (ms) => eventTelemetry.flushCost(ms) }),
   appVersion: typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev",
   dpr: () => (typeof window === "undefined" ? 1 : window.devicePixelRatio),
   artworkInit: () => {
     const size = layerManager.currentSize;
     return { width: size.width, height: size.height, layers: layerManager.getConfig() };
   },
+  telemetry: eventTelemetry,
 });
 eventRecorder.setEnabled(appState.eventLogEnabled);
 
@@ -877,6 +885,10 @@ const appSettingsBox = createAppSettingsBox({
       });
     }
   },
+  // Gate 1 recording telemetry (P1.3), read on demand when the Diagnostics group
+  // is opened. `recording` drives the empty-state hint (no UI toggle for the flag).
+  recorderTelemetry: () => eventTelemetry.snapshot(),
+  eventLogRecording: () => eventRecorder.recording,
   onResetToDefault: () => {
     showTypedConfirm({
       title: "Reset to default?",
@@ -924,6 +936,7 @@ document.body.appendChild(appSettingsBox.el);
 registerWindow(appSettingsBox.el);
 const showAppSettings = () => {
   appSettingsBox.showTab("general"); // the generic entry lands on General
+  appSettingsBox.refreshTelemetry(); // fresh Gate 1 numbers each time it opens
   showWindow(appSettingsBox.el);
 };
 

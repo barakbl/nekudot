@@ -3,6 +3,7 @@ import { createVerticalTabs } from "../ui/vertical-tabs";
 import { makeToggle } from "../ui/toggle";
 import { attachHelp } from "../help";
 import { diagnosticsText, diagnosticOverride, setDiagnosticOverride } from "../diagnostics";
+import { FLUSH_STALL_MS, type TelemetrySnapshot } from "../log/telemetry";
 import { triggerDownload } from "../export";
 import type { Theme } from "../menu";
 import type { BrushCursorMode } from "./brush-cursor";
@@ -24,6 +25,8 @@ export type AppSettingsBox = {
   showTab: (id: string) => void;
   // Re-render the Folder tab after folder-sync state changes; no-op without one.
   refreshFolder: () => void;
+  // Re-read the recording telemetry (Gate 1 numbers) into the Diagnostics group.
+  refreshTelemetry: () => void;
 };
 
 const THEMES: Theme[] = ["auto", "light", "dark"];
@@ -50,6 +53,11 @@ export function createAppSettingsBox(opts: {
   onTogglePixelLog: (on: boolean) => void;
   diagnostics: boolean;
   onToggleDiagnostics: (on: boolean) => void;
+  // Recording telemetry (vector-replay P1.3): the live Gate 1 snapshot, read each
+  // time the Diagnostics group opens, plus whether the shadow recorder is on (for
+  // the empty-state hint - there's no UI toggle for the flag yet).
+  recorderTelemetry?: () => TelemetrySnapshot;
+  eventLogRecording?: () => boolean;
   // Wipe all local data and reload to a fresh app (opens its own confirm modal).
   onResetToDefault: () => void;
   // Download the whole local config (app settings + presets + palettes) as a file.
@@ -212,6 +220,81 @@ export function createAppSettingsBox(opts: {
     updateDiagWarn();
   });
 
+  // Recording telemetry (vector-replay P1.3): the three Gate 1 numbers, read live
+  // from the recorder each time this group opens. One metric row per gate check,
+  // each with a ✓ / ✗ against its target; a hint stands in until a session records.
+  const fmtMs = (ms: number) => (ms >= 100 ? Math.round(ms).toString() : ms.toFixed(ms < 1 ? 3 : 2));
+  const fmtRate = (bpm: number) =>
+    bpm >= 1024 * 1024 ? `${(bpm / (1024 * 1024)).toFixed(2)} MB/min` : `${(bpm / 1024).toFixed(1)} KB/min`;
+  const fmtSize = (b: number) => (b >= 1024 ? `${(b / 1024).toFixed(1)} KB` : `${Math.round(b)} B`);
+  const teleBox = document.createElement("div");
+  teleBox.className = "appset-telemetry";
+  const teleHint = document.createElement("div");
+  teleHint.className = "appset-telemetry-hint";
+  const teleGrid = document.createElement("div");
+  teleGrid.className = "appset-telemetry-grid";
+  // One metric row: a top line (name · value · ✓/✗) and a faint target beneath.
+  // Returns a setter for the value + verdict.
+  const teleMetric = (label: string, target: string) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "appset-telemetry-metric";
+    const topEl = document.createElement("div");
+    topEl.className = "appset-telemetry-top";
+    const nameEl = document.createElement("span");
+    nameEl.className = "appset-telemetry-name";
+    nameEl.textContent = label;
+    const valEl = document.createElement("span");
+    valEl.className = "appset-telemetry-val";
+    const verdEl = document.createElement("span");
+    verdEl.className = "appset-telemetry-verdict";
+    topEl.append(nameEl, valEl, verdEl);
+    const tgtEl = document.createElement("div");
+    tgtEl.className = "appset-telemetry-target";
+    tgtEl.textContent = `target ${target}`;
+    rowEl.append(topEl, tgtEl);
+    teleGrid.append(rowEl);
+    return {
+      set(value: string, ok: boolean | null) {
+        valEl.textContent = value;
+        verdEl.textContent = ok === null ? "—" : ok ? "✓" : "✗";
+        verdEl.className = "appset-telemetry-verdict" + (ok === null ? "" : ok ? " ok" : " bad");
+      },
+    };
+  };
+  const mOverhead = teleMetric("Pointermove overhead (p95)", "< 0.2 ms");
+  const mRate = teleMetric("Log rate", "< 1 MB/min");
+  const mStall = teleMetric(`Flush stalls (> ${FLUSH_STALL_MS} ms)`, "0");
+  const teleCtx = document.createElement("div");
+  teleCtx.className = "appset-telemetry-ctx";
+  const refreshTelemetry = () => {
+    const snap = opts.recorderTelemetry?.();
+    const recording = opts.eventLogRecording?.() ?? false;
+    if (!snap || snap.strokes === 0) {
+      teleHint.textContent = recording
+        ? "Recording is on - draw a stroke to populate the Gate 1 numbers."
+        : "The shadow event log is off. Enable it (app.eventLog) and draw to measure.";
+      teleHint.style.display = "";
+      teleGrid.style.display = "none";
+      teleCtx.style.display = "none";
+      return;
+    }
+    teleHint.style.display = "none";
+    teleGrid.style.display = "";
+    teleCtx.style.display = "";
+    mOverhead.set(`${fmtMs(snap.pointermoveP95Ms)} ms`, snap.samples > 0 ? snap.pointermoveP95Ms < 0.2 : null);
+    // Rate inflates over a very short window (few bytes / tiny elapsed), so hold the
+    // verdict until a couple of seconds have elapsed; the number still shows.
+    const rateOk = snap.elapsedMs >= 2000 ? snap.bytesPerMinute < 1024 * 1024 : null;
+    mRate.set(`${fmtRate(snap.bytesPerMinute)} · ${fmtSize(snap.bytesPerStroke)}/stroke`, rateOk);
+    mStall.set(
+      snap.flushStalls > 0 ? `${snap.flushStalls} (max ${fmtMs(snap.maxFlushMs)} ms)` : `0 (max ${fmtMs(snap.maxFlushMs)} ms)`,
+      snap.flushes > 0 ? snap.flushStalls === 0 : null,
+    );
+    const secs = snap.elapsedMs / 1000;
+    teleCtx.textContent = `${snap.strokes} strokes · ${snap.samples} samples · ${secs >= 60 ? `${(secs / 60).toFixed(1)} min` : `${secs.toFixed(0)} s`}`;
+  };
+  teleBox.append(teleHint, teleGrid, teleCtx);
+
   // Collapsible Diagnostics group (folded by default); Pixel log lives here too.
   const diagGroup = document.createElement("div");
   diagGroup.className = "appset-diag-group";
@@ -243,6 +326,9 @@ export function createAppSettingsBox(opts: {
       pixelLog.el,
       "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
     ),
+    sub("Recording telemetry"),
+    desc("Live overhead of the shadow event log (vector-replay), against its Gate 1 targets."),
+    teleBox,
   );
   diagHead.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -250,6 +336,7 @@ export function createAppSettingsBox(opts: {
     diagBody.style.display = open ? "" : "none";
     diagHead.classList.toggle("open", open);
     diagHead.setAttribute("aria-expanded", String(open));
+    if (open) refreshTelemetry(); // fresh numbers whenever the group is expanded
   });
   diagGroup.append(diagHead, diagBody);
   updateDiagWarn(); // reflect any persisted-on diagnostic at load
@@ -402,5 +489,6 @@ export function createAppSettingsBox(opts: {
     toggle,
     showTab,
     refreshFolder: folderPanel ? folderPanel.refresh : () => {},
+    refreshTelemetry,
   };
 }

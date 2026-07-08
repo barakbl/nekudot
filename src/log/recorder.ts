@@ -5,6 +5,7 @@ import {
 } from "./events";
 import { quantizeCoord, quantizePressure, quantizeDt } from "./sample-codec";
 import type { EventLogBackend } from "./store";
+import type { RecorderTelemetry } from "./telemetry";
 
 // The shadow event recorder (P1.2): taps the live draw path and writes P1.1 events
 // to the append-only store. RECORD-ONLY, OFF by default - every entry point early-
@@ -27,6 +28,9 @@ export type RecorderDeps = {
   // Canvas + layers snapshot for the ArtworkInit emitted once per session; null
   // skips it (e.g. a bare test harness).
   artworkInit: () => { width: number; height: number; layers: unknown } | null;
+  // Optional Gate 1 telemetry sink (P1.3): fed stroke/sample/byte counts. Absent
+  // in tests that don't measure; costs nothing when unset.
+  telemetry?: RecorderTelemetry | null;
 };
 
 type SampleBatch = { x: number[]; y: number[]; p: number[]; dt: number[]; web: (0 | 1)[] };
@@ -71,11 +75,16 @@ export class EventRecorder {
     this.batch = emptyBatch();
     this.lastTime = s.time;
     this.inStroke = true;
+    this.deps.telemetry?.strokeBegan();
   }
 
   // One input sample after the first. `web` is the recorded web-sample flag (G4).
   strokeSample(x: number, y: number, pressure: number, time: number, web: boolean): void {
     if (!this.enabled || !this.inStroke) return;
+    // Time the whole tap body: it's the only recording-specific work a pointermove
+    // does, so its duration is the p95 overhead the Gate 1 metric wants (P1.3).
+    const tel = this.deps.telemetry;
+    const t0 = tel ? performance.now() : 0;
     this.batch.x.push(quantizeCoord(x));
     this.batch.y.push(quantizeCoord(y));
     this.batch.p.push(quantizePressure(pressure));
@@ -89,6 +98,7 @@ export class EventRecorder {
       this.lastFlush = time;
       void this.flush();
     }
+    if (tel) tel.sample(performance.now() - t0);
   }
 
   strokeEnd(): void {
@@ -113,9 +123,12 @@ export class EventRecorder {
     if (!store || this.pending.length === 0) return Promise.resolve();
     const rows = this.pending;
     this.pending = [];
+    const tel = this.deps.telemetry;
+    const bytes = tel ? jsonlBytes(rows) : 0;
     return this.enqueue(async () => {
       try {
         await store.append(rows);
+        tel?.addBytes(bytes); // count only what actually persisted, never a requeue
       } catch (e) {
         this.pending = [...rows, ...this.pending]; // requeue in order for the next flush
         console.warn("EventRecorder.flush failed", e);
@@ -166,4 +179,14 @@ export class EventRecorder {
 
 function emptyBatch(): SampleBatch {
   return { x: [], y: [], p: [], dt: [], web: [] };
+}
+
+// Approximate the JSONL byte size of a flushed batch for the byte-rate metric: one
+// JSON.stringify per row plus newlines. The log is near-pure ASCII (hex colours,
+// uuid layer ids, integers), so string length ≈ UTF-8 bytes - close enough to
+// compare against the < 1 MB/min gate without allocating an encoded buffer.
+function jsonlBytes(rows: readonly unknown[]): number {
+  let n = rows.length > 0 ? rows.length - 1 : 0; // newline separators
+  for (const r of rows) n += JSON.stringify(r).length;
+  return n;
 }
