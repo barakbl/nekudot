@@ -1877,6 +1877,63 @@ body:has(.onboarding:not([style*="none"])) .hide-ui-btn {
   border-color: var(--accent);
   color: var(--text-primary);
 }
+/* Recording telemetry (vector-replay P1.3): the three Gate 1 numbers. */
+.appset-telemetry {
+  margin: 2px 0 4px;
+}
+.appset-telemetry-hint {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.appset-telemetry-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.appset-telemetry-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.appset-telemetry-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.appset-telemetry-name {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-body);
+}
+.appset-telemetry-val {
+  flex: 1 1 auto;
+  text-align: right;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-body);
+}
+.appset-telemetry-verdict {
+  flex: none;
+  width: 1.1em;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.appset-telemetry-verdict.ok {
+  color: #3fb950;
+}
+.appset-telemetry-verdict.bad {
+  color: #d9534f;
+}
+.appset-telemetry-target {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+.appset-telemetry-ctx {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
 /* Collapsible "Diagnostics" heading (chevron) + the "any diagnostic on" badge. */
 .appset-diag-head {
   display: flex;
