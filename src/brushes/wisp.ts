@@ -1,6 +1,7 @@
 import { BrushBase, type BrushSetting } from "../base";
 import { MOUSE_SAMPLE, type PenSample } from "../pen";
 import type { BrushContext } from "./registry";
+import { FixedTimestep } from "./fixed-timestep";
 import {
   colorSourceIcons,
   connectionColorLabels,
@@ -65,8 +66,8 @@ export class WispBrush extends BrushBase {
   private colorSpread = 30; // 0..100: how wide each batch spreads across the gradient
 
   private particles: Particle[] = [];
-  private drawing = false; // pen down: the loop spawns while true
-  private raf = 0;
+  private drawing = false; // pen down: the timestep spawns while true
+  private clock = new FixedTimestep();
   private cx = 0;
   private cy = 0;
   private pressure = 1; // last stylus pressure (1 for a mouse / pen off)
@@ -80,6 +81,11 @@ export class WispBrush extends BrushBase {
 
   name(): string {
     return "Wisp";
+  }
+
+  // Frame-driven: the funnel pumps animate() so a dwell keeps building the plume.
+  animates(): boolean {
+    return true;
   }
 
   // Each puff composites individually so the plume builds with dwell - never the
@@ -98,15 +104,16 @@ export class WispBrush extends BrushBase {
     this.phaseX = x;
     this.phaseY = y;
     this.drawing = true;
+    this.clock.reset();
     this.spawn(); // an immediate puff, so even a tap leaves a mark
-    if (this.raf === 0 && typeof requestAnimationFrame !== "undefined") {
-      this.raf = requestAnimationFrame(this.tick);
-    }
   }
 
-  // Move the spawn centre + read pen state; the rAF loop does the work. Bypasses
-  // the base per-sample deposit/draw, like Spray.
-  stroke(x: number, y: number, _sample = true, pen: PenSample = MOUSE_SAMPLE): void {
+  // Move the spawn centre + read pen state, and advance the virtual clock by the
+  // sample's timestamp - one plume frame per fixed tick of elapsed time (a dwell
+  // keeps building via the funnel's animate() pump). Bypasses the base per-sample
+  // deposit/draw, like Spray. `time` is the recorded event time; absent on a bare
+  // call, so only the immediate strokeStart puff lands (fine for the static preview).
+  stroke(x: number, y: number, _sample = true, pen: PenSample = MOUSE_SAMPLE, time?: number): void {
     this.cx = x;
     this.cy = y;
     this.pressure = pen.isPen ? pen.pressure : 1;
@@ -117,14 +124,21 @@ export class WispBrush extends BrushBase {
       this.driftX = 0;
       this.driftY = 0;
     }
+    if (time !== undefined) this.clock.advance(time, this.stepFrame);
   }
+
+  // Live dwell pump: the funnel calls this each frame with performance.now(), the
+  // same clock the sample timestamps use, so a still hold keeps building at 60 Hz.
+  animate(now: number): void {
+    if (this.drawing) this.clock.advance(now, this.stepFrame);
+  }
+
+  // One live plume tick (spawn + advance). An arrow so FixedTimestep.advance can
+  // call it per fixed tick; the release bake calls frame(false) directly.
+  private stepFrame = (): void => this.frame(true);
 
   strokeEnd(): void {
     this.drawing = false;
-    if (this.raf && typeof cancelAnimationFrame !== "undefined") {
-      cancelAnimationFrame(this.raf);
-    }
-    this.raf = 0;
     // Bake the rest of the plume now (see class note): no new spawns, so it
     // terminates; the frame cap bounds the cost.
     let guard = 0;
@@ -134,15 +148,6 @@ export class WispBrush extends BrushBase {
     this.particles.length = 0;
     super.strokeEnd();
   }
-
-  private tick = (): void => {
-    if (!this.drawing) {
-      this.raf = 0; // strokeEnd bakes the tail; never animate live past pen-up
-      return;
-    }
-    this.frame(true);
-    this.raf = requestAnimationFrame(this.tick);
-  };
 
   // Unit vectors for Direction: `dir` is the heading (0deg = up), `perp` across it.
   // At 0deg -> dir=(0,-1), perp=(1,0): exactly the original up-plume.

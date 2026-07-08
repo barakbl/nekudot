@@ -57,12 +57,14 @@ describe("FixedTimestep", () => {
   });
 });
 
-describe("Spray dwell density (P0.5a)", () => {
+// Both frame-driven brushes deposit one feeder point per plume/spray tick, so a
+// dwell's deposit count is a direct read on how many ticks fired.
+describe.each(["Spray", "Wisp"])("%s dwell density (P0.5a/b)", (brush) => {
   it("deposits ~the same for a 60 Hz and a 120 Hz dwell of equal duration", () => {
-    const at60 = dwellDeposits("Spray", { durationMs: 1000, sampleDtMs: 1000 / 60 });
-    const at120 = dwellDeposits("Spray", { durationMs: 1000, sampleDtMs: 1000 / 120 });
-    expect(at60).toBeGreaterThan(30); // it actually sprayed
-    // Rate-independent build-up (±1 fp). The old rAF loop deposited per frame, so a
+    const at60 = dwellDeposits(brush, { durationMs: 1000, sampleDtMs: 1000 / 60 });
+    const at120 = dwellDeposits(brush, { durationMs: 1000, sampleDtMs: 1000 / 120 });
+    expect(at60).toBeGreaterThan(30); // it actually built up
+    // Rate-independent build-up (±1 fp). The old rAF loop stepped per frame, so a
     // 120 Hz stream (~2x the samples here) built up ~2x; now it tracks duration.
     expect(Math.abs(at60 - at120)).toBeLessThanOrEqual(1);
     expect(at120).toBeLessThan(80); // ~61, NOT the ~121 a per-sample loop would give

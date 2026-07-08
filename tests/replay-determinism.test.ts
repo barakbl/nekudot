@@ -5,11 +5,12 @@ import { buildCases, runCase, type Case, type CaseResult } from "./_replay-harne
 // depends on. See tests/_replay-harness.ts for the method (Property A = pinned
 // determinism, Property B = replay-safety under a perturbed clock + frame cadence).
 //
-// KNOWN_REPLAY_UNSAFE is the baseline the roadmap shrinks: Wisp still counts rAF
-// frames (P0.5b). Spray was fixed in P0.5a and Shapes in P0.3 - both now step from
-// the recorded sample time, not the wall clock / frame cadence. When a fix lands,
-// REMOVE the brush here - this test then enforces its new replay-safety, no regress.
-const KNOWN_REPLAY_UNSAFE = new Set(["Wisp"]);
+// KNOWN_REPLAY_UNSAFE is now EMPTY: every brush is replay-safe (Gate 0). Shapes
+// (P0.3) sizes from the recorded time, and Spray + Wisp (P0.5a/b) step on a fixed
+// virtual timestep instead of counting rAF frames. If a new brush reads the wall
+// clock / frame cadence, add it here with a note - but the goal is to keep this
+// empty so the whole matrix stays replay-safe.
+const KNOWN_REPLAY_UNSAFE = new Set<string>([]);
 
 const results: Array<{ c: Case } & CaseResult> = buildCases().map((c) => ({ c, ...runCase(c) }));
 
