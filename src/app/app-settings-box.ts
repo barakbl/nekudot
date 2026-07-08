@@ -53,9 +53,13 @@ export function createAppSettingsBox(opts: {
   onTogglePixelLog: (on: boolean) => void;
   diagnostics: boolean;
   onToggleDiagnostics: (on: boolean) => void;
+  // Process recording (vector-replay): the app.eventLog toggle. On => strokes +
+  // config/paste are logged so a whole-session process video (GIF) can be exported.
+  eventLog?: boolean;
+  onToggleEventLog?: (on: boolean) => void;
   // Recording telemetry (vector-replay P1.3): the live Gate 1 snapshot, read each
   // time the Diagnostics group opens, plus whether the shadow recorder is on (for
-  // the empty-state hint - there's no UI toggle for the flag yet).
+  // the empty-state hint).
   recorderTelemetry?: () => TelemetrySnapshot;
   eventLogRecording?: () => boolean;
   // Wipe all local data and reload to a fresh app (opens its own confirm modal).
@@ -179,6 +183,14 @@ export function createAppSettingsBox(opts: {
     opts.onToggleDiagnostics(on);
     updateDiagWarn();
   });
+  // Process recording toggle (app.eventLog). Present only when wired.
+  const eventLog =
+    opts.eventLog !== undefined
+      ? makeToggle(opts.eventLog, (on) => {
+          opts.onToggleEventLog?.(on);
+          refreshTelemetry(); // the telemetry hint reflects whether recording is on
+        })
+      : null;
 
   // Copy / download the captured diagnostics so they can be shared.
   const flash = (btn: HTMLButtonElement, msg: string) => {
@@ -326,6 +338,15 @@ export function createAppSettingsBox(opts: {
       pixelLog.el,
       "Records every deposited point to an append-only log, intended for future features. Off by default - best left off for now; it only grows stored data and nothing uses it yet.",
     ),
+    ...(eventLog
+      ? [
+          row(
+            "Process recording",
+            eventLog.el,
+            "Records your drawing so you can export a whole-session process video (the artwork building up) with Record GIF. Turn it on BEFORE you start drawing; a session recorded from the start exports as a timelapse. Off by default; the log stays in your browser (nothing is uploaded).",
+          ),
+        ]
+      : []),
     sub("Recording telemetry"),
     desc("Live overhead of the shadow event log (vector-replay), against its Gate 1 targets."),
     teleBox,
