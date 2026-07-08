@@ -311,6 +311,29 @@ export abstract class BrushBase {
     this.connection?.freezeColors(this.strokeColor, this.strokeSecondaryColor);
   }
 
+  // The brush-owned slice of a recorded StrokeContext (vector-replay P1.2), read
+  // AFTER captureStrokeContext so the frozen colours are current. The input funnel
+  // fills in the parts IT owns (layer, size, alpha, symmetry, pen). settings is the
+  // connection's dial flat ({} for a non-connecting brush - refined later).
+  strokeSnapshot(): {
+    brush: string;
+    seed: number;
+    color: { main: string; secondary: string };
+    settings: Record<string, string | number | boolean>;
+    erase: boolean;
+  } {
+    return {
+      brush: this.name(),
+      seed: this.seed,
+      color: {
+        main: this.strokeColor ?? "#000000",
+        secondary: this.strokeSecondaryColor ?? "#888888",
+      },
+      settings: this.connection ? this.connection.toFlat() : {},
+      erase: this.erases(),
+    };
+  }
+
   // The Primary in effect for this stroke: the value frozen by captureStrokeContext
   // if it ran, else the live toolbar colour - so a path that never freezes (some
   // tests, the preview before this hook) keeps the old read-the-store behaviour. No

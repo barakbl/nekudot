@@ -145,6 +145,16 @@ export class SymmetryController {
     const tool = this.activeTool;
     this.current = tool ? tool.transforms(this.context(x, y, size)) : [IDENTITY];
   }
+
+  // A serializable freeze of the symmetry inputs for the event log (vector-replay
+  // P1.2): the active tool (null when off) + the centre, enough to reproduce the
+  // transforms on replay.
+  snapshot(): { tool: string | null; params: Record<string, number> } {
+    return {
+      tool: this.mode === "none" ? null : this.mode,
+      params: { centerX: this.centerX, centerY: this.centerY },
+    };
+  }
   transforms(): readonly Transform[] {
     return this.current;
   }
