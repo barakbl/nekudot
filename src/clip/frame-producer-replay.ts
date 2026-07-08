@@ -5,18 +5,20 @@ import type { LayersConfig } from "../layered/schema";
 import { replay } from "../replay/engine";
 import { MemoryStore } from "../replay/bare-world";
 import { createOffscreenReplayWorld } from "../replay/offscreen";
+import { collapsedActivityMs, planFrames } from "./replay-timeline";
 import { CAPTURE_FPS, MAX_DIM, maxSeconds, type Clip } from "./recorder";
 
-// Process-video frame producer (vector-replay P3.1). Replays a recorded event log
-// ONCE into a detached offscreen LayerManager and samples the build-up into the
+// Process-video frame producer (vector-replay P3.1 + P3.2). Replays a recorded event
+// log ONCE into a detached offscreen LayerManager and samples the build-up into the
 // SAME opaque-RGBA, 640-clamped Clip the live ClipRecorder produces - so the whole
-// clip/preview/gifenc back half is reused untouched. This is the first user-visible
-// payoff: a whole-session process GIF, exercising replay on real artworks.
+// clip/preview/gifenc back half is reused untouched.
 //
-// One frame per stroke's `end` (the engine's frameSink), subsampled to a frame
-// budget so RAM stays within the live recorder's ceiling. Playback is uniform at
-// CAPTURE_FPS (the back half has no per-frame delay); real-time / idle-gap mapping
-// is P3.2.
+// One DISTINCT state per stroke's `end` (the engine's frameSink), subsampled to a
+// frame budget so RAM stays within the live recorder's ceiling. P3.2 then maps those
+// states onto output frames: idle gaps are collapsed and the activity is scaled to a
+// target duration (a 20-min session -> a short timelapse, not mostly stillness). Held
+// states share one ImageData, so RAM stays bounded by the state count, not the frame
+// count. The back half plays frames uniformly at CAPTURE_FPS.
 
 export type ReplayClipInput = {
   // Raw recorded rows (eventRecorder.drain()); validated here against the schema.
@@ -68,20 +70,37 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
     return ctx.getImageData(0, 0, width, height);
   };
 
-  // Frame budget: match the live recorder's device-dependent RAM ceiling. Subsample
-  // strokes when the session has more than the budget allows.
+  // Capture one DISTINCT state per sampled stroke (RAM budget = the live recorder's
+  // device ceiling); record each state's virtual time for the P3.2 plan.
   const budget = Math.max(2, CAPTURE_FPS * maxSeconds());
   const stride = Math.max(1, Math.ceil(strokeCount / (budget - 1)));
-  const frames: ImageData[] = [];
-  frames.push(capture()); // frame 0: the blank starting state
+  const states: ImageData[] = [capture()]; // state 0: the blank starting state
+  const stateTimes: number[] = [0];
   let endIndex = 0;
   replay(events, world, {
-    frameSink: () => {
-      if (endIndex % stride === 0) frames.push(capture());
+    frameSink: (t) => {
+      if (endIndex % stride === 0) {
+        states.push(capture());
+        stateTimes.push(t);
+      }
       endIndex++;
     },
   });
-  frames.push(capture()); // always end on the finished artwork
+  states.push(capture()); // the finished artwork
+  stateTimes.push((stateTimes[stateTimes.length - 1] ?? 0) + 1);
+
+  // P3.2: collapse idle gaps + scale the activity to a target duration. Short
+  // sessions stay near real-time (idle removed); long ones cap at the budget length.
+  const idleGapMs = 700;
+  const activityMs = collapsedActivityMs(stateTimes, idleGapMs);
+  const targetDurationMs = Math.min((budget / CAPTURE_FPS) * 1000, Math.max(1500, activityMs));
+  const plan = planFrames(stateTimes, {
+    idleGapMs,
+    targetDurationMs,
+    fps: CAPTURE_FPS,
+    maxFrames: budget,
+  });
+  const frames = plan.map((i) => states[i]); // held states share one ImageData
 
   if (frames.length < 2) return null;
   return { frames, width, height, captureFps: CAPTURE_FPS };
