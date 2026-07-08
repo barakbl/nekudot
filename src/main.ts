@@ -576,12 +576,38 @@ layerManager.subscribe(() => {
 // init/clear/subscribe below; createUndoWiring owns the thin action wrappers.
 // layersBox is read lazily - it's created just below this block.
 const history = new AppHistory(layerManager, MAX_UNDO);
-const { pushUndo, activeLayerName, doUndo, doRedo } = createUndoWiring({
+const { pushUndo: commitUndo, activeLayerName, doUndo, doRedo } = createUndoWiring({
   history,
   layerManager,
   applyStageBackground,
   getLayersBox: () => layersBox,
 });
+
+// vector-replay config tap: after ANY undoable action, record a ConfigOp iff the
+// layer/map/background/size config actually changed. pushUndo fires on every config
+// op (add/remove/reorder/rename/OPACITY layer, background, add/remove/rename map,
+// reset/new-canvas) - a superset of manager.subscribe (which misses opacity + the
+// Layers-box background). The JSON-diff dedupe makes its stroke-end / paste firings
+// a no-op, and ignores active/selected-only cursor moves (replay re-stamps the
+// active layer per stroke). Gated on the recorder, so it's free when logging is off.
+let lastConfigKey = JSON.stringify({
+  ...layerManager.getConfig(),
+  activeIndex: 0,
+  selectedNeighborsMapIndex: 0,
+});
+const recordConfigOp = (): void => {
+  if (!eventRecorder.recording) return;
+  const layers = layerManager.getConfig();
+  const key = JSON.stringify({ ...layers, activeIndex: 0, selectedNeighborsMapIndex: 0 });
+  if (key === lastConfigKey) return;
+  lastConfigKey = key;
+  const size = layerManager.currentSize;
+  eventRecorder.event({ t: "config", op: "layers", layers, width: size.width, height: size.height });
+};
+const pushUndo = (desc: string): void => {
+  commitUndo(desc);
+  recordConfigOp();
+};
 
 // ---- boxes: layers / symmetry / maps ----------------------------------------------
 

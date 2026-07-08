@@ -77,6 +77,14 @@ export function createOffscreenReplayWorld(opts: {
     },
     applyInit: ({ width, height, layers }) =>
       manager.applyConfig(layers as LayersConfig, { width, height }),
+    // A mid-session ConfigOp (layer/map/background change): reconcile PIXEL-
+    // PRESERVINGLY (init already built the start state destructively; wiping here
+    // would erase everything drawn so far).
+    applyConfig: (ev) => {
+      if (!ev.layers) return;
+      const size = ev.width !== undefined && ev.height !== undefined ? { width: ev.width, height: ev.height } : undefined;
+      manager.reconcileConfig(ev.layers, size);
+    },
     beginBuffer: (b) => {
       if (b) manager.beginStroke();
     },

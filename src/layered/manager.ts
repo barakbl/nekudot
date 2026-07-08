@@ -140,6 +140,56 @@ export class LayerManager implements PaintHost {
     this.emit();
   }
 
+  // Reconcile the layer/map collection to `config` WITHOUT wiping the pixels of
+  // surviving layers or the points of surviving maps (matched by stable id) - the
+  // pixel-preserving path a vector-replay ConfigOp needs mid-session. Unlike
+  // applyConfig (which removeAll()s and rebuilds EMPTY - correct for init/reset), it
+  // keeps each surviving layer's canvas + each surviving map's finder, spawns empty
+  // ones only for genuinely new ids, drops removed ones, then reorders + re-applies
+  // opacity/name/background/cursors. A mid-session RESIZE can't preserve pixels 1:1,
+  // so it falls back to the destructive rebuild (only new-canvas/reset changes size,
+  // and that lands on an empty state anyway). Not used by the live app - replay only.
+  reconcileConfig(config: LayersConfig, size?: CanvasSize): void {
+    if (size && (size.width !== this.size.width || size.height !== this.size.height)) {
+      this.applyConfig(config, size);
+      return;
+    }
+    const layerById = new Map(this.layers.map((l) => [l.config.id, l]));
+    const targetLayerIds = new Set(config.layers.map((l) => l.id));
+    for (const l of this.layers) if (!targetLayerIds.has(l.config.id)) l.canvas.remove();
+    this.layers = config.layers.map((lc) => {
+      const existing = layerById.get(lc.id);
+      if (existing) {
+        existing.config.types = lc.types;
+        existing.setName(lc.name);
+        existing.setOpacity(lc.opacity);
+        return existing;
+      }
+      const layer = new Layer({ ...lc }, this.size, this.dpr, this.rendererInit);
+      this.container.appendChild(layer.canvas);
+      return layer;
+    });
+    this.renumberLayers(); // rewrites config.index + z-index to the new order
+    const mapById = new Map(this.neighborsMaps.map((m) => [m.config.id, m]));
+    this.neighborsMaps = config.neighborsMaps.map((mc) => {
+      const existing = mapById.get(mc.id);
+      if (existing) {
+        existing.config.name = mc.name;
+        existing.config.opacity = mc.opacity;
+        return existing;
+      }
+      return new NeighborsMap({ ...mc });
+    });
+    this.activeIndex = clampIndex(config.activeIndex, this.layers.length);
+    this.selectedNeighborsMapIndex = clampIndex(
+      config.selectedNeighborsMapIndex ?? 0,
+      this.neighborsMaps.length,
+    );
+    this.background = { ...config.background };
+    this.persist();
+    this.emit();
+  }
+
   reset(newSize: CanvasSize): void {
     this.size = { ...newSize };
     this.applyContainerSize();
