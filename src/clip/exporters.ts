@@ -1,10 +1,8 @@
 import { encodeGif } from "./encode-gif";
 import { createVideoExporter } from "./encode-webm";
 
-// A clip export format. The preview's Save button is driven entirely by the
-// active Exporter (its label, extension, and encode), so adding a format later
-// (e.g. WebM) is just another entry — once there's more than one, the preview
-// offers a picker (see preview-box.ts).
+// A clip export format driving the preview's Save button (label, ext, encode).
+// Add an entry; once there's more than one, the preview offers a picker.
 export interface Exporter {
   id: string; // stable key, e.g. "gif"
   label: string; // shown on the Save button, e.g. "GIF"
@@ -23,14 +21,11 @@ export const gifExporter: Exporter = {
   encode: encodeGif,
 };
 
-// The always-available formats, in menu order. GIF works everywhere; the video
-// exporter (WebCodecs) is added at runtime by resolveVideoExporter() when the
-// browser supports it.
+// GIF works everywhere; the video exporter (WebCodecs) is added at runtime by
+// resolveVideoExporter() when supported.
 export const EXPORTERS: Exporter[] = [gifExporter];
 
-// The best video exporter this browser supports (WebCodecs + a muxer -> MP4 or
-// WebM), or null. Memoized because VideoEncoder.isConfigSupported is async and the
-// answer never changes within a session.
+// Best video exporter (WebCodecs + muxer -> MP4/WebM), or null. Memoized (async probe).
 let videoExporterProbe: Promise<Exporter | null> | null = null;
 export function resolveVideoExporter(): Promise<Exporter | null> {
   if (!videoExporterProbe) videoExporterProbe = createVideoExporter();

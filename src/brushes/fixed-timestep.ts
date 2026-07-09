@@ -19,11 +19,9 @@ const MAX_STEPS_PER_ADVANCE = 60;
 export class FixedTimestep {
   private clock: number | null = null; // virtual ms; null until the first sample anchors it
   private acc = 0; // elapsed virtual ms not yet spent on a step
-  // Live, the per-call cap guards against a stall when a big gap arrives at once
-  // (a backgrounded tab returning). Replay legitimately gets a whole dwell as one
-  // big gap on the sample after it - there the cap would DROP that time and
-  // under-build the plume (a held Wisp comes back pale), and there's no live pump
-  // to stall, so replay runs the full catch-up. See setReplayTiming.
+  // Live, the cap guards a stall on a huge gap (backgrounded tab). Replay gets a
+  // whole dwell as one gap, where dropping it under-builds the plume - so replay
+  // uncaps (setCapped(false)) to run the full catch-up.
   private capped = true;
 
   // Start a fresh stroke: the next advance() only anchors the clock (no steps).
@@ -32,8 +30,6 @@ export class FixedTimestep {
     this.acc = 0;
   }
 
-  // Replay drives the whole dwell as one large advance(); run every step so the
-  // build matches the live per-frame pump instead of capping + dropping.
   setCapped(on: boolean): void {
     this.capped = on;
   }

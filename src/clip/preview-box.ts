@@ -16,8 +16,7 @@ import {
 // Nothing is encoded until Save, so editing is instant.
 export function openClipPreview(rec: Clip): void {
   const count = rec.frames.length;
-  // Available formats + the active one. GIF is always present; the video exporter
-  // (WebCodecs) probes async and is appended below, revealing the format picker.
+  // GIF is always present; the video exporter (WebCodecs) is appended async below.
   let formats: Exporter[] = [...EXPORTERS];
   let exporter = formats[0];
 
@@ -75,8 +74,7 @@ export function openClipPreview(rec: Clip): void {
   });
   trimRow.append(trimLbl, dual.el, trimVal);
 
-  // Format picker: a segmented control, hidden until there's more than one format
-  // (i.e. once the video exporter resolves). renderFormats() fills it below.
+  // Format picker (segmented control), hidden until there's more than one format.
   const formatRow = el("div", "clip-row");
   const formatLbl = el("span", "clip-row-label");
   formatLbl.textContent = "Format";
@@ -104,8 +102,7 @@ export function openClipPreview(rec: Clip): void {
 
   // ---- behaviour ----------------------------------------------------------
 
-  // Paint the format segmented control and keep the Save button in sync. Shown
-  // only once there's a choice to make (>1 format).
+  // Paint the format control + sync the Save button; shown only when >1 format.
   function renderFormats(): void {
     formatGroup.textContent = "";
     for (const f of formats) {

@@ -562,8 +562,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
 
   addRow(SHARE_ICON, "Share as PNG", opts.onShareImage);
   addRow("⤓", "Export image (.png)", opts.onExportImage);
-  // With the event log on, Record exports a whole-session process video (replay)
-  // rather than a live GIF; reflect that in the label, refreshed on each open.
+  // With the event log on, Record exports a process video, not a GIF (label per open).
   const recordLabel = addRow(GIF_ICON, "Record GIF", opts.onRecordClip);
   onMenuOpen = () => {
     recordLabel.textContent = opts.eventLogActive?.() ? "Create process Video" : "Record GIF";

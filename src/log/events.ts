@@ -80,10 +80,8 @@ export const StrokeContextSchema = z.object({
   // falls back to the brush's default style. Absent for non-connecting brushes.
   style: z.string().min(1).max(64).optional(),
   settings: flat, // the ConnectingFlat dial snapshot (P0.4)
-  // The brush-own dials (Wisp Colour source, Spray density, ...) - not part of the
-  // connection's `settings`, so without them a replayed Wisp/Spray falls back to
-  // its defaults (e.g. Wisp Colour -> Primary). Optional + version-tolerant: logs
-  // recorded before this omit it, and replay then uses the brush defaults.
+  // Brush-own dials (Wisp Colour, ...) - not in the connection's `settings`.
+  // Optional + version-tolerant: pre-fix logs omit it (replay uses brush defaults).
   brushSettings: brushFlat.optional(),
   symmetry: z.object({ tool: z.string().max(64).nullable(), params: flat }),
   pen: z.boolean(), // pen support (pen-mode) on for this stroke

@@ -2,11 +2,8 @@ import { ArrayBufferTarget as Mp4Target, Muxer as Mp4Muxer } from "mp4-muxer";
 import { ArrayBufferTarget as WebmTarget, Muxer as WebmMuxer } from "webm-muxer";
 import type { Exporter } from "./exporters";
 
-// Process/clip video export (vector-replay P3.3). GIF is the wrong container for
-// a minutes-long process video (1080p GIFs run tens of MB); WebCodecs encodes the
-// SAME opaque-RGBA Clip frames the GIF path produces into a real H.264/MP4 (or
-// VP9/WebM) file, faster than realtime. The muxers are npm deps bundled into the
-// single-file app - never CDN'd, which the app's CSP forbids.
+// Process/clip video export (P3.3): WebCodecs-encode the Clip frames into a real
+// MP4/WebM instead of a heavy GIF. Muxers are bundled, never CDN'd (the app's CSP).
 
 export type VideoCandidate = {
   ext: "mp4" | "webm";
@@ -18,18 +15,15 @@ export type VideoCandidate = {
   avc?: boolean; // configure the encoder with avc:{format:'avc'} (mp4/H.264)
 };
 
-// Tried in preference order; the first whose config the browser reports supported
-// wins. MP4/H.264 first: smallest, and the only one that plays everywhere incl.
-// Safari and social uploads. WebM/VP9 then VP8 cover Chrome/Firefox where an H.264
-// encoder isn't exposed.
+// Preference order (first supported wins): MP4/H.264 (smallest, plays everywhere
+// incl. Safari), then WebM/VP9/VP8 for Chrome/Firefox without an H.264 encoder.
 export const VIDEO_CANDIDATES: readonly VideoCandidate[] = [
   { ext: "mp4", mime: "video/mp4", label: "MP4", encoderCodec: "avc1.42001f", container: "mp4", muxerCodec: "avc", avc: true },
   { ext: "webm", mime: "video/webm", label: "WebM", encoderCodec: "vp09.00.10.08", container: "webm", muxerCodec: "V_VP9" },
   { ext: "webm", mime: "video/webm", label: "WebM", encoderCodec: "vp8", container: "webm", muxerCodec: "V_VP8" },
 ];
 
-// Codecs generally require even dimensions; the Clip frames are already <=640px
-// (MAX_DIM), so dropping the odd last row/column is invisible.
+// Codecs need even dimensions; dropping the odd last row/column is invisible.
 export function evenDim(n: number): number {
   return n - (n % 2);
 }
@@ -38,16 +32,14 @@ export function fpsFromDelay(delayMs: number): number {
   return Math.max(1, Math.round(1000 / Math.max(1, delayMs)));
 }
 
-// ~0.2 bits/pixel, clamped to a sane [1, 12] Mbps window: small timelapse frames
-// still get enough bits, big ones don't balloon.
+// ~0.2 bits/pixel, clamped to [1, 12] Mbps.
 export function bitrateFor(width: number, height: number, fps: number): number {
   return Math.min(12_000_000, Math.max(1_000_000, Math.round(width * height * fps * 0.2)));
 }
 
 type ConfigProbe = (config: VideoEncoderConfig) => Promise<{ supported?: boolean }>;
 
-// The first candidate this browser can actually encode, or null. `probe` defaults
-// to VideoEncoder.isConfigSupported (injected in tests, where WebCodecs is absent).
+// First encodable candidate, or null. `probe` defaults to isConfigSupported (mocked in tests).
 export async function pickVideoCandidate(
   candidates: readonly VideoCandidate[] = VIDEO_CANDIDATES,
   probe?: ConfigProbe,
@@ -69,8 +61,7 @@ export async function pickVideoCandidate(
   return null;
 }
 
-// The best available video Exporter for this browser, or null (GIF stays the only
-// format). Async because isConfigSupported is.
+// Best available video Exporter, or null (GIF-only). Async (isConfigSupported is).
 export async function createVideoExporter(): Promise<Exporter | null> {
   if (typeof VideoEncoder === "undefined" || typeof VideoFrame === "undefined") return null;
   const candidate = await pickVideoCandidate();
@@ -121,8 +112,7 @@ async function encodeVideo(
   const fps = fpsFromDelay(delayMs);
   const frameDurUs = Math.round(1_000_000 / fps);
 
-  // Frames are ImageData; VideoFrame takes a canvas, so blit each one through a
-  // reusable canvas (also crops to the even dims).
+  // VideoFrame needs a canvas, so blit each ImageData through one (also crops to even dims).
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;

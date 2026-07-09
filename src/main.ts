@@ -203,13 +203,11 @@ const exportBackground = (): string => backgroundColorForPreviews();
 const recordClip = async (): Promise<void> => {
   if (eventRecorder.recording) {
     const events = await eventRecorder.drain();
-    // Only replay when this drawing actually recorded strokes; an empty log (e.g.
-    // just after New / Open, or a freshly enabled recorder) falls through to the
-    // live screen-grab recorder below.
+    // Only replay when this drawing recorded strokes; else fall through to the live
+    // screen-grab recorder below.
     if (events.some((e) => (e as { t?: string }).t === "begin")) {
-      // Replaying the log is synchronous and can pause the tab for a beat on a big
-      // drawing, so paint a status toast first (yield two frames so it shows before
-      // the main thread blocks).
+      // The replay is synchronous and can pause the tab, so show a toast first
+      // (yield two frames so it paints before the main thread blocks).
       showChip("Rendering process video…");
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
       const clip = await produceReplayClip({
@@ -261,9 +259,8 @@ const { invisibleOverlay, mapHighlighter, brushCursor, applyNewCanvasSize } = cr
 const replaceArtwork = (size: Parameters<typeof applyNewCanvasSize>[0]): void => {
   applyNewCanvasSize(size);
   folderSync.forgetArtworkFile();
-  // A different drawing starts a clean process log, so Record exports THIS drawing
-  // rather than replaying history from earlier drawings (the log persists across
-  // reloads and is not otherwise scoped to an artwork).
+  // A different drawing starts a clean process log (it persists across reloads and
+  // isn't otherwise scoped to an artwork).
   void eventRecorder.reset();
 };
 
@@ -985,9 +982,7 @@ const appSettingsBox = createAppSettingsBox({
     appState.eventLogEnabled = on;
     store.set("app.eventLog", on);
     eventRecorder.setEnabled(on);
-    // Turning recording on starts a fresh log from the current canvas, so the
-    // process video is THIS drawing from here - not whatever was recorded before.
-    if (on) void eventRecorder.reset();
+    if (on) void eventRecorder.reset(); // start a fresh log from the current canvas
   },
   // Gate 1 recording telemetry (P1.3), read on demand when the Diagnostics group
   // is opened. `recording` drives the empty-state hint.

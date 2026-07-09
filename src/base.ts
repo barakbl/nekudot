@@ -336,18 +336,14 @@ export abstract class BrushBase {
       // before applying them (P2.1). Undefined for non-connecting brushes.
       style: this.connection?.styleName(),
       settings: this.connection ? this.connection.toFlat() : {},
-      // The brush's OWN dials (Wisp Colour source, Spray density, ...) - the
-      // connection's `settings` don't cover them, so replay would otherwise use the
-      // brush defaults (e.g. Wisp -> Primary). See applyBrushSettings.
+      // Brush-own dials (Wisp Colour, ...) - the connection's `settings` don't cover them.
       brushSettings: this.flatBrushSettings(),
       erase: this.erases(),
     };
   }
 
-  // Snapshot / restore the brush's OWN (non-connecting) setting values for replay.
-  // The connection dials ride in `settings`/`style`; these don't, so a replayed
-  // Wisp/Spray would fall back to its defaults without them (bug: a gradient Wisp
-  // replays as solid Primary).
+  // Snapshot/restore brush-own (non-connecting) dials for replay - without them a
+  // gradient Wisp/Spray falls back to its defaults (solid Primary).
   flatBrushSettings(): Record<string, SettingValue> {
     const out: Record<string, SettingValue> = {};
     for (const s of this.getSettings()) {
@@ -875,9 +871,8 @@ export abstract class BrushBase {
     this.rng = mulberry32(seed);
   }
 
-  // Replay drives a whole dwell as one big time-step; frame-driven brushes
-  // (Wisp/Spray) override this to run the full catch-up instead of the live
-  // per-call cap (which drops it and under-builds a held plume). No-op otherwise.
+  // Frame-driven brushes (Wisp/Spray) override to run a dwell's full catch-up on
+  // replay (the live per-call cap drops it and under-builds a held plume).
   setReplayTiming(_on: boolean): void {}
 
   protected random(): number {

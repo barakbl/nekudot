@@ -25,15 +25,12 @@ export function hydrateBrush(brush: BrushBase, ctx: StrokeContext, store: Store)
   // style; a non-connecting brush has no connection, so both calls are inert.
   if (ctx.style) brush.applyArtStylePreset(ctx.style);
   brush.activeConnection()?.applyFlat(ctx.settings);
-  // The brush's OWN dials (Wisp Colour source, Spray density, ...). Without these a
-  // replayed Wisp/Spray uses its defaults - e.g. a gradient Wisp comes back solid
-  // Primary. Absent in pre-fix logs, so the brush keeps its defaults then.
+  // Brush-own dials (Wisp Colour, ...); absent in pre-fix logs -> brush defaults.
   if (ctx.brushSettings) brush.applyBrushSettings(ctx.brushSettings);
   // Per-stroke RNG seed (P0.2) - recorded, never re-randomized.
   brush.setSeed(ctx.seed);
-  // Replay feeds a whole dwell as one big time-step (no live animation pump), so
-  // let frame-driven brushes run the full catch-up - otherwise a held Wisp/Spray
-  // rebuilds capped at ~1s and comes back pale (no-op for other brushes).
+  // Replay feeds a dwell as one big step - let frame-driven brushes run the full
+  // catch-up so a held Wisp/Spray isn't capped to ~1s (pale). No-op for others.
   brush.setReplayTiming(true);
 }
 

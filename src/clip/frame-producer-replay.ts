@@ -79,13 +79,10 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
     return ctx.getImageData(0, 0, width, height);
   };
 
-  // Capture states at uniform intervals of ACTIVE virtual time (idle gaps fire no
-  // samples, so they cost nothing and are skipped for free), so a long stroke
-  // animates as it's laid down instead of popping in whole at its `end`. Stay
-  // within the frame budget (= the live recorder's device RAM ceiling) by
-  // decimating - keep every other state and double the interval whenever we'd
-  // exceed it - so this is a single pass with the SAME memory ceiling as the old
-  // per-stroke capture, just spent on smoother timing.
+  // Capture at uniform intervals of ACTIVE virtual time (idle gaps fire no samples,
+  // so they're skipped), so a long stroke animates instead of popping in at its end.
+  // Decimate (drop every other + double the interval) when we'd exceed the frame
+  // budget, so RAM stays at the same ceiling as the old per-stroke capture.
   const budget = Math.max(2, CAPTURE_FPS * maxSeconds());
   const states: ImageData[] = [capture()]; // state 0: the blank starting state
   const stateTimes: number[] = [0];
@@ -112,8 +109,7 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
         nextAt = t + intervalMs;
       }
     },
-    // Stroke end: make sure a buffered (wet) stroke's composited marks land - they
-    // aren't on the layer canvas until here, so intra-stroke grabs miss them.
+    // Stroke end: a buffered (wet) stroke's marks only land here, so grabs miss them.
     frameSink: (t) => {
       if (stateTimes[stateTimes.length - 1] !== t) grab(t);
       nextAt = t + intervalMs;

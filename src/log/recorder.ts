@@ -145,10 +145,8 @@ export class EventRecorder {
   }
 
   // Discard everything recorded and start a fresh session on the next stroke. The
-  // log is a single append-only store that survives reloads, so without this it
-  // accumulates every past drawing - and Record would replay that whole history
-  // instead of the current one. Called when the drawing is replaced (new / load)
-  // and when recording is turned on, so the log always represents THIS drawing.
+  // append-only store survives reloads, so without this Record replays every past
+  // drawing; called on drawing-replace (new/load) and when recording is enabled.
   async reset(): Promise<void> {
     // Drop in-memory state first so nothing new gets flushed while we wipe.
     this.pending = [];

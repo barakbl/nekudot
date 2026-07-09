@@ -68,11 +68,9 @@ export interface ReplayOptions {
   // producer captures the current offscreen artwork state; a natural build-up
   // boundary. (Finer per-frame timing / idle-gap collapse is P3.2.)
   frameSink?: (timeMs: number) => void;
-  // Fired after EACH replayed sample with the running virtual time, so a producer
-  // can capture intra-stroke frames - a long stroke then animates as it's laid down
-  // instead of popping in whole at its `end`. The producer throttles to its own
-  // frame interval; omitting the hook adds zero cost (replay draws every sample
-  // regardless - this only observes the times).
+  // Fired after each replayed sample with the running virtual time, so a producer can
+  // capture intra-stroke frames (a long stroke animates instead of popping in at its
+  // `end`). Zero cost when omitted - replay draws every sample regardless.
   onSample?: (timeMs: number) => void;
 }
 

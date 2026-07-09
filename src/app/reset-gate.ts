@@ -12,8 +12,7 @@ export type ResetGateDeps = {
   resetLayers: (size: CanvasSize) => void;
   resizeCanvas: (size: CanvasSize) => void;
   forgetSyncFile: () => void;
-  // Wipe the process event log so Record replays THIS fresh drawing, not the one
-  // that was on the canvas before the reset.
+  // Wipe the process event log so Record replays THIS fresh drawing, not the old one.
   resetEventLog: () => void;
   clearContent: () => void;
   resetArtStyle: () => void;

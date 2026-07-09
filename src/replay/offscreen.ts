@@ -41,16 +41,11 @@ export function createOffscreenReplayWorld(opts: {
 }): OffscreenReplay {
   const dpr = opts.dpr ?? 1;
   const size: CanvasSize = { width: opts.width, height: opts.height };
-  // Attach the container OFF-SCREEN (not detached) so Chrome GPU-accelerates its
-  // canvases exactly like the live stage. A detached canvas renders in SOFTWARE in
-  // Chrome, and heavy low-alpha build-up (Wisp/Spray) accumulates differently there
-  // - so an export off a detached canvas comes out paler than the live GPU view
-  // (Safari, which doesn't split GPU/software this way, matched either). Removed via
-  // dispose() when the replay finishes.
+  // Attach OFF-SCREEN (not detached) so Chrome GPU-accelerates the canvases like the
+  // live stage - a detached one renders in software, where heavy low-alpha build-up
+  // (Wisp/Spray) accumulates paler. Full size, not 1px-clipped, or Chrome keeps it
+  // software. dispose() removes it after. (Safari doesn't split GPU/software.)
   const container = document.createElement("div");
-  // Lay the canvas out at FULL size off-screen (not clipped to 1px) - Chrome only
-  // GPU-accelerates a canvas it considers "displayed at a real size"; a 1px-clipped
-  // one falls back to software. position:fixed keeps it out of document flow.
   container.style.cssText = "position:fixed;left:-99999px;top:0;pointer-events:none;";
   if (typeof document !== "undefined" && document.body) document.body.appendChild(container);
   const manager = new LayerManager({
