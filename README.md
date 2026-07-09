@@ -4,6 +4,7 @@
 [![Latest release](https://img.shields.io/github/v/release/barakbl/nekudot)](https://github.com/barakbl/nekudot/releases)
 [![Tests](https://img.shields.io/badge/tests-706%20passing-brightgreen)](https://github.com/barakbl/nekudot/actions)
 [![Try it live](https://img.shields.io/badge/try%20it-nekudot.app-e7b24e)](https://nekudot.app/app/)
+[![Website](https://img.shields.io/badge/website-nekudot.app-4c8bf5)](https://nekudot.app/)
 
 A browser-based **expressive drawing tool**. As you draw, Nekudot remembers
 every point and weaves faint lines between nearby ones - so a single gesture
