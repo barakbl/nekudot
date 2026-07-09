@@ -43,6 +43,8 @@ export type CanvasMenuOptions = {
   onRecordClip: () => void;
   onSaveArtwork: () => void;
   onLoadArtwork: () => void;
+  // When true (event log on), Record exports a process video, so the row relabels.
+  eventLogActive?: () => boolean;
 };
 
 // A panel the "Windows" menu can open (revealing it on top), shown with its
@@ -504,7 +506,14 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   popover.className = "brush-popover canvas-menu-popover";
   wrap.appendChild(popover);
 
-  const menu = attachMenu({ trigger: btn, menu: popover, container: wrap });
+  // Refresh dynamic labels each time the menu opens (assigned once the rows exist).
+  let onMenuOpen: () => void = () => {};
+  const menu = attachMenu({
+    trigger: btn,
+    menu: popover,
+    container: wrap,
+    onOpen: () => onMenuOpen(),
+  });
 
   // Each row is a role="menuitem" with an icon (SVG markup or a glyph) + label.
   const addRow = (icon: string, label: string, onPick: () => void) => {
@@ -524,6 +533,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
       menu.close();
     });
     popover.appendChild(row);
+    return lbl;
   };
 
   const SHARE_ICON =
@@ -552,7 +562,14 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
 
   addRow(SHARE_ICON, "Share as PNG", opts.onShareImage);
   addRow("⤓", "Export image (.png)", opts.onExportImage);
-  addRow(GIF_ICON, "Record GIF", opts.onRecordClip);
+  // With the event log on, Record exports a whole-session process video (replay)
+  // rather than a live GIF; reflect that in the label, refreshed on each open.
+  const recordLabel = addRow(GIF_ICON, "Record GIF", opts.onRecordClip);
+  onMenuOpen = () => {
+    recordLabel.textContent = opts.eventLogActive?.()
+      ? "Create artwork process Video - Experimental"
+      : "Record GIF";
+  };
   addRow(SAVE_ICON, "Save artwork (.nekudot)", opts.onSaveArtwork);
   addRow(LOAD_ICON, "Load artwork (.nekudot)", opts.onLoadArtwork);
 

@@ -897,6 +897,7 @@ const canvasMenuOptions = {
   onRecordClip: recordClip,
   onSaveArtwork: () => void downloadArtwork(),
   onLoadArtwork: promptLoadArtwork,
+  eventLogActive: () => eventRecorder.recording,
 };
 
 // The global Application settings panel (theme / input / advanced) - the
