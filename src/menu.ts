@@ -566,9 +566,7 @@ function makeCanvasMenu(opts: CanvasMenuOptions): {
   // rather than a live GIF; reflect that in the label, refreshed on each open.
   const recordLabel = addRow(GIF_ICON, "Record GIF", opts.onRecordClip);
   onMenuOpen = () => {
-    recordLabel.textContent = opts.eventLogActive?.()
-      ? "Create artwork process Video - Experimental"
-      : "Record GIF";
+    recordLabel.textContent = opts.eventLogActive?.() ? "Create process Video" : "Record GIF";
   };
   addRow(SAVE_ICON, "Save artwork (.nekudot)", opts.onSaveArtwork);
   addRow(LOAD_ICON, "Load artwork (.nekudot)", opts.onLoadArtwork);
