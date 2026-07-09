@@ -105,6 +105,45 @@ describe("event recorder (vector-replay P1.2)", () => {
     expect(events.filter((e) => e.t === "begin")).toHaveLength(2);
   });
 
+  it("reset() clears the log and starts a fresh session on the next stroke", async () => {
+    const store = fakeStore();
+    const rec = makeRecorder(store);
+    rec.setEnabled(true);
+    stroke(rec, 5);
+    await rec.flush();
+    expect((await rec.drain()).length).toBeGreaterThan(0);
+
+    await rec.reset();
+    expect(store.rows).toHaveLength(0);
+    expect((await rec.drain()).length).toBe(0);
+
+    // The next stroke re-emits SessionStart + ArtworkInit against the current canvas.
+    stroke(rec, 3);
+    const events = (await rec.drain()) as LogEvent[];
+    expect(events.filter((e) => e.t === "session")).toHaveLength(1);
+    expect(events.filter((e) => e.t === "init")).toHaveLength(1);
+    expect(events.filter((e) => e.t === "begin")).toHaveLength(1);
+  });
+
+  it("scopes the log to the current drawing: earlier strokes don't leak after reset", async () => {
+    // The bug this guards: the log persists across reloads and isn't otherwise
+    // scoped to an artwork, so without a reset on New/Open/enable, Record replays
+    // ALL past drawings instead of the current one.
+    const rec = makeRecorder(fakeStore());
+    rec.setEnabled(true);
+    stroke(rec, 4); // "old work"
+    stroke(rec, 4);
+    await rec.flush();
+    expect(((await rec.drain()) as LogEvent[]).filter((e) => e.t === "begin")).toHaveLength(2);
+
+    await rec.reset(); // New / Open / toggle-on
+    stroke(rec, 4); // the current drawing
+
+    const events = (await rec.drain()) as LogEvent[];
+    expect(events.filter((e) => e.t === "begin")).toHaveLength(1);
+    expect(events.filter((e) => e.t === "session")).toHaveLength(1);
+  });
+
   it("batches samples into 64-long StrokeSamples events", async () => {
     const rec = makeRecorder(fakeStore());
     rec.setEnabled(true);

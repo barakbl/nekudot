@@ -68,6 +68,10 @@ export interface ReplayOptions {
   // producer captures the current offscreen artwork state; a natural build-up
   // boundary. (Finer per-frame timing / idle-gap collapse is P3.2.)
   frameSink?: (timeMs: number) => void;
+  // Fired after each replayed sample with the running virtual time, so a producer can
+  // capture intra-stroke frames (a long stroke animates instead of popping in at its
+  // `end`). Zero cost when omitted - replay draws every sample regardless.
+  onSample?: (timeMs: number) => void;
 }
 
 // Drive `events` through `world`. Deterministic and synchronous. Unknown/absent
@@ -114,6 +118,7 @@ export function replay(
             synthPenQuantized(pen, ev.p[k]),
             time,
           );
+          opts.onSample?.(time);
         }
         break;
       }

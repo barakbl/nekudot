@@ -94,6 +94,10 @@ export class WispBrush extends BrushBase {
     return false;
   }
 
+  setReplayTiming(on: boolean): void {
+    this.clock.setCapped(!on); // replay: run a held dwell's full build (no live per-call cap)
+  }
+
   strokeStart(x: number, y: number): void {
     this.cx = x;
     this.cy = y;

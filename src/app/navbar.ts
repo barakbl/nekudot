@@ -23,6 +23,7 @@ function buildBrushMenu(defs: BrushDef[]): MenuEntry<string>[] {
   const out: MenuEntry<string>[] = [];
   let group: MenuGroup<string> | null = null;
   for (const d of defs) {
+    if (d.hidden) continue; // in the registry (replay/tests) but off the user picker
     const opt = { value: d.name, label: d.label ?? d.name, icon: d.icon, shortcut: d.shortcut };
     if (d.menuGroup) {
       if (!group || group.label !== d.menuGroup) {

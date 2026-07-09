@@ -162,6 +162,8 @@ export function bindDrawingInput(opts: {
           erase: snap.erase,
           style: snap.style, // connection style name, for replay (P2.1)
           settings: snap.settings,
+          // Brush-own dials (Wisp Colour, ...) aren't logged for now; the plumbing
+          // stays - re-enable with `brushSettings: snap.brushSettings`.
           symmetry: symmetry.snapshot(),
           pen: opts.penEnabled(),
         },

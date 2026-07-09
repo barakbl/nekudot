@@ -44,7 +44,7 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   const pasteBitmaps = events.some((e) => e.t === "paste")
     ? await resolvePasteBitmaps(events, new BlobStore())
     : undefined;
-  const { world, manager } = createOffscreenReplayWorld({
+  const { world, manager, dispose } = createOffscreenReplayWorld({
     width: input.size.width,
     height: input.size.height,
     layers: input.layers,
@@ -58,7 +58,10 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
+  if (!ctx) {
+    dispose();
+    return null;
+  }
   const bg = input.background();
   // Composite exactly like ClipRecorder.capture: opaque bg (white if transparent),
   // then each layer at its opacity, scaled into the downscaled frame.
@@ -76,20 +79,40 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
     return ctx.getImageData(0, 0, width, height);
   };
 
-  // Capture one DISTINCT state per sampled stroke (RAM budget = the live recorder's
-  // device ceiling); record each state's virtual time for the P3.2 plan.
+  // Capture at uniform intervals of ACTIVE virtual time (idle gaps fire no samples,
+  // so they're skipped), so a long stroke animates instead of popping in at its end.
+  // Decimate (drop every other + double the interval) when we'd exceed the frame
+  // budget, so RAM stays at the same ceiling as the old per-stroke capture.
   const budget = Math.max(2, CAPTURE_FPS * maxSeconds());
-  const stride = Math.max(1, Math.ceil(strokeCount / (budget - 1)));
   const states: ImageData[] = [capture()]; // state 0: the blank starting state
   const stateTimes: number[] = [0];
-  let endIndex = 0;
-  replay(events, world, {
-    frameSink: (t) => {
-      if (endIndex % stride === 0) {
-        states.push(capture());
-        stateTimes.push(t);
+  let intervalMs = 1000 / CAPTURE_FPS;
+  let nextAt = intervalMs;
+  const grab = (t: number): void => {
+    states.push(capture());
+    stateTimes.push(t);
+    if (states.length >= budget) {
+      let w = 1; // keep index 0 (the blank start); halve the rest
+      for (let r = 1; r < states.length; r += 2, w++) {
+        states[w] = states[r];
+        stateTimes[w] = stateTimes[r];
       }
-      endIndex++;
+      states.length = w;
+      stateTimes.length = w;
+      intervalMs *= 2;
+    }
+  };
+  replay(events, world, {
+    onSample: (t) => {
+      if (t >= nextAt) {
+        grab(t); // grab() may double intervalMs, so read it AFTER
+        nextAt = t + intervalMs;
+      }
+    },
+    // Stroke end: a buffered (wet) stroke's marks only land here, so grabs miss them.
+    frameSink: (t) => {
+      if (stateTimes[stateTimes.length - 1] !== t) grab(t);
+      nextAt = t + intervalMs;
     },
   });
   states.push(capture()); // the finished artwork
@@ -108,6 +131,7 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   });
   const frames = plan.map((i) => states[i]); // held states share one ImageData
 
+  dispose(); // remove the off-screen replay container now the pixels are captured
   if (frames.length < 2) return null;
   return { frames, width, height, captureFps: CAPTURE_FPS };
 }

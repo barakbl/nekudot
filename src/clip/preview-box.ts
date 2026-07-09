@@ -1,5 +1,5 @@
 import { triggerDownload, timestamp } from "../export";
-import { EXPORTERS } from "./exporters";
+import { EXPORTERS, resolveVideoExporter, type Exporter } from "./exporters";
 import type { Clip } from "./recorder";
 import {
   delayMsForSpeed,
@@ -16,9 +16,9 @@ import {
 // Nothing is encoded until Save, so editing is instant.
 export function openClipPreview(rec: Clip): void {
   const count = rec.frames.length;
-  // Active export format. With a single exporter the Save button just reflects
-  // it; add more to EXPORTERS (exporters.ts) and surface a picker here.
-  const exporter = EXPORTERS[0];
+  // GIF is always present; the video exporter (WebCodecs) is appended async below.
+  let formats: Exporter[] = [...EXPORTERS];
+  let exporter = formats[0];
 
   let speed = 1;
   let trimStart = 0;
@@ -74,6 +74,14 @@ export function openClipPreview(rec: Clip): void {
   });
   trimRow.append(trimLbl, dual.el, trimVal);
 
+  // Format picker (segmented control), hidden until there's more than one format.
+  const formatRow = el("div", "clip-row");
+  const formatLbl = el("span", "clip-row-label");
+  formatLbl.textContent = "Format";
+  const formatGroup = el("div", "clip-format-group");
+  formatRow.append(formatLbl, formatGroup);
+  formatRow.style.display = "none";
+
   // Footer: play/pause + progress + cancel/save
   const footer = el("div", "clip-modal-foot");
   const playBtn = btn("clip-btn clip-play");
@@ -89,10 +97,39 @@ export function openClipPreview(rec: Clip): void {
   saveBtn.textContent = `Save ${exporter.label}`;
   footer.append(playBtn, progress, spacer, cancelBtn, saveBtn);
 
-  modal.append(header, canvasWrap, readout, speedRow, trimRow, footer);
+  modal.append(header, canvasWrap, readout, speedRow, trimRow, formatRow, footer);
   document.body.appendChild(backdrop);
 
   // ---- behaviour ----------------------------------------------------------
+
+  // Paint the format control + sync the Save button; shown only when >1 format.
+  function renderFormats(): void {
+    formatGroup.textContent = "";
+    for (const f of formats) {
+      const b = btn("clip-format-btn");
+      b.textContent = f.label;
+      if (f.id === exporter.id) b.classList.add("active");
+      b.addEventListener("click", () => {
+        if (encoding || f.id === exporter.id) return;
+        exporter = f;
+        saveBtn.textContent = `Save ${exporter.label}`;
+        renderFormats();
+      });
+      formatGroup.appendChild(b);
+    }
+    formatRow.style.display = formats.length > 1 ? "" : "none";
+  }
+  renderFormats();
+
+  // Reveal the video option once the async capability probe resolves.
+  resolveVideoExporter()
+    .then((video) => {
+      if (video && !formats.some((f) => f.id === video.id)) {
+        formats = [...formats, video];
+        renderFormats();
+      }
+    })
+    .catch(() => {});
 
   function draw(i: number): void {
     if (ctx) ctx.putImageData(rec.frames[i], 0, 0);

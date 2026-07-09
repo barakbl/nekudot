@@ -321,6 +321,7 @@ export abstract class BrushBase {
     color: { main: string; secondary: string };
     style?: string;
     settings: Record<string, string | number | boolean>;
+    brushSettings: Record<string, SettingValue>;
     erase: boolean;
   } {
     return {
@@ -335,8 +336,28 @@ export abstract class BrushBase {
       // before applying them (P2.1). Undefined for non-connecting brushes.
       style: this.connection?.styleName(),
       settings: this.connection ? this.connection.toFlat() : {},
+      // Brush-own dials (Wisp Colour, ...) - the connection's `settings` don't cover them.
+      brushSettings: this.flatBrushSettings(),
       erase: this.erases(),
     };
+  }
+
+  // Snapshot/restore brush-own (non-connecting) dials for replay - without them a
+  // gradient Wisp/Spray falls back to its defaults (solid Primary).
+  flatBrushSettings(): Record<string, SettingValue> {
+    const out: Record<string, SettingValue> = {};
+    for (const s of this.getSettings()) {
+      if (!isConnectingSetting(s)) out[s.key] = s.value;
+    }
+    return out;
+  }
+
+  applyBrushSettings(flat: Record<string, SettingValue>): void {
+    for (const s of this.getSettings()) {
+      if (isConnectingSetting(s)) continue;
+      const v = flat[s.key];
+      if (v !== undefined) applySettingValue(s, v);
+    }
   }
 
   // The Primary in effect for this stroke: the value frozen by captureStrokeContext
@@ -849,6 +870,10 @@ export abstract class BrushBase {
     this.seed = seed;
     this.rng = mulberry32(seed);
   }
+
+  // Frame-driven brushes (Wisp/Spray) override to run a dwell's full catch-up on
+  // replay (the live per-call cap drops it and under-builds a held plume).
+  setReplayTiming(_on: boolean): void {}
 
   protected random(): number {
     return this.rng();

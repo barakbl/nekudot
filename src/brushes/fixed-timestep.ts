@@ -19,11 +19,19 @@ const MAX_STEPS_PER_ADVANCE = 60;
 export class FixedTimestep {
   private clock: number | null = null; // virtual ms; null until the first sample anchors it
   private acc = 0; // elapsed virtual ms not yet spent on a step
+  // Live, the cap guards a stall on a huge gap (backgrounded tab). Replay gets a
+  // whole dwell as one gap, where dropping it under-builds the plume - so replay
+  // uncaps (setCapped(false)) to run the full catch-up.
+  private capped = true;
 
   // Start a fresh stroke: the next advance() only anchors the clock (no steps).
   reset(): void {
     this.clock = null;
     this.acc = 0;
+  }
+
+  setCapped(on: boolean): void {
+    this.capped = on;
   }
 
   // Advance the virtual clock to `t` (ms), invoking step() once per TICK_MS elapsed.
@@ -35,11 +43,11 @@ export class FixedTimestep {
     this.acc += Math.max(0, t - this.clock);
     this.clock = t;
     let n = 0;
-    while (this.acc >= TICK_MS && n < MAX_STEPS_PER_ADVANCE) {
+    while (this.acc >= TICK_MS && (!this.capped || n < MAX_STEPS_PER_ADVANCE)) {
       this.acc -= TICK_MS;
       n += 1;
       step();
     }
-    if (n === MAX_STEPS_PER_ADVANCE) this.acc = 0; // drop the unbounded remainder
+    if (this.capped && n === MAX_STEPS_PER_ADVANCE) this.acc = 0; // drop the unbounded remainder
   }
 }

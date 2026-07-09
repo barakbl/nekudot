@@ -42,6 +42,10 @@ export class SprayBrush extends BrushBase {
     return false;
   }
 
+  setReplayTiming(on: boolean): void {
+    this.clock.setCapped(!on); // replay: run a held dwell's full build (no live per-call cap)
+  }
+
   // Selecting Spray sets a soft-but-visible global Opacity out of the box (raise
   // the Opacity slider for a harder edge).
   getSelectOpacity(): number {

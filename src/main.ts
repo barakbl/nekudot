@@ -202,16 +202,25 @@ const exportBackground = (): string => backgroundColorForPreviews();
 // arms now and captures from the first stroke (see clip/record-flow).
 const recordClip = async (): Promise<void> => {
   if (eventRecorder.recording) {
-    const clip = await produceReplayClip({
-      events: await eventRecorder.drain(),
-      size: layerManager.currentSize,
-      layers: layerManager.getConfig(),
-      dpr,
-      background: exportBackground,
-    });
-    if (clip) {
-      openClipPreview(clip);
-      return;
+    const events = await eventRecorder.drain();
+    // Only replay when this drawing recorded strokes; else fall through to the live
+    // screen-grab recorder below.
+    if (events.some((e) => (e as { t?: string }).t === "begin")) {
+      // The replay is synchronous and can pause the tab, so show a toast first
+      // (yield two frames so it paints before the main thread blocks).
+      showChip("Rendering process video…");
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      const clip = await produceReplayClip({
+        events,
+        size: layerManager.currentSize,
+        layers: layerManager.getConfig(),
+        dpr,
+        background: exportBackground,
+      });
+      if (clip) {
+        openClipPreview(clip);
+        return;
+      }
     }
   }
   startClipRecording({
@@ -250,6 +259,9 @@ const { invisibleOverlay, mapHighlighter, brushCursor, applyNewCanvasSize } = cr
 const replaceArtwork = (size: Parameters<typeof applyNewCanvasSize>[0]): void => {
   applyNewCanvasSize(size);
   folderSync.forgetArtworkFile();
+  // A different drawing starts a clean process log (it persists across reloads and
+  // isn't otherwise scoped to an artwork).
+  void eventRecorder.reset();
 };
 
 // The symmetry proxy wraps the LayerManager as the brushes' host (mode None
@@ -763,6 +775,7 @@ const resetDrawing = createResetGate({
   resetLayers: (size) => layerManager.reset(size),
   resizeCanvas: applyNewCanvasSize,
   forgetSyncFile: () => folderSync.forgetArtworkFile(),
+  resetEventLog: () => void eventRecorder.reset(),
   clearContent: clearArtContent,
   resetArtStyle: resetArtState,
   persistSize: (size) => store.set(CANVAS_SIZE_KEY, size),
@@ -881,6 +894,7 @@ const canvasMenuOptions = {
   onRecordClip: recordClip,
   onSaveArtwork: () => void downloadArtwork(),
   onLoadArtwork: promptLoadArtwork,
+  eventLogActive: () => eventRecorder.recording,
 };
 
 // The global Application settings panel (theme / input / advanced) - the
@@ -968,6 +982,7 @@ const appSettingsBox = createAppSettingsBox({
     appState.eventLogEnabled = on;
     store.set("app.eventLog", on);
     eventRecorder.setEnabled(on);
+    if (on) void eventRecorder.reset(); // start a fresh log from the current canvas
   },
   // Gate 1 recording telemetry (P1.3), read on demand when the Diagnostics group
   // is opened. `recording` drives the empty-state hint.

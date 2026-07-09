@@ -31,6 +31,7 @@ type IndexEntry = {
   shortcut?: string;
   menuGroup?: string;
   connections?: boolean;
+  hidden?: boolean;
   info?: string;
 };
 const INDEX = brushesIndex as IndexEntry[];
@@ -51,6 +52,7 @@ export type BrushDef = {
   shortcut?: string; // single key for keyboard select + menu hint (e.g. "1")
   menuGroup?: string; // toolbar sub-group label; undefined = top-level
   connections?: boolean; // whether the brush weaves the connecting web
+  hidden?: boolean; // stays in the registry (replay/tests) but off the user picker + shortcuts
   info?: string; // short blurb
   icon: string; // menu glyph: inline SVG markup or a single character
   create: (ctx: BrushContext) => BrushBase;
@@ -66,6 +68,7 @@ export const BRUSH_DEFS: BrushDef[] = INDEX.map((e) => {
     shortcut: e.shortcut,
     menuGroup: e.menuGroup,
     connections: e.connections,
+    hidden: e.hidden,
     info: e.info,
     icon: mod.icon,
     create: mod.create,

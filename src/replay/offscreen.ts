@@ -25,6 +25,8 @@ export interface OffscreenReplay {
   world: ReplayWorld;
   manager: LayerManager;
   symmetry: SymmetryController;
+  // Remove the (off-screen) container from the DOM. Call when the replay is done.
+  dispose: () => void;
 }
 
 export function createOffscreenReplayWorld(opts: {
@@ -39,7 +41,13 @@ export function createOffscreenReplayWorld(opts: {
 }): OffscreenReplay {
   const dpr = opts.dpr ?? 1;
   const size: CanvasSize = { width: opts.width, height: opts.height };
-  const container = document.createElement("div"); // detached - never attached to the DOM
+  // Attach OFF-SCREEN (not detached) so Chrome GPU-accelerates the canvases like the
+  // live stage - a detached one renders in software, where heavy low-alpha build-up
+  // (Wisp/Spray) accumulates paler. Full size, not 1px-clipped, or Chrome keeps it
+  // software. dispose() removes it after. (Safari doesn't split GPU/software.)
+  const container = document.createElement("div");
+  container.style.cssText = "position:fixed;left:-99999px;top:0;pointer-events:none;";
+  if (typeof document !== "undefined" && document.body) document.body.appendChild(container);
   const manager = new LayerManager({
     container,
     size,
@@ -103,7 +111,7 @@ export function createOffscreenReplayWorld(opts: {
       if (b) manager.endStroke();
     },
   };
-  return { world, manager, symmetry };
+  return { world, manager, symmetry, dispose: () => container.remove() };
 }
 
 // Flatten a manager's layers (background + each layer at its opacity) onto a fresh

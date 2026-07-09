@@ -13,6 +13,7 @@ export function attachMenu(opts: {
   menu: HTMLElement; // the popover (gets role="menu")
   container: HTMLElement; // wrapper holding both (outside-click scope)
   itemSelector?: string; // navigable rows (default '[role="menuitem"]')
+  onOpen?: () => void; // run each time the menu opens (e.g. refresh a dynamic label)
 }): MenuController {
   const { trigger, menu, container } = opts;
   // Matches menuitem, menuitemradio and menuitemcheckbox.
@@ -45,6 +46,7 @@ export function attachMenu(opts: {
 
   const open = (focusFirst = false) => {
     if (!isOpen()) {
+      opts.onOpen?.();
       menu.classList.add("open");
       trigger.setAttribute("aria-expanded", "true");
     }
