@@ -46,6 +46,16 @@ jobs:
           bash build.sh
           npm run build:updates
 
+      # Count the tests (collection only, no execution) and write a shields
+      # "endpoint" JSON into the site, so the README tests badge auto-updates on
+      # every deploy (served at https://nekudot.app/tests-badge.json).
+      - name: Generate the tests-count badge
+        run: |
+          count=$(npx vitest list 2>/dev/null | grep -vcE '^[[:space:]]*$' || echo 0)
+          if [ "$count" -ge 1 ] 2>/dev/null; then msg="$count passing"; color="brightgreen"; else msg="unknown"; color="lightgrey"; fi
+          printf '{"schemaVersion":1,"label":"tests","message":"%s","color":"%s"}\n' "$msg" "$color" > docs/tests-badge.json
+          cat docs/tests-badge.json
+
       - uses: actions/configure-pages@v6
 
       # Publish the whole docs/ site: landing pages, book, the freshly built
