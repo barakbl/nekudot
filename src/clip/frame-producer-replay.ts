@@ -76,20 +76,44 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
     return ctx.getImageData(0, 0, width, height);
   };
 
-  // Capture one DISTINCT state per sampled stroke (RAM budget = the live recorder's
-  // device ceiling); record each state's virtual time for the P3.2 plan.
+  // Capture states at uniform intervals of ACTIVE virtual time (idle gaps fire no
+  // samples, so they cost nothing and are skipped for free), so a long stroke
+  // animates as it's laid down instead of popping in whole at its `end`. Stay
+  // within the frame budget (= the live recorder's device RAM ceiling) by
+  // decimating - keep every other state and double the interval whenever we'd
+  // exceed it - so this is a single pass with the SAME memory ceiling as the old
+  // per-stroke capture, just spent on smoother timing.
   const budget = Math.max(2, CAPTURE_FPS * maxSeconds());
-  const stride = Math.max(1, Math.ceil(strokeCount / (budget - 1)));
   const states: ImageData[] = [capture()]; // state 0: the blank starting state
   const stateTimes: number[] = [0];
-  let endIndex = 0;
-  replay(events, world, {
-    frameSink: (t) => {
-      if (endIndex % stride === 0) {
-        states.push(capture());
-        stateTimes.push(t);
+  let intervalMs = 1000 / CAPTURE_FPS;
+  let nextAt = intervalMs;
+  const grab = (t: number): void => {
+    states.push(capture());
+    stateTimes.push(t);
+    if (states.length >= budget) {
+      let w = 1; // keep index 0 (the blank start); halve the rest
+      for (let r = 1; r < states.length; r += 2, w++) {
+        states[w] = states[r];
+        stateTimes[w] = stateTimes[r];
       }
-      endIndex++;
+      states.length = w;
+      stateTimes.length = w;
+      intervalMs *= 2;
+    }
+  };
+  replay(events, world, {
+    onSample: (t) => {
+      if (t >= nextAt) {
+        grab(t); // grab() may double intervalMs, so read it AFTER
+        nextAt = t + intervalMs;
+      }
+    },
+    // Stroke end: make sure a buffered (wet) stroke's composited marks land - they
+    // aren't on the layer canvas until here, so intra-stroke grabs miss them.
+    frameSink: (t) => {
+      if (stateTimes[stateTimes.length - 1] !== t) grab(t);
+      nextAt = t + intervalMs;
     },
   });
   states.push(capture()); // the finished artwork
