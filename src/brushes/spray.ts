@@ -42,6 +42,12 @@ export class SprayBrush extends BrushBase {
     return false;
   }
 
+  // Replay hands the whole dwell over as one big step; run the full catch-up so a
+  // held spray rebuilds to the same density instead of the live per-call cap.
+  setReplayTiming(on: boolean): void {
+    this.clock.setCapped(!on);
+  }
+
   // Selecting Spray sets a soft-but-visible global Opacity out of the box (raise
   // the Opacity slider for a harder edge).
   getSelectOpacity(): number {

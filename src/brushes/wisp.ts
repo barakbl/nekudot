@@ -94,6 +94,12 @@ export class WispBrush extends BrushBase {
     return false;
   }
 
+  // Replay hands the whole dwell over as one big step; run the full catch-up so a
+  // held plume rebuilds to the same density instead of the live per-call cap.
+  setReplayTiming(on: boolean): void {
+    this.clock.setCapped(!on);
+  }
+
   strokeStart(x: number, y: number): void {
     this.cx = x;
     this.cy = y;

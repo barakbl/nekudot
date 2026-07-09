@@ -875,6 +875,11 @@ export abstract class BrushBase {
     this.rng = mulberry32(seed);
   }
 
+  // Replay drives a whole dwell as one big time-step; frame-driven brushes
+  // (Wisp/Spray) override this to run the full catch-up instead of the live
+  // per-call cap (which drops it and under-builds a held plume). No-op otherwise.
+  setReplayTiming(_on: boolean): void {}
+
   protected random(): number {
     return this.rng();
   }

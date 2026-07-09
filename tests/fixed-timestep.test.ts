@@ -55,6 +55,18 @@ describe("FixedTimestep", () => {
     ts.advance(60_000, () => (n += 1)); // a 60 s jump (backgrounded tab)
     expect(n).toBeLessThanOrEqual(60); // capped, not ~3600
   });
+
+  it("setCapped(false) runs the FULL catch-up (replay: a held dwell arrives as one gap)", () => {
+    const ts = new FixedTimestep();
+    ts.setCapped(false);
+    ts.advance(0, () => {}); // anchor
+    let n = 0;
+    ts.advance(4000, () => (n += 1)); // a 4 s dwell as a single gap
+    // ~240 steps (4000 / TICK_MS), NOT capped at 60 - so a held Wisp/Spray rebuilds
+    // to the same density on replay as it built live via the per-frame pump.
+    expect(n).toBeGreaterThan(230);
+    expect(n).toBeLessThanOrEqual(240);
+  });
 });
 
 // Both frame-driven brushes deposit one feeder point per plume/spray tick, so a

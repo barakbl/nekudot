@@ -31,6 +31,10 @@ export function hydrateBrush(brush: BrushBase, ctx: StrokeContext, store: Store)
   if (ctx.brushSettings) brush.applyBrushSettings(ctx.brushSettings);
   // Per-stroke RNG seed (P0.2) - recorded, never re-randomized.
   brush.setSeed(ctx.seed);
+  // Replay feeds a whole dwell as one big time-step (no live animation pump), so
+  // let frame-driven brushes run the full catch-up - otherwise a held Wisp/Spray
+  // rebuilds capped at ~1s and comes back pale (no-op for other brushes).
+  brush.setReplayTiming(true);
 }
 
 // Rebuild a PenSample from the log. Only `pressure` survives recording (isPen /
