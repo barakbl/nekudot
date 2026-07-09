@@ -44,7 +44,7 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   const pasteBitmaps = events.some((e) => e.t === "paste")
     ? await resolvePasteBitmaps(events, new BlobStore())
     : undefined;
-  const { world, manager } = createOffscreenReplayWorld({
+  const { world, manager, dispose } = createOffscreenReplayWorld({
     width: input.size.width,
     height: input.size.height,
     layers: input.layers,
@@ -58,7 +58,10 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) return null;
+  if (!ctx) {
+    dispose();
+    return null;
+  }
   const bg = input.background();
   // Composite exactly like ClipRecorder.capture: opaque bg (white if transparent),
   // then each layer at its opacity, scaled into the downscaled frame.
@@ -132,6 +135,7 @@ export async function produceReplayClip(input: ReplayClipInput): Promise<Clip | 
   });
   const frames = plan.map((i) => states[i]); // held states share one ImageData
 
+  dispose(); // remove the off-screen replay container now the pixels are captured
   if (frames.length < 2) return null;
   return { frames, width, height, captureFps: CAPTURE_FPS };
 }
