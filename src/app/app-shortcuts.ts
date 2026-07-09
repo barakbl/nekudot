@@ -109,7 +109,7 @@ export function buildAppShortcuts(actions: ShortcutActions): Shortcut[] {
       state: () => isHelpModeOn(),
       subscribeState: (cb) => onHelpModeChange(cb),
     },
-    ...BRUSH_DEFS.filter((d) => d.shortcut).map((d) => ({
+    ...BRUSH_DEFS.filter((d) => d.shortcut && !d.hidden).map((d) => ({
       code: `Digit${d.shortcut}`,
       shift: false,
       label: d.shortcut as string,
