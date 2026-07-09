@@ -162,7 +162,12 @@ export function bindDrawingInput(opts: {
           erase: snap.erase,
           style: snap.style, // connection style name, for replay (P2.1)
           settings: snap.settings,
-          brushSettings: snap.brushSettings, // brush-own dials (Wisp Colour, ...)
+          // NOTE: brush-own dials (Wisp Colour source, Spray params, ...) are NOT
+          // recorded for now - dropped from the log on purpose (revisit if we want
+          // faithful Wisp/Spray replay). The plumbing stays: strokeSnapshot still
+          // produces brushSettings, the schema keeps the optional field, and
+          // hydrateBrush.applyBrushSettings applies it if a log ever carries it -
+          // so re-enabling is just: brushSettings: snap.brushSettings.
           symmetry: symmetry.snapshot(),
           pen: opts.penEnabled(),
         },
