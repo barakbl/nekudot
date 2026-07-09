@@ -321,6 +321,7 @@ export abstract class BrushBase {
     color: { main: string; secondary: string };
     style?: string;
     settings: Record<string, string | number | boolean>;
+    brushSettings: Record<string, SettingValue>;
     erase: boolean;
   } {
     return {
@@ -335,8 +336,32 @@ export abstract class BrushBase {
       // before applying them (P2.1). Undefined for non-connecting brushes.
       style: this.connection?.styleName(),
       settings: this.connection ? this.connection.toFlat() : {},
+      // The brush's OWN dials (Wisp Colour source, Spray density, ...) - the
+      // connection's `settings` don't cover them, so replay would otherwise use the
+      // brush defaults (e.g. Wisp -> Primary). See applyBrushSettings.
+      brushSettings: this.flatBrushSettings(),
       erase: this.erases(),
     };
+  }
+
+  // Snapshot / restore the brush's OWN (non-connecting) setting values for replay.
+  // The connection dials ride in `settings`/`style`; these don't, so a replayed
+  // Wisp/Spray would fall back to its defaults without them (bug: a gradient Wisp
+  // replays as solid Primary).
+  flatBrushSettings(): Record<string, SettingValue> {
+    const out: Record<string, SettingValue> = {};
+    for (const s of this.getSettings()) {
+      if (!isConnectingSetting(s)) out[s.key] = s.value;
+    }
+    return out;
+  }
+
+  applyBrushSettings(flat: Record<string, SettingValue>): void {
+    for (const s of this.getSettings()) {
+      if (isConnectingSetting(s)) continue;
+      const v = flat[s.key];
+      if (v !== undefined) applySettingValue(s, v);
+    }
   }
 
   // The Primary in effect for this stroke: the value frozen by captureStrokeContext

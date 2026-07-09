@@ -45,6 +45,16 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{3,8}$/);
 // design (brushes churn; the log stays version-tolerant) - only the SHAPE is
 // pinned, not the ~35 individual keys.
 const flat = z.record(z.string(), z.union([z.string(), z.number().finite(), z.boolean()]));
+// Brush-own dials (Wisp Colour source, Spray density, ...) carry range tuples too.
+const brushFlat = z.record(
+  z.string(),
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.tuple([z.number().finite(), z.number().finite()]),
+  ]),
+);
 const qcoord = z.number().int().min(-MAX_QCOORD).max(MAX_QCOORD);
 const pressureQ = z.number().int().min(0).max(PRESSURE_MAX);
 
@@ -70,6 +80,11 @@ export const StrokeContextSchema = z.object({
   // falls back to the brush's default style. Absent for non-connecting brushes.
   style: z.string().min(1).max(64).optional(),
   settings: flat, // the ConnectingFlat dial snapshot (P0.4)
+  // The brush-own dials (Wisp Colour source, Spray density, ...) - not part of the
+  // connection's `settings`, so without them a replayed Wisp/Spray falls back to
+  // its defaults (e.g. Wisp Colour -> Primary). Optional + version-tolerant: logs
+  // recorded before this omit it, and replay then uses the brush defaults.
+  brushSettings: brushFlat.optional(),
   symmetry: z.object({ tool: z.string().max(64).nullable(), params: flat }),
   pen: z.boolean(), // pen support (pen-mode) on for this stroke
 });

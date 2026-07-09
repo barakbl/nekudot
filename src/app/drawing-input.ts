@@ -162,6 +162,7 @@ export function bindDrawingInput(opts: {
           erase: snap.erase,
           style: snap.style, // connection style name, for replay (P2.1)
           settings: snap.settings,
+          brushSettings: snap.brushSettings, // brush-own dials (Wisp Colour, ...)
           symmetry: symmetry.snapshot(),
           pen: opts.penEnabled(),
         },

@@ -25,6 +25,10 @@ export function hydrateBrush(brush: BrushBase, ctx: StrokeContext, store: Store)
   // style; a non-connecting brush has no connection, so both calls are inert.
   if (ctx.style) brush.applyArtStylePreset(ctx.style);
   brush.activeConnection()?.applyFlat(ctx.settings);
+  // The brush's OWN dials (Wisp Colour source, Spray density, ...). Without these a
+  // replayed Wisp/Spray uses its defaults - e.g. a gradient Wisp comes back solid
+  // Primary. Absent in pre-fix logs, so the brush keeps its defaults then.
+  if (ctx.brushSettings) brush.applyBrushSettings(ctx.brushSettings);
   // Per-stroke RNG seed (P0.2) - recorded, never re-randomized.
   brush.setSeed(ctx.seed);
 }
