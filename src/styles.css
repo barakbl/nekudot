@@ -3032,18 +3032,21 @@ body.help-mode .help-icon {
   }
 }
 
-/* Tablet (iPad): base centring (left:50% only) shrink-to-fits to ~50% of the
-   viewport, so the bar was half-width and wrapped. Span full width, one row.
+/* Tablet (iPad): a flush top app-bar (edge to edge, no top margin) so the bar
+   doesn't waste the strip below it - one row, full labels, rounded bottom only.
    No overflow here - it forces overflow-y:auto, which clips the pills' popovers. */
 @media (pointer: coarse) and (min-width: 641px) {
   .toolbar {
-    left: 10px;
-    right: auto;
+    top: 0;
+    left: 0;
+    right: 0;
     transform: none;
-    width: calc(100vw - 20px);
-    max-width: none;
+    width: 100%;
+    max-width: 100%;
     justify-content: space-between;
     flex-wrap: nowrap;
+    border-radius: 0 0 14px 14px;
+    padding: calc(5px + env(safe-area-inset-top, 0px)) 10px 5px;
   }
 }
 
