@@ -112,6 +112,38 @@ describe("AppHistory serialization", () => {
     expect(resolved).toBe(true);
   });
 
+  it("init awaits the legacy paint drop before completing (restore branch)", async () => {
+    // When boot restores a persisted pointer row, init drops the legacy paint
+    // snapshot. That drop must be awaited: a tab closed right after boot would
+    // otherwise leave the stale snapshot to resurface on the next boot.
+    const m = newManager();
+    const h = new AppHistory(m, 10);
+    const inner = h as unknown as {
+      undoManager: { init: () => Promise<void>; current: () => unknown };
+      paintStore: { clear: () => Promise<void> };
+    };
+    // Force the restore branch and make the legacy drop deferred.
+    inner.undoManager.init = async () => {};
+    inner.undoManager.current = () => ({ config: {}, paint: {} });
+    let releaseClear!: () => void;
+    let clearDone = false;
+    inner.paintStore.clear = () =>
+      new Promise<void>((r) => (releaseClear = r)).then(() => {
+        clearDone = true;
+      });
+
+    let initDone = false;
+    const done = h.init(async () => {}).then(() => {
+      initDone = true;
+    });
+    await new Promise((r) => setTimeout(r, 5));
+    expect(initDone).toBe(false); // blocked on the deferred legacy drop
+    releaseClear();
+    await done;
+    expect(initDone).toBe(true);
+    expect(clearDone).toBe(true);
+  });
+
   it("rapid undo+redo serialize their applies (no interleaving)", async () => {
     await history.push("stroke 1");
     let inFlight = 0;
