@@ -91,11 +91,14 @@ export class UndoManager {
     return { snap, action: snap.description };
   }
 
-  clear(): void {
+  // Returns the backend clear so callers (reset / New art) can await the
+  // committed wipe before reloading — a reload mid-clear left the data behind.
+  clear(): Promise<void> {
     this.stack = [];
     this.pointer = -1;
-    this.store.clear();
+    const cleared = this.store.clear();
     this.emit();
+    return cleared;
   }
 
   subscribe(fn: () => void): () => void {

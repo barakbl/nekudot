@@ -55,8 +55,9 @@ export class AppHistory {
       if (current) {
         await restorePaint(current.paint);
         // The stack rows are the paint source of truth now; drop the legacy
-        // snapshot so a later stack wipe can't resurface stale paint.
-        void this.paintStore.clear();
+        // snapshot so a later stack wipe can't resurface stale paint. Awaited so
+        // boot only completes once the drop has committed.
+        await this.paintStore.clear();
       } else {
         await restorePaint(await this.paintStore.load());
         this.undoManager.push(await this.capture("Initial state"));
