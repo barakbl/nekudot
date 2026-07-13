@@ -25,6 +25,22 @@ const META_KEY = "meta";
 const LEGACY_KEY = "stack";
 const rowKey = (id: number) => `row:${id}`;
 
+// Whether a stored meta row is one this build can read. The deployed app is a
+// single committed file, so a user can open a DB written by a newer build with
+// older code (a cache-driven rollback). An unrecognized version or a malformed
+// rowIds list must be treated as "not mine" and ignored, never trusted into a
+// throwing load.
+function isV1Meta(meta: unknown): meta is Meta {
+  if (typeof meta !== "object" || meta === null) return false;
+  const m = meta as Record<string, unknown>;
+  return (
+    m.version === 1 &&
+    typeof m.pointer === "number" &&
+    Array.isArray(m.rowIds) &&
+    m.rowIds.every((id) => typeof id === "number")
+  );
+}
+
 export class UndoStore<S> {
   private backend: UndoStoreBackend;
   // Snapshot -> id of the IDB row that holds it. Only committed after the
@@ -52,7 +68,10 @@ export class UndoStore<S> {
   async load(): Promise<UndoState<S> | null> {
     try {
       const meta = await this.backend.get<Meta>(META_KEY);
-      if (meta) return await this.loadRows(meta);
+      if (isV1Meta(meta)) return await this.loadRows(meta);
+      // No meta, or one written by a newer/foreign format: fall back to the
+      // legacy whole-stack key, else start fresh. Never throw - a rolled-back
+      // build must degrade to an empty history, not a broken boot.
       return await this.migrateLegacy();
     } catch (e) {
       console.warn("UndoStore.load failed", e);

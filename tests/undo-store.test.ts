@@ -126,6 +126,36 @@ describe("UndoStore incremental persistence", () => {
     ]);
   });
 
+  it("an unknown meta version falls back to the legacy key", async () => {
+    // A newer build wrote a meta shape this (older) code doesn't understand;
+    // it must not be trusted. With a legacy whole-stack present, adopt that
+    // instead of throwing/blanking - this is the rollback safety net.
+    backend.data.set("meta", { version: 2, tiles: "future" });
+    backend.data.set("stack", {
+      stack: [snap("old-a"), snap("old-b")],
+      pointer: 1,
+    });
+    const loaded = await store.load();
+    expect(loaded?.pointer).toBe(1);
+    expect(loaded?.stack.map((s) => s.description)).toEqual(["old-a", "old-b"]);
+    // The store repaired itself back to the v1 format it understands.
+    expect(meta(backend)).toMatchObject({ pointer: 1, rowIds: [0, 1] });
+  });
+
+  it("an unknown meta version with no legacy key returns null, not a throw", async () => {
+    backend.data.set("meta", { version: 99, rowIds: "not-an-array" });
+    await expect(store.load()).resolves.toBeNull();
+  });
+
+  it("meta with malformed rowIds is not trusted into a holed load", async () => {
+    // version is 1 but the row list is corrupt; fall back rather than build a
+    // stack full of missing rows.
+    backend.data.set("meta", { version: 1, pointer: 0, rowIds: [0, "nope"] });
+    backend.data.set("stack", { stack: [snap("recovered")], pointer: 0 });
+    const loaded = await store.load();
+    expect(loaded?.stack.map((s) => s.description)).toEqual(["recovered"]);
+  });
+
   it("a failed write is retried by the next save (nothing half-recorded)", async () => {
     const a = snap("a");
     backend.failNextBatch = true;
