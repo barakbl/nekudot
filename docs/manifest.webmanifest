@@ -1,0 +1,17 @@
+{
+  "name": "Nekudot - drawing app",
+  "short_name": "Nekudot",
+  "description": "A playful in-browser drawing app - dot brushes, connecting webs, symmetry and mandalas. Nothing is uploaded.",
+  "id": "/app/",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#151518",
+  "theme_color": "#2c2d30",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
