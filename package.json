@@ -1,7 +1,7 @@
 {
   "name": "nekudot",
   "private": true,
-  "version": "0.52.3",
+  "version": "0.52.4",
   "description": "A browser drawing tool with a memory - it keeps every point you draw and weaves faint threads between nearby ones, so a single gesture blooms into a web. Inspired by mrdoob's Harmony.",
   "keywords": [
     "generative-art",
