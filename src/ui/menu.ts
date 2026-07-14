@@ -1,3 +1,5 @@
+import { keepInViewport } from "./popover";
+
 // Layers WAI-ARIA menu-button semantics + keyboard nav onto an existing
 // trigger + popover pair; visuals stay driven by the existing "open" class.
 
@@ -49,6 +51,7 @@ export function attachMenu(opts: {
       opts.onOpen?.();
       menu.classList.add("open");
       trigger.setAttribute("aria-expanded", "true");
+      keepInViewport(menu); // after .open, so it's laid out and measurable
     }
     if (focusFirst) focusItem(items(), 0);
   };
