@@ -16,6 +16,7 @@ import type { Viewport } from "./viewport";
 import type { AppHistory } from "./history";
 import type { MapHighlighter } from "./map-highlight";
 import type { LocalStorageStore } from "../store/local_storage";
+import { makeFullscreenAction } from "./fullscreen";
 
 // Turn the brush registry into the toolbar's menu entries: consecutive brushes
 // sharing a menuGroup are wrapped into that sub-group; the rest are top-level.
@@ -122,6 +123,10 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
     canvasMenuOptions,
   } = deps;
 
+  // Only present where the browser can actually go fullscreen (iPad Safari +
+  // desktop); null on iPhone, where the Fullscreen API is unavailable.
+  const fullscreenAction = makeFullscreenAction();
+
   const menu = createMenu(
     buildBrushMenu(BRUSH_DEFS),
     (key) => selectBrush(key),
@@ -169,6 +174,7 @@ export function buildNavbar(deps: NavbarDeps): Navbar {
       </svg>`,
         onClick: () => viewport.reset(),
       },
+      ...(fullscreenAction ? [fullscreenAction] : []),
     ],
     {
       main: {
