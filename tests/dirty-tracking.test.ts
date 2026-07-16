@@ -235,6 +235,8 @@ describe("TrackingRenderer records marks", () => {
       (r: TrackingRenderer) => r.fillBackground("#fff"),
       (r: TrackingRenderer) => r.drawBitmap({} as CanvasImageSource),
       (r: TrackingRenderer) => r.stroke(),
+      (r: TrackingRenderer) =>
+        r.blitPatch({} as CanvasImageSource, { x: 0, y: 0, w: 4, h: 4 }),
     ]) {
       const r = track();
       r.fillCircle(1, 1, 1); // some pending rects first
@@ -280,6 +282,7 @@ describe("TrackingRenderer forwards draws byte-identically", () => {
       r.strokeEllipse(60, 60, 7, 3, 0.2, { width: 2 });
       r.fillEllipse(70, 70, 4, 9, 0.9, "#ff0");
       r.drawImageRect({} as CanvasImageSource, 5, 5, 40, 30);
+      r.blitPatch({} as CanvasImageSource, { x: 10, y: 10, w: 8, h: 8 });
       r.fillBackground("#eee");
       r.clear();
     };

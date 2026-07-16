@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Patch-codec smoke - PNG fallback + blitPatch placement</title>
+    <style>
+      body { margin: 0; background: #1e1e1e; color: #ddd; font: 13px system-ui, sans-serif; padding: 16px; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <pre id="log">running…</pre>
+    <script type="module">
+      // Browser half of the PR8 patch-codec tests (Node has no ImageData/canvas):
+      // the deflate path through a real ImageData, the PNG fallback (forced by
+      // hiding CompressionStream), and blitPatch placing a decoded patch 1:1 into a
+      // device rect, clearing first. The runner (patch-codec.mjs) reads
+      // window.__patchResult.
+      import { encodePatch, decodePatch, hasCompressionStream } from "/src/store/patch-codec.ts";
+      import { CanvasRenderer } from "/src/renderer.ts";
+
+      const results = [];
+      const check = (name, pass, detail = "") => results.push({ name, pass: !!pass, detail });
+
+      const makePatch = (w, h, fill) => {
+        const data = new Uint8ClampedArray(w * h * 4);
+        for (let i = 0; i < w * h; i++) fill(data, i * 4, i);
+        return { data, width: w, height: h };
+      };
+      const eqBytes = (a, b) => {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+        return true;
+      };
+      const maxDelta = (a, b) => {
+        let m = 0;
+        for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - b[i]));
+        return m;
+      };
+      // Opaque + fully-transparent + low-alpha (a=1) pixels.
+      const mixed = makePatch(16, 12, (d, o, i) => {
+        d[o] = (i * 37) & 255;
+        d[o + 1] = (i * 91) & 255;
+        d[o + 2] = (i * 17) & 255;
+        d[o + 3] = i % 3 === 0 ? 1 : i % 3 === 1 ? 0 : 255;
+      });
+
+      try {
+        // 1. deflate path through a real ImageData-shaped patch: byte-exact.
+        const back = await decodePatch(await encodePatch(mixed));
+        check("deflate: byte-exact incl low-alpha", eqBytes(back.data, mixed.data), `maxD=${maxDelta(back.data, mixed.data)}`);
+
+        // 2. PNG fallback: hide CompressionStream so encodePatch takes the PNG branch.
+        const savedCS = globalThis.CompressionStream;
+        const savedDS = globalThis.DecompressionStream;
+        globalThis.CompressionStream = undefined;
+        globalThis.DecompressionStream = undefined;
+        try {
+          check("PNG: feature-detect reports off", hasCompressionStream() === false);
+          const pblob = await encodePatch(mixed);
+          check("PNG: blob tagged png", /png/.test(pblob.type), pblob.type);
+          const px1 = await decodePatch(pblob);
+          const px2 = await decodePatch(await encodePatch(px1));
+          // Opaque pixels survive PNG exactly...
+          let opaqueExact = true;
+          for (let i = 0; i < mixed.data.length; i += 4)
+            if (mixed.data[i + 3] === 255)
+              for (let c = 0; c < 4; c++)
+                if (px1.data[i + c] !== mixed.data[i + c]) opaqueExact = false;
+          check("PNG: opaque pixels exact", opaqueExact);
+          // ...and the whole patch is encode-decode-encode stable (premultiply fixed point).
+          check("PNG: encode-decode-encode stable", eqBytes(px1.data, px2.data), `maxD=${maxDelta(px1.data, px2.data)}`);
+        } finally {
+          globalThis.CompressionStream = savedCS;
+          globalThis.DecompressionStream = savedDS;
+        }
+
+        // 3. blitPatch: places a decoded patch at a device rect, clearing first.
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const r = new CanvasRenderer(ctx, { dpr: 1 });
+        r.fillBackground("#ff0000"); // red everywhere
+
+        const blue = makePatch(10, 10, (d, o) => {
+          d[o + 2] = 255;
+          d[o + 3] = 255;
+        });
+        const blueBmp = await createImageBitmap(new ImageData(Uint8ClampedArray.from(blue.data), 10, 10));
+        r.blitPatch(blueBmp, { x: 20, y: 16, w: 10, h: 10 });
+        const region = ctx.getImageData(20, 16, 10, 10).data;
+        let blueOk = true;
+        for (let i = 0; i < region.length; i += 4)
+          if (!(region[i] === 0 && region[i + 1] === 0 && region[i + 2] === 255 && region[i + 3] === 255)) blueOk = false;
+        check("blitPatch: places an opaque patch exactly at dest", blueOk);
+
+        const outside = ctx.getImageData(4, 4, 1, 1).data;
+        check("blitPatch: leaves pixels outside dest untouched", outside[0] === 255 && outside[1] === 0 && outside[2] === 0);
+
+        // A fully-transparent patch must CLEAR the dest (not composite over red).
+        const clearP = makePatch(8, 8, () => {});
+        const clearBmp = await createImageBitmap(new ImageData(Uint8ClampedArray.from(clearP.data), 8, 8));
+        r.blitPatch(clearBmp, { x: 40, y: 40, w: 8, h: 8 });
+        const cleared = ctx.getImageData(40, 40, 8, 8).data;
+        let clearedOk = true;
+        for (let i = 3; i < cleared.length; i += 4) if (cleared[i] !== 0) clearedOk = false;
+        check("blitPatch: clears dest first (transparent patch stays transparent)", clearedOk);
+      } catch (e) {
+        window.__patchError = String((e && e.stack) || e);
+      }
+
+      window.__patchResult = results;
+      window.__patchDone = true;
+      document.getElementById("log").textContent =
+        (window.__patchError ? "ERROR: " + window.__patchError + "\n\n" : "") +
+        results.map((r) => `${r.pass ? "OK " : "!! "} ${r.name}${r.detail ? " - " + r.detail : ""}`).join("\n");
+    </script>
+  </body>
+</html>

@@ -97,8 +97,16 @@ export interface IRenderer {
   drawSource(other: IRenderer, opacity?: number, scale?: number): void;
   drawBitmap(bitmap: CanvasImageSource): void;
   drawImageRect(img: CanvasImageSource, x: number, y: number, w: number, h: number): void;
+  // Blit a decoded undo-tile patch 1:1 into a DEVICE-px rect: reset the transform,
+  // clear the dest, then draw at native size. Unlike drawBitmap (which stretches to
+  // the whole backing store) this places a tile-sized patch exactly. Restore-only.
+  blitPatch(bmp: CanvasImageSource, dest: DeviceRect): void;
   toBlob(type?: string): Promise<Blob | null>;
 }
+
+// A rectangle in DEVICE px (backing-store space, no dpr scale) - what blitPatch
+// and the undo-tile grid address.
+export type DeviceRect = { x: number; y: number; w: number; h: number };
 
 export type RendererInit = {
   dpr?: number;
@@ -280,6 +288,18 @@ export class CanvasRenderer implements IRenderer {
     this.ctx.globalCompositeOperation = "source-over";
     this.ctx.globalAlpha = 1;
     this.ctx.drawImage(img, x, y, w, h);
+    this.ctx.restore();
+  }
+
+  blitPatch(bmp: CanvasImageSource, dest: DeviceRect): void {
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = "source-over";
+    this.ctx.globalAlpha = 1;
+    // dest is DEVICE px: drop the ctx's dpr scale so the patch lands 1:1, then
+    // clear the dest first so a transparent (erased) patch replaces, not composites.
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.ctx.clearRect(dest.x, dest.y, dest.w, dest.h);
+    this.ctx.drawImage(bmp, dest.x, dest.y);
     this.ctx.restore();
   }
 

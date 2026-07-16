@@ -1,5 +1,6 @@
 import {
   CanvasRenderer,
+  type DeviceRect,
   type IRenderer,
   type LineConnectType,
   type LineStyle,
@@ -250,5 +251,12 @@ export class TrackingRenderer extends CanvasRenderer {
     // Raw path of unknown extent (no brush draws marks this way today); fail closed.
     this.tracker.markAll();
     super.stroke();
+  }
+
+  blitPatch(bmp: CanvasImageSource, dest: DeviceRect): void {
+    // Restore blit; callers run it inside tracker.silently(), so this markAll is
+    // suppressed there. Fail closed if it ever runs live.
+    this.tracker.markAll();
+    super.blitPatch(bmp, dest);
   }
 }

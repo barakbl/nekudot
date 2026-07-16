@@ -166,6 +166,9 @@ export const DIRTY_CLASSIFICATION: Record<keyof IRenderer, DirtyClass> = {
   fillBackground: "full",
   drawSource: "full",
   drawBitmap: "full",
+  // Restore-only blit; always runs inside tracker.silently() during undo, so this
+  // markAll never actually fires there - but if ever called live, fail closed.
+  blitPatch: "full",
   moveTo: "none",
   lineTo: "none",
   arc: "none",
