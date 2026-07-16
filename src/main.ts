@@ -1416,4 +1416,4 @@ onViewportChange = () => {
 
 // Wired last in boot: it commits the in-progress stroke + flushes the pixel log
 // when the tab hides, so it needs the drawing input (assigned above).
-bindDurability({ drawingInput, pixelLog, eventLog: eventRecorder });
+bindDurability({ drawingInput, pixelLog, eventLog: eventRecorder, history });

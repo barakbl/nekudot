@@ -431,10 +431,19 @@ export class TileShadow {
   // so the on-mode restore flows through the existing applyPaintData path. Returns
   // null - the caller falls back to today's snapshot - if not in sync or the layer
   // SET changed across the window (add/remove/reorder is deferred to a later PR).
-  async reconstructPaintSnapshot(): Promise<PaintSnapshot | null> {
-    if (!this.base || !this.synced) return null;
-    const active = this.entries.slice(0, this.pointer);
-    const target = active.length ? active[active.length - 1].config : this.base.config;
+  reconstructPaintSnapshot(): Promise<PaintSnapshot | null> {
+    if (!this.synced) return Promise.resolve(null);
+    return this.reconstructPaintSnapshotAt(this.pointer);
+  }
+
+  // Reconstruct an arbitrary pointer's paint (0 = base, k = base + entries[0..k-1]);
+  // boot rebuilds every position this way. Null when the layer set changed across
+  // the window (the caller degrades to a depth-reset boot).
+  async reconstructPaintSnapshotAt(pointer: number): Promise<PaintSnapshot | null> {
+    if (!this.base) return null;
+    const active = this.entries.slice(0, pointer);
+    const target = this.configAt(pointer);
+    if (!target) return null;
     const baseIds = [...this.base.layers.keys()].sort().join(",");
     const targetIds = target.layers.map((l) => l.id).sort().join(",");
     if (baseIds !== targetIds) return null;
@@ -452,6 +461,66 @@ export class TileShadow {
       ),
     }));
     return { version: 2, layers, neighborsMaps };
+  }
+
+  // The config in effect at a pointer (base config, or the last active entry's).
+  configAt(pointer: number): LayersConfig | null {
+    if (!this.base) return null;
+    const active = this.entries.slice(0, pointer);
+    return active.length ? active[active.length - 1].config : this.base.config;
+  }
+
+  // Chain depth + pointer - what the boot needs to rebuild the FIFO to match.
+  entryCount(): number {
+    return this.entries.length;
+  }
+  pointerIndex(): number {
+    return this.pointer;
+  }
+
+  currentEpoch(): TileEpoch {
+    return this.epoch();
+  }
+
+  // Drain the live trackers + journal without re-reading the base: a hydrate's
+  // restore dirtied everything, and the first real stroke's delta must start clean.
+  drainInputs(): void {
+    for (const l of this.host.layers()) this.host.takeLayerDirty(l.id);
+    this.host.takeJournal();
+  }
+
+  // Load a persisted v2 chain (boot): base blobs decode back to RawImage, entries
+  // carry their patch blobs as-is, then any pointer reconstructs as if live-captured.
+  async hydrate(chain: StoredChain): Promise<void> {
+    const layers = new Map<string, RawImage>();
+    for (const l of chain.base.layers)
+      layers.set(l.layerId, await this.host.decodeFull(l.blob, l.w, l.h));
+    this.base = {
+      id: chain.base.id,
+      config: chain.base.config as LayersConfig,
+      layers,
+      clouds: chain.base.clouds as Cloud[],
+    };
+    this.entries = chain.entries.map((e) => ({
+      id: e.id,
+      config: e.config as LayersConfig,
+      patches: e.patches.map((p) => ({
+        layerId: p.layerId,
+        rect: p.rect,
+        blob: p.blob,
+        full: p.full,
+      })),
+      mapOps: e.mapOps as MapOp[],
+      bytes: e.bytes,
+    }));
+    this.pointer = chain.pointer;
+    this.nextBaseId = chain.base.id + 1;
+    this.nextEntryId = this.entries.reduce((m, e) => Math.max(m, e.id + 1), 0);
+    this.synced = true;
+    // A full-layer patch in the chain is PNG-approximate; exact verify must skip it.
+    this.approx = new Set(
+      this.entries.flatMap((e) => e.patches.filter((p) => p.full).map((p) => p.layerId)),
+    );
   }
 
   private verifyClouds(active: TileEntry[]): boolean {

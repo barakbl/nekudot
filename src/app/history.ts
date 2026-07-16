@@ -1,6 +1,7 @@
 import { PaintStore, type PaintSnapshot } from "../store/paint";
 import { UndoStore } from "../store/undo";
-import { UndoManager, type UndoSnapshot } from "../undo";
+import { ShadowKeyframeStore } from "../store/shadow-keyframe";
+import { UndoManager, type UndoBackend, type UndoSnapshot } from "../undo";
 import type { LayerManager } from "../layered/manager";
 import { UndoStats, withStackReporting } from "./undo-stats";
 import {
@@ -10,7 +11,7 @@ import {
   type UndoTilesMode,
   readUndoTilesMode,
 } from "./tile-capture";
-import { TiledUndoStore } from "../store/undo-tiled";
+import { TiledUndoStore, type StoredChain, type TileEpoch } from "../store/undo-tiled";
 
 // Paint persistence + undo plumbing for the app. Every history operation runs
 // through one FIFO queue, because captures and restores are async while the
@@ -45,10 +46,14 @@ export class AppHistory {
   // path is exact; degraded/full-snapshot layers are skipped by the verifier.
   private tileShadow: TileShadow | null = null;
   private shadowBroken = false;
-  // "on" mode (opt-in): the tile chain drives undo/redo restore + persists to v2.
+  // "on" mode (opt-in): the tile chain drives undo/redo restore + persists to v2,
+  // and the v1 keys hold only a debounced shadow keyframe (rollback + safety net).
   // Default "shadow" leaves the live path unchanged (capture + verify only).
   private readonly tilesMode: UndoTilesMode = "off";
   private readonly tiledStore: TiledUndoStore | null = null;
+  // The v1 backend when on-mode: kept as a typed ref so pagehide can force a flush
+  // of the debounced keyframe. Null off-mode (the plain UndoStore is not debounced).
+  private readonly shadowStore: ShadowKeyframeStore | null = null;
 
   constructor(
     private readonly layerManager: LayerManager,
@@ -57,20 +62,34 @@ export class AppHistory {
     tileHost?: TileHost,
   ) {
     this.stats = stats;
-    const backend = new UndoStore<UndoSnapshot>();
+    this.tilesMode = tileHost ? readUndoTilesMode() : "off";
+    // On-mode persists the full snapshot only as a debounced 1-deep shadow keyframe;
+    // other modes keep today's full N-deep v1 stack as the live paint source.
+    let backend: UndoBackend<UndoSnapshot>;
+    if (this.tilesMode === "on") {
+      this.shadowStore = new ShadowKeyframeStore();
+      backend = this.shadowStore;
+    } else {
+      backend = new UndoStore<UndoSnapshot>();
+    }
     this.undoManager = new UndoManager<UndoSnapshot>(
       // The stack-bytes tap only wraps the backend when stats are on, so the
       // normal path keeps the bare store with no extra indirection.
       stats.enabled ? withStackReporting(backend, stats) : backend,
       maxUndo,
     );
-    this.tilesMode = tileHost ? readUndoTilesMode() : "off";
     if (tileHost && this.tilesMode !== "off") {
       this.tileShadow = new TileShadow(tileHost, maxUndo, (detail) =>
         this.stats.noteTileMismatch(this.tileShadow?.mismatches ?? 0, detail),
       );
       if (this.tilesMode === "on") this.tiledStore = new TiledUndoStore();
     }
+  }
+
+  // Force the debounced v1 shadow keyframe to disk (pagehide / visibilitychange:
+  // hidden). A no-op except in on-mode; boot may not have wired the store yet.
+  flushDurable(): void {
+    void this.shadowStore?.flush();
   }
 
   private guardShadow<T>(fn: () => T): T | undefined {
@@ -106,22 +125,122 @@ export class AppHistory {
     // not awaited: it must not gate the first FIFO op behind a storage query.
     void this.stats.logStorageEstimate();
     return this.enqueue(async () => {
-      await this.undoManager.init();
-      const current = this.undoManager.current();
-      if (current) {
-        await restorePaint(current.paint);
-        // The stack rows are the paint source of truth now; drop the legacy
-        // snapshot so a later stack wipe can't resurface stale paint. Awaited so
-        // boot only completes once the drop has committed.
-        await this.paintStore.clear();
-      } else {
-        await restorePaint(await this.paintStore.load());
-        this.undoManager.push(await this.capture("Initial state"));
+      // On-mode boots from the v2 chain; any failure drops to the v1 ladder below,
+      // which restores from the shadow keyframe / legacy snapshot - never blank.
+      if (this.tilesMode === "on" && this.tileShadow && this.tiledStore) {
+        if (await this.bootFromTiles(restorePaint)) return;
+        console.warn("AppHistory: tiled boot failed, restoring from the v1 keyframe");
       }
-      // Seed the shadow base from the just-restored live state (after this, every
-      // stroke's delta is captured and verified against it).
-      this.guardShadow(() => this.tileShadow?.seedBase());
+      await this.bootFromV1(restorePaint);
     });
+  }
+
+  // Today's boot (and the on-mode fallback): load the v1 stack, restore the pointer
+  // row, else fall to the legacy standalone snapshot and seed an initial state.
+  private async bootFromV1(
+    restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
+  ): Promise<void> {
+    await this.undoManager.init();
+    const current = this.undoManager.current();
+    if (current) {
+      await restorePaint(current.paint);
+      // The stack rows are the paint source of truth now; drop the legacy
+      // snapshot so a later stack wipe can't resurface stale paint. Awaited so
+      // boot only completes once the drop has committed.
+      await this.paintStore.clear();
+    } else {
+      await restorePaint(await this.paintStore.load());
+      this.undoManager.push(await this.capture("Initial state"));
+    }
+    // Seed the shadow base from the just-restored live state (after this, every
+    // stroke's delta is captured and verified against it).
+    this.guardShadow(() => this.tileShadow?.seedBase());
+  }
+
+  // On-mode boot. undoManager.init first, so the shadow store learns the v1 rows
+  // already on disk and its next write can delete the stale ones (no orphan leak).
+  // Then: a valid v2 chain -> hydrate + reconstruct; no v2 -> migrate the v1 stack.
+  private async bootFromTiles(
+    restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
+  ): Promise<boolean> {
+    try {
+      await this.undoManager.init();
+      const chain = await this.tiledStore?.load();
+      if (chain) return await this.hydrateFromChain(chain, restorePaint);
+      return await this.migrateFromV1(restorePaint);
+    } catch (e) {
+      console.warn("AppHistory: tiled boot error", e);
+      return false;
+    }
+  }
+
+  // Restore from a loaded v2 chain. reconstruct + apply the pointer paint (drawBitmap
+  // stretches a saved-epoch base to the current backing store). Epoch match rebuilds
+  // the whole FIFO so undo/redo replays the loaded history; a dpr/size change (or a
+  // rebuild gap) keeps the paint but reseeds the base at the current epoch (S3).
+  private async hydrateFromChain(
+    chain: StoredChain,
+    restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
+  ): Promise<boolean> {
+    const shadow = this.tileShadow;
+    if (!shadow) return false;
+    await shadow.hydrate(chain);
+    const paint = await shadow.reconstructPaintSnapshotAt(chain.pointer);
+    if (!paint) return false; // can't reconstruct the tip -> fall to the v1 keyframe
+    await restorePaint(paint);
+    await this.paintStore.clear();
+    const epochMatch = sameEpoch(chain.epoch, shadow.currentEpoch());
+    if (epochMatch && (await this.rebuildManagerStack())) {
+      shadow.drainInputs(); // the restore dirtied the trackers; next stroke starts clean
+    } else {
+      shadow.seedBase();
+      this.undoManager.hydrate([await this.capture("Loaded")], 0);
+    }
+    return true;
+  }
+
+  // Rebuild the in-memory FIFO from the hydrated chain: one snapshot per pointer
+  // position (0 = base, k = base + entries[0..k-1]), so undo/redo has a valid paint
+  // to apply on the fallback path. Returns false if any position can't reconstruct.
+  private async rebuildManagerStack(): Promise<boolean> {
+    const shadow = this.tileShadow;
+    if (!shadow) return false;
+    const stack: UndoSnapshot[] = [];
+    for (let k = 0; k <= shadow.entryCount(); k++) {
+      const config = shadow.configAt(k);
+      const paint = await shadow.reconstructPaintSnapshotAt(k);
+      if (!config || !paint) return false;
+      stack.push({ config, paint });
+    }
+    this.undoManager.hydrate(stack, shadow.pointerIndex());
+    return true;
+  }
+
+  // First on-mode boot with no v2 chain: adopt the current pointer state (a prior
+  // session's v1 stack, or a fresh seed) as the v2 base and persist it. A failed v2
+  // write leaves v1 fully intact and retries next boot; paint is never lost.
+  private async migrateFromV1(
+    restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
+  ): Promise<boolean> {
+    const shadow = this.tileShadow;
+    if (!shadow) return false;
+    const current = this.undoManager.current();
+    if (current) {
+      await restorePaint(current.paint);
+      await this.paintStore.clear();
+    } else {
+      await restorePaint(await this.paintStore.load()); // fresh install: legacy snapshot or blank
+    }
+    shadow.seedBase(); // base = restored live state; also drains the trackers/journal
+    // Depth is lost on upgrade (the v2 chain starts empty), so collapse the FIFO to
+    // one entry; the v1 keys shrink to the keyframe on the next shadow write.
+    this.undoManager.hydrate([await this.capture("Loaded")], 0);
+    try {
+      await this.tiledStore?.save(await shadow.serialize());
+    } catch (e) {
+      console.warn("AppHistory: v1->v2 migration persist failed, keeping v1 intact", e);
+    }
+    return true;
   }
 
   // Queue an undo snapshot of the current state. The capture samples the
@@ -267,4 +386,12 @@ export class AppHistory {
       .getPaintData()
       .then((paint) => ({ config, paint, description }));
   }
+}
+
+// A canvas resize or dpr change (e.g. dragging the window between a 1x and a 2x
+// display) is an epoch boundary: the undo-tile grid is anchored to the device
+// backing store, so its geometry no longer lines up. Any field differing means the
+// saved base must be stretch-applied and reseeded rather than hydrated tile-exact.
+function sameEpoch(a: TileEpoch, b: TileEpoch): boolean {
+  return a.cssW === b.cssW && a.cssH === b.cssH && a.dpr === b.dpr;
 }

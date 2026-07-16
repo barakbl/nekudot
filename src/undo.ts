@@ -47,6 +47,15 @@ export class UndoManager<T extends { description?: string } = UndoSnapshot> {
     this.emit();
   }
 
+  // Replace the in-memory stack + pointer without persisting. Boot seeds the FIFO
+  // from the v2 tile chain this way; it must NOT write back, or it would clobber the
+  // v2 store / v1 shadow keyframe that own persistence on that path.
+  hydrate(stack: T[], pointer: number): void {
+    this.stack = stack;
+    this.pointer = pointer;
+    this.emit();
+  }
+
   push(snap: T): void {
     if (this.pointer < this.stack.length - 1) {
       this.stack = this.stack.slice(0, this.pointer + 1);
