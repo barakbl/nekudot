@@ -3,6 +3,12 @@ import { UndoStore } from "../store/undo";
 import { UndoManager, type UndoSnapshot } from "../undo";
 import type { LayerManager } from "../layered/manager";
 import { UndoStats, withStackReporting } from "./undo-stats";
+import {
+  type CaptureCut,
+  type TileHost,
+  TileShadow,
+  readUndoTilesMode,
+} from "./tile-capture";
 
 // Paint persistence + undo plumbing for the app. Every history operation runs
 // through one FIFO queue, because captures and restores are async while the
@@ -31,10 +37,18 @@ export class AppHistory {
   // tests can force it on/off and capture the log.
   private readonly stats: UndoStats;
 
+  // Shadow-mode tile capture + reconstruction verify (tile-undo PR9). Null when
+  // the flag is off or no host is wired (node tests). Fail-safe: any error
+  // disables it so a shadow bug can never break real undo. Tolerance 0 - the tile
+  // path is exact; degraded/full-snapshot layers are skipped by the verifier.
+  private tileShadow: TileShadow | null = null;
+  private shadowBroken = false;
+
   constructor(
     private readonly layerManager: LayerManager,
     maxUndo: number,
     stats: UndoStats = new UndoStats(),
+    tileHost?: TileHost,
   ) {
     this.stats = stats;
     const backend = new UndoStore<UndoSnapshot>();
@@ -44,6 +58,23 @@ export class AppHistory {
       stats.enabled ? withStackReporting(backend, stats) : backend,
       maxUndo,
     );
+    if (tileHost && readUndoTilesMode() !== "off") {
+      this.tileShadow = new TileShadow(tileHost, maxUndo, (detail) =>
+        this.stats.noteTileMismatch(this.tileShadow?.mismatches ?? 0, detail),
+      );
+    }
+  }
+
+  private guardShadow<T>(fn: () => T): T | undefined {
+    if (!this.tileShadow || this.shadowBroken) return undefined;
+    try {
+      return fn();
+    } catch (e) {
+      this.shadowBroken = true;
+      this.tileShadow = null;
+      console.warn("AppHistory: tile shadow disabled after error", e);
+      return undefined;
+    }
   }
 
   private enqueue(op: () => Promise<void> | void): Promise<void> {
@@ -79,6 +110,9 @@ export class AppHistory {
         await restorePaint(await this.paintStore.load());
         this.undoManager.push(await this.capture("Initial state"));
       }
+      // Seed the shadow base from the just-restored live state (after this, every
+      // stroke's delta is captured and verified against it).
+      this.guardShadow(() => this.tileShadow?.seedBase());
     });
   }
 
@@ -88,9 +122,25 @@ export class AppHistory {
   // only decides when the finished snapshot enters the stack, in call order.
   push(description: string): Promise<void> {
     const pending = this.stats.measureCapture(description, this.capture(description));
+    // Same atomic moment as the snapshot cut above (both sample the live state now).
+    const cut = this.guardShadow(() => this.tileShadow?.cut()) ?? null;
     return this.enqueue(async () => {
       this.undoManager.push(await pending);
+      if (cut) await this.commitAndVerify(cut);
     });
+  }
+
+  private async commitAndVerify(cut: CaptureCut): Promise<void> {
+    const shadow = this.tileShadow;
+    if (!shadow || this.shadowBroken) return;
+    try {
+      await shadow.commitCut(cut);
+      await shadow.verify(0);
+    } catch (e) {
+      this.shadowBroken = true;
+      this.tileShadow = null;
+      console.warn("AppHistory: tile shadow disabled after error", e);
+    }
   }
 
   // Undo/redo run through the same queue — behind any in-flight pushes, so a
@@ -116,6 +166,7 @@ export class AppHistory {
       if (!result) return;
       await this.stats.measureRestore(kind, () => apply(result.snap));
       action = result.action ?? null;
+      if (this.tileShadow) await this.stepAndVerify(kind);
     }).then(() => action);
   }
 
@@ -132,7 +183,21 @@ export class AppHistory {
       // queued follow-up push (New art / Load artwork) also now lands after the
       // wipe, not racing it.
       await Promise.all([this.undoManager.clear(), this.paintStore.clear()]);
+      this.guardShadow(() => this.tileShadow?.reset());
     });
+  }
+
+  private async stepAndVerify(kind: "undo" | "redo"): Promise<void> {
+    const shadow = this.tileShadow;
+    if (!shadow || this.shadowBroken) return;
+    try {
+      shadow.step(kind);
+      await shadow.verify(0);
+    } catch (e) {
+      this.shadowBroken = true;
+      this.tileShadow = null;
+      console.warn("AppHistory: tile shadow disabled after error", e);
+    }
   }
 
   // Button-state reads stay instantaneous (no queue) — they only gate UI and

@@ -16,6 +16,7 @@ const raceToBlob = (cb: (b: Blob | null) => void) => {
 import type { LayerManager } from "../src/layered/manager";
 import { AppHistory } from "../src/app/history";
 import { UndoStats } from "../src/app/undo-stats";
+import type { RawImage, TileHost } from "../src/app/tile-capture";
 import {
   installDocumentStub,
   makeCanvasStub,
@@ -164,6 +165,48 @@ describe("AppHistory serialization", () => {
     expect(text).toContain('capture "stroke 1"');
     expect(text).toContain("undo restore:");
     expect(text).toContain("stack:"); // the backend save tap reported bytes
+  });
+
+  // A blank 1-layer tile host; every stroke is a no-op delta, so the shadow
+  // reconstructs the base exactly and never reports a mismatch.
+  const blankImg = (): RawImage => ({ data: new Uint8ClampedArray(256 * 256 * 4), width: 256, height: 256 });
+  const fakeHost = (over: Partial<TileHost> = {}): TileHost => ({
+    getConfig: () => ({}) as never,
+    cssSize: () => ({ width: 256, height: 256 }),
+    layers: () => [{ id: "L0", deviceW: 256, deviceH: 256 }],
+    takeLayerDirty: () => ({ all: false, rects: [] }),
+    takeJournal: () => ({ ops: [], truncated: false }),
+    collectClouds: () => [],
+    readSpan: () => blankImg(),
+    readLayer: () => blankImg(),
+    captureFull: async () => new Blob(),
+    decodeFull: async () => blankImg(),
+    ...over,
+  });
+
+  it("shadow verifies a clean push without reporting a mismatch", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const h = new AppHistory(manager, 10, new UndoStats({ enabled: false }), fakeHost());
+    await h.init(async () => {});
+    await h.push("stroke 1");
+    await h.undo(async () => {});
+    expect(warn.mock.calls.flat().join(" ")).not.toMatch(/mismatch/);
+    warn.mockRestore();
+  });
+
+  it("a throwing tile host disables the shadow without breaking undo", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const boom = fakeHost({
+      readLayer: () => {
+        throw new Error("no canvas");
+      },
+    });
+    const h = new AppHistory(manager, 10, new UndoStats({ enabled: false }), boom);
+    await h.init(async () => {}); // seedBase throws -> shadow disabled, init still resolves
+    await h.push("stroke 1"); // still works
+    expect(await h.undo(async () => {})).toBe("stroke 1");
+    expect(warn.mock.calls.flat().join(" ")).toMatch(/tile shadow disabled/);
+    warn.mockRestore();
   });
 
   it("rapid undo+redo serialize their applies (no interleaving)", async () => {

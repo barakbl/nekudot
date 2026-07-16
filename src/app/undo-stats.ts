@@ -126,6 +126,14 @@ export class UndoStats {
     }
   }
 
+  // A shadow-mode reconstruction diverged from the live state - a candidate
+  // dirty-bound bug. Always warns (a correctness signal, flag or not); logs the
+  // running count when instrumentation is on.
+  noteTileMismatch(count: number, detail: string): void {
+    console.warn(`[undoTiles] shadow verify mismatch #${count}: ${detail}`);
+    if (this.enabled) this.log(`[undoStats] tile verify mismatches: ${count}`);
+  }
+
   // Report the whole stack's byte footprint, deduped (see lastStackKey).
   reportStack(stack: readonly UndoSnapshot[]): void {
     if (!this.enabled) return;
