@@ -11,6 +11,7 @@ import type {
 } from "../store/paint";
 import type { CanvasSize } from "../canvas-size";
 import { Layer } from "./layer";
+import { MapJournal } from "./map-journal";
 import { NeighborsMap } from "./neighbors-map";
 import { WetStrokeBuffer } from "./wet-stroke";
 import {
@@ -66,6 +67,9 @@ export class LayerManager implements PaintHost {
   private activeIndex = 0;
   private neighborsMaps: NeighborsMap[] = [];
   private selectedNeighborsMapIndex = 0;
+  // Records point add/remove ops at the map sinks for the tile-undo work
+  // (record-only; nothing drains it yet). Keyed by stable map id.
+  readonly mapJournal = new MapJournal();
   private background: BackgroundConfig = { color: "#ffffff", transparent: false };
   private listeners = new Set<() => void>();
   readonly maxLayers: number;
@@ -443,7 +447,11 @@ export class LayerManager implements PaintHost {
   }
 
   addPixel(x: number, y: number): Pixel {
-    return this.selectedMap?.finder.addPixel(x, y) ?? { id: 0, x, y };
+    const nm = this.selectedMap;
+    if (!nm) return { id: 0, x, y };
+    const px = nm.finder.addPixel(x, y);
+    this.mapJournal.recordAdd(nm.config.id, [px]);
+    return px;
   }
   findNeighbors(px: Pixel, radius: number): Pixel[] {
     return this.selectedMap?.finder.findNeighbors(px, radius) ?? [];
@@ -458,9 +466,13 @@ export class LayerManager implements PaintHost {
     return this.selectedMap?.finder.livePixelCount() ?? 0;
   }
   // Forget dots near (x, y) on the selected map - the one new dots go to and the
-  // active web reads from.
+  // active web reads from. The removed victims (previously discarded) are kept
+  // and journaled so a delta undo can replay the removal.
   forgetPointsNear(x: number, y: number, radius: number): void {
-    this.selectedMap?.finder.removeNear?.(x, y, radius);
+    const nm = this.selectedMap;
+    if (!nm) return;
+    const removed = nm.finder.removeNear?.(x, y, radius);
+    if (removed?.length) this.mapJournal.recordRemove(nm.config.id, removed);
   }
 
   // ---- ConnectRouter (target specific layers/maps by stable id) -------------
@@ -480,8 +492,10 @@ export class LayerManager implements PaintHost {
   }
   addPixelToMap(mapId: string, x: number, y: number): Pixel {
     const nm = this.mapById(mapId);
-    if (!nm) return this.addPixel(x, y); // pinned map gone -> selected
-    return nm.finder.addPixel(x, y);
+    if (!nm) return this.addPixel(x, y); // pinned map gone -> selected (records there)
+    const px = nm.finder.addPixel(x, y);
+    this.mapJournal.recordAdd(nm.config.id, [px]);
+    return px;
   }
   findNeighborsInMap(mapId: string, px: Pixel, radius: number): Pixel[] {
     const nm = this.mapById(mapId);
