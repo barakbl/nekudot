@@ -19,7 +19,7 @@ import { UndoStats, withStackReporting } from "./undo-stats";
 // standalone PaintStore remains read-only, as the restore source for stacks
 // saved before this scheme (and for seeding the very first snapshot).
 export class AppHistory {
-  private readonly undoManager: UndoManager;
+  private readonly undoManager: UndoManager<UndoSnapshot>;
   private readonly paintStore = new PaintStore();
   // The FIFO. Ops run one at a time in call order; each failure is caught at
   // the op so one bad capture can't leave the chain rejected (which would
@@ -38,7 +38,7 @@ export class AppHistory {
   ) {
     this.stats = stats;
     const backend = new UndoStore<UndoSnapshot>();
-    this.undoManager = new UndoManager(
+    this.undoManager = new UndoManager<UndoSnapshot>(
       // The stack-bytes tap only wraps the backend when stats are on, so the
       // normal path keeps the bare store with no extra indirection.
       stats.enabled ? withStackReporting(backend, stats) : backend,

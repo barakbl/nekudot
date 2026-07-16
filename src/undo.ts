@@ -7,30 +7,34 @@ export type UndoSnapshot = {
   description?: string;
 };
 
-export type UndoResult = {
-  snap: UndoSnapshot;
+export type UndoResult<T = UndoSnapshot> = {
+  snap: T;
   action?: string;
 };
 
-export type UndoStateData = {
-  stack: UndoSnapshot[];
+export type UndoStateData<T = UndoSnapshot> = {
+  stack: T[];
   pointer: number;
 };
 
-// Minimal store interface — UndoManager doesn't know it's IndexedDB.
-export type UndoBackend = {
-  load(): Promise<UndoStateData | null>;
-  save(state: UndoStateData): Promise<void>;
+// Minimal store interface - UndoManager doesn't know it's IndexedDB. Generic over
+// the entry type; defaults to UndoSnapshot so existing call sites are unchanged.
+export type UndoBackend<T = UndoSnapshot> = {
+  load(): Promise<UndoStateData<T> | null>;
+  save(state: UndoStateData<T>): Promise<void>;
   clear(): Promise<void>;
 };
 
-export class UndoManager {
-  private stack: UndoSnapshot[] = [];
+// Generic over its entry type T - it only ever reads `description`, so it stays
+// behaviour-identical while a later PR can swap in a delta/tile entry type without
+// touching the FIFO mechanics. T defaults to UndoSnapshot so the app is unchanged.
+export class UndoManager<T extends { description?: string } = UndoSnapshot> {
+  private stack: T[] = [];
   private pointer = -1;
   private listeners = new Set<() => void>();
 
   constructor(
-    private store: UndoBackend,
+    private store: UndoBackend<T>,
     private maxSize: number,
   ) {}
 
@@ -43,7 +47,7 @@ export class UndoManager {
     this.emit();
   }
 
-  push(snap: UndoSnapshot): void {
+  push(snap: T): void {
     if (this.pointer < this.stack.length - 1) {
       this.stack = this.stack.slice(0, this.pointer + 1);
     }
@@ -59,7 +63,7 @@ export class UndoManager {
 
   // The snapshot the canvas currently corresponds to (stack tip after a push,
   // the stepped-to entry after undo/redo). Null while the stack is empty.
-  current(): UndoSnapshot | null {
+  current(): T | null {
     return this.stack[this.pointer] ?? null;
   }
 
@@ -71,7 +75,7 @@ export class UndoManager {
     return this.pointer < this.stack.length - 1;
   }
 
-  undo(): UndoResult | null {
+  undo(): UndoResult<T> | null {
     if (!this.canUndo()) return null;
     // The action being undone is the one that produced the current snapshot
     // (which we're about to leave behind).
@@ -82,7 +86,7 @@ export class UndoManager {
     return { snap: this.stack[this.pointer], action: undone.description };
   }
 
-  redo(): UndoResult | null {
+  redo(): UndoResult<T> | null {
     if (!this.canRedo()) return null;
     this.pointer++;
     this.persist();
