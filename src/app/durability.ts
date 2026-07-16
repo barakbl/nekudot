@@ -23,11 +23,15 @@ export function bindDurability(deps: {
   drawingInput: { commitActiveStroke: () => void };
   pixelLog: { flush: () => Promise<void> };
   eventLog?: { flush: () => Promise<void> }; // shadow event log (vector-replay)
+  history?: { flushDurable: () => void }; // tile-undo on-mode v1 shadow keyframe
 }): void {
   const persistOnHide = () => {
     deps.drawingInput.commitActiveStroke();
     void deps.pixelLog.flush();
     void deps.eventLog?.flush();
+    // Commit the debounced shadow keyframe so a rollback build (or a holed v2
+    // chain) restores the last pointer state, not the last write-window's.
+    deps.history?.flushDurable();
   };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") persistOnHide();
