@@ -48,6 +48,7 @@
     "smoke:dirty-coverage": "node tests/smoke/dirty-coverage.mjs",
     "smoke:patch-codec": "node tests/smoke/patch-codec.mjs",
     "smoke:shadow-verify": "node tests/smoke/shadow-verify.mjs",
+    "smoke:tiled-restore": "node tests/smoke/tiled-restore.mjs",
     "render-presets": "node tests/smoke/render-presets.mjs",
     "smoke-render": "node tests/smoke/all-render.mjs",
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"

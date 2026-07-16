@@ -5,6 +5,8 @@ import type { LayersConfig } from "../layered/schema";
 import type { MapJournalSnapshot, MapOp, MapPoint } from "../layered/map-journal";
 import { replayMapPoints } from "../layered/map-journal";
 import { type PatchPixels, decodePatch, encodePatch } from "../store/patch-codec";
+import type { LayerPaint, NeighborsMapPaint, PaintSnapshot } from "../store/paint";
+import type { StoredBase, StoredChain, StoredEntry, TileEpoch } from "../store/undo-tiled";
 
 // Shadow-mode tile capture (tile-undo PR9). Alongside today's full-snapshot undo,
 // this captures a delta TileEntry per push and, after each history step, verifies
@@ -39,12 +41,13 @@ export type Cloud = { mapId: string; points: MapPoint[] };
 
 export type TilePatch = { layerId: string; rect: DeviceRect; blob: Blob; full: boolean };
 export type TileEntry = {
+  id: number; // stable row id for v2 persistence; assigned at commit
   config: LayersConfig;
   patches: TilePatch[]; // tile spans (deflate) and/or a full-layer patch (degrade)
   mapOps: MapOp[];
   bytes: number;
 };
-type BaseKeyframe = { config: LayersConfig; layers: Map<string, RawImage>; clouds: Cloud[] };
+type BaseKeyframe = { id: number; config: LayersConfig; layers: Map<string, RawImage>; clouds: Cloud[] };
 
 // ---- pure grid + degrade planning ------------------------------------------
 
@@ -183,6 +186,9 @@ export interface TileHost {
   // async toBlob of the whole layer (degrade capture, S7-safe) + its decode
   captureFull(layerId: string): Promise<Blob>;
   decodeFull(blob: Blob, width: number, height: number): Promise<RawImage>;
+  // encode raw pixels to a PNG blob (build a PaintSnapshot layer for the on-mode
+  // restore, which flows through the existing applyPaintData path)
+  rawToBlob(img: RawImage): Promise<Blob>;
 }
 
 // ---- capture: sync cut, then async encode ----------------------------------
@@ -239,7 +245,7 @@ export async function encodeCut(cut: CaptureCut): Promise<TileEntry> {
     });
   }
   const bytes = patches.reduce((n, p) => n + p.blob.size, 0);
-  return { config: cut.config, patches, mapOps: cut.mapOps, bytes };
+  return { id: -1, config: cut.config, patches, mapOps: cut.mapOps, bytes };
 }
 
 function deviceScale(host: TileHost): number {
@@ -263,6 +269,8 @@ export class TileShadow {
   // test anyway, so exact verify skips them. Layers with an active full patch are
   // skipped the same way (checked live in verify).
   private approx = new Set<string>();
+  private nextEntryId = 0;
+  private nextBaseId = 0;
   mismatches = 0;
 
   constructor(
@@ -274,6 +282,7 @@ export class TileShadow {
   // Seed the base keyframe from the current live state (the initial push).
   seedBase(): void {
     this.base = {
+      id: this.nextBaseId++,
       config: this.host.getConfig(),
       layers: new Map(this.host.layers().map((l) => [l.id, this.host.readLayer(l.id)])),
       clouds: this.host.collectClouds(),
@@ -309,6 +318,7 @@ export class TileShadow {
   async commit(entry: TileEntry): Promise<void> {
     if (!this.base) return;
     if (this.pointer < this.entries.length) this.entries.length = this.pointer;
+    entry.id = this.nextEntryId++;
     this.entries.push(entry);
     this.pointer = this.entries.length;
     this.synced = true;
@@ -383,15 +393,70 @@ export class TileShadow {
     return out;
   }
 
-  private verifyClouds(active: TileEntry[]): boolean {
-    if (!this.base) return false;
-    const seed: MapOp[] = this.base.clouds.map((c) => ({
+  // Rebuild each cloud's point-value multiset at a pointer: base clouds + forward
+  // replay of the active entries' map ops (never inverted).
+  private reconstructCloudsAt(active: TileEntry[]): Map<string, MapPoint[]> {
+    const seed: MapOp[] = (this.base?.clouds ?? []).map((c) => ({
       mapId: c.mapId,
       op: "add",
       points: c.points,
     }));
-    const ops = seed.concat(...active.map((e) => e.mapOps));
-    const recon = replayMapPoints(ops);
+    return replayMapPoints(seed.concat(...active.map((e) => e.mapOps)));
+  }
+
+  private epoch(): TileEpoch {
+    const css = this.host.cssSize();
+    return { cssW: css.width, cssH: css.height, dpr: deviceScale(this.host) };
+  }
+
+  // Serialize the whole chain for v2 persistence: base layers -> PNG blobs, entries
+  // as-is (their patches are already blobs).
+  async serialize(): Promise<StoredChain> {
+    if (!this.base) throw new Error("tile shadow: nothing to serialize");
+    const layers: StoredBase["layers"] = [];
+    for (const [layerId, img] of this.base.layers)
+      layers.push({ layerId, blob: await this.host.rawToBlob(img), w: img.width, h: img.height });
+    const base: StoredBase = { id: this.base.id, config: this.base.config, layers, clouds: this.base.clouds };
+    const entries: StoredEntry[] = this.entries.map((e) => ({
+      id: e.id,
+      config: e.config,
+      bytes: e.bytes,
+      mapOps: e.mapOps,
+      patches: e.patches.map((p) => ({ layerId: p.layerId, rect: p.rect, blob: p.blob, full: p.full })),
+    }));
+    return { epoch: this.epoch(), pointer: this.pointer, base, entries };
+  }
+
+  // Reconstruct the target state (base + deltas up to pointer) as a PaintSnapshot,
+  // so the on-mode restore flows through the existing applyPaintData path. Returns
+  // null - the caller falls back to today's snapshot - if not in sync or the layer
+  // SET changed across the window (add/remove/reorder is deferred to a later PR).
+  async reconstructPaintSnapshot(): Promise<PaintSnapshot | null> {
+    if (!this.base || !this.synced) return null;
+    const active = this.entries.slice(0, this.pointer);
+    const target = active.length ? active[active.length - 1].config : this.base.config;
+    const baseIds = [...this.base.layers.keys()].sort().join(",");
+    const targetIds = target.layers.map((l) => l.id).sort().join(",");
+    if (baseIds !== targetIds) return null;
+    const layers: LayerPaint[] = [];
+    for (const lc of target.layers) {
+      const recon = await this.reconstructLayer(lc.id, active);
+      if (!recon) return null;
+      layers.push({ layerIndex: lc.index, blob: await this.host.rawToBlob(recon) });
+    }
+    const clouds = this.reconstructCloudsAt(active);
+    const neighborsMaps: NeighborsMapPaint[] = (target.neighborsMaps ?? []).map((mc, i) => ({
+      index: i,
+      pixels: (clouds.get(mc.id) ?? []).map((p) =>
+        p.color ? { x: p.x, y: p.y, color: p.color } : { x: p.x, y: p.y },
+      ),
+    }));
+    return { version: 2, layers, neighborsMaps };
+  }
+
+  private verifyClouds(active: TileEntry[]): boolean {
+    if (!this.base) return false;
+    const recon = this.reconstructCloudsAt(active);
     const live = new Map(this.host.collectClouds().map((c) => [c.mapId, c.points]));
     const ids = new Set([...recon.keys(), ...live.keys()]);
     for (const id of ids) {
@@ -423,6 +488,7 @@ export class TileShadow {
     const folded = replayMapPoints(seed.concat(oldest.mapOps));
     this.base.clouds = [...folded].map(([mapId, points]) => ({ mapId, points }));
     this.base.config = oldest.config;
+    this.base.id = this.nextBaseId++; // a new base version for the store to persist
   }
 }
 
@@ -477,6 +543,17 @@ export function createTileHost(manager: LayerManager): TileHost {
       if (!ctx) throw new Error("tile-capture: no context for decodeFull");
       ctx.drawImage(bmp, 0, 0);
       return toRaw(ctx.getImageData(0, 0, width, height));
+    },
+    rawToBlob: (img) => {
+      const c = document.createElement("canvas");
+      c.width = img.width;
+      c.height = img.height;
+      const ctx = c.getContext("2d");
+      if (!ctx) return Promise.reject(new Error("tile-capture: no context for rawToBlob"));
+      ctx.putImageData(new ImageData(Uint8ClampedArray.from(img.data), img.width, img.height), 0, 0);
+      return new Promise((resolve, reject) =>
+        c.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob null"))), "image/png"),
+      );
     },
   };
 }

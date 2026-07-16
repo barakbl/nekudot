@@ -7,8 +7,10 @@ import {
   type CaptureCut,
   type TileHost,
   TileShadow,
+  type UndoTilesMode,
   readUndoTilesMode,
 } from "./tile-capture";
+import { TiledUndoStore } from "../store/undo-tiled";
 
 // Paint persistence + undo plumbing for the app. Every history operation runs
 // through one FIFO queue, because captures and restores are async while the
@@ -43,6 +45,10 @@ export class AppHistory {
   // path is exact; degraded/full-snapshot layers are skipped by the verifier.
   private tileShadow: TileShadow | null = null;
   private shadowBroken = false;
+  // "on" mode (opt-in): the tile chain drives undo/redo restore + persists to v2.
+  // Default "shadow" leaves the live path unchanged (capture + verify only).
+  private readonly tilesMode: UndoTilesMode = "off";
+  private readonly tiledStore: TiledUndoStore | null = null;
 
   constructor(
     private readonly layerManager: LayerManager,
@@ -58,10 +64,12 @@ export class AppHistory {
       stats.enabled ? withStackReporting(backend, stats) : backend,
       maxUndo,
     );
-    if (tileHost && readUndoTilesMode() !== "off") {
+    this.tilesMode = tileHost ? readUndoTilesMode() : "off";
+    if (tileHost && this.tilesMode !== "off") {
       this.tileShadow = new TileShadow(tileHost, maxUndo, (detail) =>
         this.stats.noteTileMismatch(this.tileShadow?.mismatches ?? 0, detail),
       );
+      if (this.tilesMode === "on") this.tiledStore = new TiledUndoStore();
     }
   }
 
@@ -127,7 +135,17 @@ export class AppHistory {
     return this.enqueue(async () => {
       this.undoManager.push(await pending);
       if (cut) await this.commitAndVerify(cut);
+      if (this.tilesMode === "on") await this.persistTiles();
     });
+  }
+
+  private async persistTiles(): Promise<void> {
+    if (!this.tileShadow || !this.tiledStore || this.shadowBroken) return;
+    try {
+      await this.tiledStore.save(await this.tileShadow.serialize());
+    } catch (e) {
+      console.warn("AppHistory: tile persist failed", e);
+    }
   }
 
   private async commitAndVerify(cut: CaptureCut): Promise<void> {
@@ -164,9 +182,15 @@ export class AppHistory {
       const result =
         kind === "undo" ? this.undoManager.undo() : this.undoManager.redo();
       if (!result) return;
-      await this.stats.measureRestore(kind, () => apply(result.snap));
+      if (this.tilesMode === "on" && this.tileShadow && !this.shadowBroken) {
+        this.tileShadow.step(kind);
+        await this.stats.measureRestore(kind, () => this.restoreOnMode(result.snap, apply));
+        await this.persistTiles();
+      } else {
+        await this.stats.measureRestore(kind, () => apply(result.snap));
+        if (this.tileShadow) await this.stepAndVerify(kind);
+      }
       action = result.action ?? null;
-      if (this.tileShadow) await this.stepAndVerify(kind);
     }).then(() => action);
   }
 
@@ -182,9 +206,32 @@ export class AppHistory {
       // a reload mid-clear left the data behind (the reset didn't stick); the
       // queued follow-up push (New art / Load artwork) also now lands after the
       // wipe, not racing it.
-      await Promise.all([this.undoManager.clear(), this.paintStore.clear()]);
+      await Promise.all([
+        this.undoManager.clear(),
+        this.paintStore.clear(),
+        this.tiledStore?.clear() ?? Promise.resolve(),
+      ]);
       this.guardShadow(() => this.tileShadow?.reset());
     });
+  }
+
+  // On-mode restore: apply the tile-reconstructed paint through the normal apply
+  // path; on any failure or an add/remove-layer step (reconstruct returns null),
+  // fall back to today's snapshot so paint is never lost.
+  private async restoreOnMode(
+    snap: UndoSnapshot,
+    apply: (snap: UndoSnapshot) => Promise<void>,
+  ): Promise<void> {
+    try {
+      const paint = this.tileShadow ? await this.tileShadow.reconstructPaintSnapshot() : null;
+      if (paint) {
+        await apply({ config: snap.config, paint });
+        return;
+      }
+    } catch (e) {
+      console.warn("AppHistory: tile restore failed, using snapshot", e);
+    }
+    await apply(snap);
   }
 
   private async stepAndVerify(kind: "undo" | "redo"): Promise<void> {
