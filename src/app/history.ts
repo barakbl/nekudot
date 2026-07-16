@@ -6,6 +6,7 @@ import type { LayerManager } from "../layered/manager";
 import { UndoStats, withStackReporting } from "./undo-stats";
 import {
   type CaptureCut,
+  DEFAULT_BUDGET_BYTES,
   type TileHost,
   TileShadow,
   type UndoTilesMode,
@@ -125,6 +126,9 @@ export class AppHistory {
     // not awaited: it must not gate the first FIFO op behind a storage query.
     void this.stats.logStorageEstimate();
     return this.enqueue(async () => {
+      // Size the eviction byte budget from the real quota before any push can evict
+      // (init is first in the FIFO, so this lands ahead of the first stroke).
+      await this.applyBudget();
       // On-mode boots from the v2 chain; any failure drops to the v1 ladder below,
       // which restores from the shadow keyframe / legacy snapshot - never blank.
       if (this.tilesMode === "on" && this.tileShadow && this.tiledStore) {
@@ -133,6 +137,19 @@ export class AppHistory {
       }
       await this.bootFromV1(restorePaint);
     });
+  }
+
+  // Cap the tile eviction budget at min(32MB, quota/20) so the delta chain can't
+  // monopolize storage. Best-effort: an unavailable estimate keeps the default.
+  private async applyBudget(): Promise<void> {
+    if (!this.tileShadow) return;
+    try {
+      const quota = (await navigator?.storage?.estimate?.())?.quota ?? 0;
+      if (quota > 0)
+        this.tileShadow.setBudget(Math.min(DEFAULT_BUDGET_BYTES, Math.floor(quota / 20)));
+    } catch {
+      // estimate() rejected or unavailable - keep the conservative default.
+    }
   }
 
   // Today's boot (and the on-mode fallback): load the v1 stack, restore the pointer

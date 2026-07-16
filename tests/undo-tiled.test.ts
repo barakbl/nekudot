@@ -46,10 +46,16 @@ const entry = (id: number): StoredEntry => ({
   mapOps: [{ mapId: "m", op: "add", points: [{ x: id, y: id }] }],
   bytes: 10,
 });
-const chain = (entries: StoredEntry[], pointer: number, b = base()): StoredChain => ({
+const chain = (
+  entries: StoredEntry[],
+  pointer: number,
+  b = base(),
+  folded: StoredEntry[] = [],
+): StoredChain => ({
   epoch: { cssW: 256, cssH: 256, dpr: 2 },
   pointer,
   base: b,
+  folded,
   entries,
 });
 
@@ -112,6 +118,43 @@ describe("TiledUndoStore", () => {
     await store.save(chain([entry(1), entry(2)], 2)); // retry
     expect(puts(backend.batches[0])).toContain("entry:2"); // entry:2 re-attempted
     expect(backend.store.has("entry:2")).toBe(true);
+  });
+
+  it("round-trips folded rows and lists them in meta foldedIds", async () => {
+    const [f1, e2, e3] = [entry(1), entry(2), entry(3)];
+    await new TiledUndoStore(backend).save(chain([e2, e3], 2, base(), [f1]));
+    const meta = (await backend.get("meta2")) as { foldedIds: number[]; entryIds: number[] };
+    expect(meta.foldedIds).toEqual([1]);
+    expect(meta.entryIds).toEqual([2, 3]);
+    const loaded = await new TiledUndoStore(backend).load();
+    expect(loaded?.folded.map((e) => e.id)).toEqual([1]);
+    expect(loaded?.entries.map((e) => e.id)).toEqual([2, 3]);
+  });
+
+  it("compaction: a base change rewrites the base and deletes folded rows in one tx", async () => {
+    const store = new TiledUndoStore(backend);
+    const [f1, f2, e3] = [entry(1), entry(2), entry(3)];
+    await store.save(chain([e3], 1, base(0), [f1, f2])); // f1,f2 folded below the floor
+    backend.batches = [];
+    // Compaction bakes f1,f2 into a NEW base (id 1) and clears folded.
+    await store.save(chain([e3], 1, base(1), []));
+    const ops = backend.batches[0];
+    expect(puts(ops)).toContain("base:1");
+    expect(dels(ops)).toEqual(expect.arrayContaining(["base:0", "entry:1", "entry:2"]));
+    // The reader sees only the compacted base + the surviving active row.
+    const loaded = await new TiledUndoStore(backend).load();
+    expect(loaded?.base.id).toBe(1);
+    expect(loaded?.folded).toEqual([]);
+    expect(loaded?.entries.map((e) => e.id)).toEqual([3]);
+  });
+
+  it("load tolerates a pre-PR11 meta2 with no foldedIds field", async () => {
+    await new TiledUndoStore(backend).save(chain([entry(1)], 1));
+    const meta = backend.store.get("meta2") as Record<string, unknown>;
+    delete meta.foldedIds; // simulate a Half A/B row written before folded existed
+    const loaded = await new TiledUndoStore(backend).load();
+    expect(loaded?.folded).toEqual([]);
+    expect(loaded?.entries.map((e) => e.id)).toEqual([1]);
   });
 
   it("clear wipes v2 keys and never touches v1 keys", async () => {

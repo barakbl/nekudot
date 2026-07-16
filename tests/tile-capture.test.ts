@@ -299,14 +299,81 @@ describe("TileShadow chain: undo/redo + evict-fold", () => {
     expect((await shadow.verify(0)).layerDiffs).toBe(0);
   });
 
-  it("folds the oldest entry into the base past maxUndo, staying exact", async () => {
+  it("evicts oldest entries into folded past maxUndo, staying exact", async () => {
     const host = new FakeHost(1024, 256, 1, ["L0"]);
-    const shadow = new TileShadow(host, 3); // tiny cap -> forces folds
+    const shadow = new TileShadow(host, 3); // tiny cap -> forces evictions
     shadow.seedBase();
     for (let n = 1; n <= 6; n++) await paintStroke(host, shadow, n);
-    // Live now holds all six strokes; base absorbed the evicted ones, so a verify
-    // at the tip still reconstructs exactly.
+    // maxUndo 3 keeps 2 active entries; the rest sit in `folded` below the floor.
+    const chain = await shadow.serialize();
+    expect(chain.entries.length).toBe(2);
+    expect(chain.folded.length).toBe(4);
+    expect(chain.base.id).toBe(0); // no compaction yet (folded <= 30)
+    // Live holds all six strokes; base + folded + active reconstructs exactly.
     expect((await shadow.verify(0)).layerDiffs).toBe(0);
+    expect(shadow.mismatches).toBe(0);
+  });
+
+  it("evicts on the byte budget independently of the count", async () => {
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 100, () => {}, 1); // huge count cap, 1-byte budget
+    shadow.seedBase();
+    for (let n = 1; n <= 5; n++) await paintStroke(host, shadow, n);
+    const chain = await shadow.serialize();
+    expect(chain.entries.length).toBe(1); // budget folds down to the one kept entry
+    expect(chain.folded.length).toBe(4);
+    expect((await shadow.verify(0)).layerDiffs).toBe(0);
+  });
+
+  it("compacts folded into the base past the threshold, staying exact", async () => {
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 3);
+    shadow.seedBase();
+    // maxUndo 3 folds ~1 entry per stroke; 34 strokes drives folded past 30 -> compact.
+    for (let n = 1; n <= 34; n++) await paintStroke(host, shadow, n);
+    const chain = await shadow.serialize();
+    expect(chain.base.id).toBeGreaterThan(0); // compaction bumped the base version
+    expect(chain.folded.length).toBeLessThanOrEqual(30); // stayed bounded
+    expect((await shadow.verify(0)).layerDiffs).toBe(0); // state preserved across compaction
+    expect(shadow.mismatches).toBe(0);
+  });
+
+  it("reconstructs undo/redo within the active window after eviction", async () => {
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 3);
+    shadow.seedBase();
+    for (let n = 1; n <= 5; n++) await paintStroke(host, shadow, n); // entries=[s4,s5], folded=[s1..3]
+    // Undo to the 4-stroke state (pointer into the active window; folded still applied).
+    host.live.set("L0", blank(1024, 256));
+    for (let n = 1; n <= 4; n++) host.paint("L0", R(10 + n * 40, 10, 30, 30), [n & 255, 0, 0, 255]);
+    shadow.step("undo");
+    expect((await shadow.verify(0)).layerDiffs).toBe(0);
+    // Redo back to 5 strokes.
+    host.paint("L0", R(10 + 5 * 40, 10, 30, 30), [5, 0, 0, 255]);
+    shadow.step("redo");
+    expect((await shadow.verify(0)).layerDiffs).toBe(0);
+  });
+
+  it("500-stroke soak stays under budget and the folded cap, still exact", async () => {
+    const BUDGET = 4000;
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 10, () => {}, BUDGET);
+    shadow.seedBase();
+    for (let n = 1; n <= 500; n++) {
+      // Each stroke overwrites the SAME tile, so live == last stroke and the chain
+      // stays exactly reconstructible while eviction + compaction churn underneath.
+      host.live.set("L0", blank(1024, 256));
+      host.paint("L0", R(20, 20, 60, 60), [n & 255, (n * 7) & 255, 0, 255]);
+      host.markDirty("L0", R(16, 16, 68, 68));
+      await shadow.commit(await encodeCut(captureCut(host)));
+    }
+    const chain = await shadow.serialize();
+    const activeBytes = chain.entries.reduce((n, e) => n + e.bytes, 0);
+    expect(chain.entries.length).toBeLessThanOrEqual(10); // count bound
+    // byte bound holds, unless eviction is down to the single always-kept entry
+    expect(activeBytes <= BUDGET || chain.entries.length === 1).toBe(true);
+    expect(chain.folded.length).toBeLessThanOrEqual(30); // boot-replay cap holds
+    expect((await shadow.verify(0)).layerDiffs).toBe(0); // exact through every compaction
     expect(shadow.mismatches).toBe(0);
   });
 });

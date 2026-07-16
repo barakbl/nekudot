@@ -108,6 +108,22 @@ async function main() {
     await reload();
     ok("post-dpr-reseed session persists a new stroke", (await count()) > 0);
 
+    // ---- Phase E: eviction - folded rows persist + reload reconstructs ---------
+    // MAX_UNDO is 10; >10 strokes pushes the oldest into `folded`. The reload must
+    // reconstruct base + folded + active, proving folded rows round-trip through IDB.
+    for (let i = 0; i < 13; i++) await drawStroke(-140 + i * 18, -80 + (i % 3) * 20, i * 0.4);
+    const cManyLive = await count();
+    await forceHide(); await sleep(200);
+    const meta2Folded = await idbGet("meta2");
+    ok("eviction moved entries into folded (meta2.foldedIds populated)",
+      Array.isArray(meta2Folded?.foldedIds) && meta2Folded.foldedIds.length > 0,
+      `foldedIds=${JSON.stringify(meta2Folded?.foldedIds)}`);
+    await reload();
+    const cManyBoot = await count();
+    ok("reload reconstructs base + folded + active (paint preserved)",
+      cManyBoot > 0 && Math.abs(cManyBoot - cManyLive) < cManyLive * 0.1,
+      `boot=${cManyBoot} live=${cManyLive}`);
+
     const mismatches = logs.filter((l) => /shadow verify mismatch/.test(l));
     const errors = logs.filter((l) => /error|exception|is not a function/i.test(l) && !/mismatch|persist failed|migration persist|boot failed|boot error/.test(l));
     ok("no shadow verify mismatches", mismatches.length === 0, mismatches.slice(0, 2).join(" | "));

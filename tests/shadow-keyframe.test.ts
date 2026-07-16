@@ -128,6 +128,7 @@ describe("rollback: v1 code reads a v2 DB", () => {
         layers: [{ layerId: "L0", blob: new Blob(["b"]), w: 256, h: 256 }],
         clouds: [],
       },
+      folded: [],
       entries: [
         {
           id: 1,
@@ -164,6 +165,7 @@ describe("rollback: v1 code reads a v2 DB", () => {
       epoch: { cssW: 256, cssH: 256, dpr: 1 },
       pointer: 0,
       base: { id: 0, config: {}, layers: [], clouds: [] },
+      folded: [],
       entries: [],
     });
     expect(backend.store.has("meta2")).toBe(false);
