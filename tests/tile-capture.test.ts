@@ -177,8 +177,29 @@ describe("putRect / countDiffs", () => {
 });
 
 describe("readUndoTilesMode", () => {
-  it("defaults to shadow with no localStorage", () => {
-    expect(readUndoTilesMode()).toBe("shadow");
+  it("defaults to on with no localStorage", () => {
+    expect(readUndoTilesMode()).toBe("on");
+  });
+
+  it("honors the explicit off/shadow escape hatches, defaults unknown to on", () => {
+    const store = new Map<string, string>();
+    const prev = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => store.set(k, v),
+      removeItem: (k: string) => store.delete(k),
+    };
+    try {
+      expect(readUndoTilesMode()).toBe("on"); // unset
+      store.set("nekudot.undoTiles", "off");
+      expect(readUndoTilesMode()).toBe("off");
+      store.set("nekudot.undoTiles", "shadow");
+      expect(readUndoTilesMode()).toBe("shadow");
+      store.set("nekudot.undoTiles", "nonsense");
+      expect(readUndoTilesMode()).toBe("on"); // unknown value -> default
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
   });
 });
 
