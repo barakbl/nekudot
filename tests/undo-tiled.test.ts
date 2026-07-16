@@ -112,11 +112,22 @@ describe("TiledUndoStore", () => {
     const store = new TiledUndoStore(backend);
     await store.save(chain([entry(1)], 1));
     backend.failNext = true;
-    await store.save(chain([entry(1), entry(2)], 2)); // batch throws, caught
+    await store.save(chain([entry(1), entry(2)], 2)).catch(() => {}); // now propagates
     expect(backend.store.has("entry:2")).toBe(false);
     backend.batches = [];
     await store.save(chain([entry(1), entry(2)], 2)); // retry
     expect(puts(backend.batches[0])).toContain("entry:2"); // entry:2 re-attempted
+    expect(backend.store.has("entry:2")).toBe(true);
+  });
+
+  it("save propagates the write error but keeps the queue alive", async () => {
+    const store = new TiledUndoStore(backend);
+    await store.save(chain([entry(1)], 1));
+    backend.failNext = true;
+    // The caller (AppHistory quota recovery) needs to see the failure...
+    await expect(store.save(chain([entry(1), entry(2)], 2))).rejects.toThrow();
+    // ...and a later save on the same store still lands (the chain wasn't poisoned).
+    await store.save(chain([entry(1), entry(2)], 2));
     expect(backend.store.has("entry:2")).toBe(true);
   });
 

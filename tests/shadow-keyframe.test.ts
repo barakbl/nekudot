@@ -159,15 +159,18 @@ describe("rollback: v1 code reads a v2 DB", () => {
     // A prior session's v1 stack is the rollback artifact / migration source.
     const [older, tip] = [snap("older"), snap("tip")];
     await new UndoStore<UndoSnapshot>(backend).save(state([older, tip], 1));
-    // The migration's v2 write throws (quota etc): meta2 must NOT land...
+    // The migration's v2 write throws (quota etc): meta2 must NOT land. save now
+    // propagates the failure (AppHistory catches it), so swallow it here.
     backend.failNext = true;
-    await new TiledUndoStore(backend).save({
-      epoch: { cssW: 256, cssH: 256, dpr: 1 },
-      pointer: 0,
-      base: { id: 0, config: {}, layers: [], clouds: [] },
-      folded: [],
-      entries: [],
-    });
+    await new TiledUndoStore(backend)
+      .save({
+        epoch: { cssW: 256, cssH: 256, dpr: 1 },
+        pointer: 0,
+        base: { id: 0, config: {}, layers: [], clouds: [] },
+        folded: [],
+        entries: [],
+      })
+      .catch(() => {});
     expect(backend.store.has("meta2")).toBe(false);
     // ...and the untouched v1 stack still restores the pointer paint.
     const stillThere = await new UndoStore<UndoSnapshot>(backend).load();

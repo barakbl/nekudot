@@ -198,6 +198,30 @@ describe("TileShadow.hydrate: boot round-trip", () => {
     expect(px.data.every((v) => v === 0)).toBe(true); // base was seeded blank
   });
 
+  it("rebuilds every FIFO position after an eviction reload (folded present)", async () => {
+    // maxUndo 3 forces eviction into folded; serialize + hydrate, then mimic
+    // AppHistory.rebuildManagerStack: reconstruct every pointer 0..entryCount.
+    const host = new FakeHost(512, 512, 1, ["L0"]);
+    const shadow = new TileShadow(host, 3);
+    shadow.seedBase();
+    for (let n = 1; n <= 5; n++) {
+      host.paint("L0", R(20 + n * 30, 20, 24, 24), [n & 255, 0, 0, 255]);
+      host.markDirty("L0", R(16 + n * 30, 16, 32, 32));
+      await shadow.commit(await encodeCut(captureCut(host)));
+    }
+    const chain = await shadow.serialize();
+    expect(chain.folded.length).toBeGreaterThan(0); // eviction happened
+    expect(chain.pointer).toBeGreaterThan(0);
+
+    const booted = new TileShadow(new FakeHost(512, 512, 1, ["L0"]), 3);
+    await booted.hydrate(chain);
+    for (let k = 0; k <= booted.entryCount(); k++) {
+      expect(booted.configAt(k), `configAt(${k})`).not.toBeNull();
+      expect(await booted.reconstructPaintSnapshotAt(k), `reconstructAt(${k})`).not.toBeNull();
+    }
+    expect(booted.pointerIndex()).toBeGreaterThan(0); // undo is available post-reload
+  });
+
   it("configAt tracks the entry configs across the window", async () => {
     const { shadow } = await buildChain();
     const chain = await shadow.serialize();

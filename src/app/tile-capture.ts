@@ -376,6 +376,23 @@ export class TileShadow {
     this.base.id = this.nextBaseId++;
   }
 
+  // ---- quota recovery hooks (paint-safe shrink levers) -----------------------
+
+  // Drop the redo tail (entries above the pointer). Paint-safe: it only discards
+  // not-yet-reached redo states, freeing their persisted rows. Returns whether it
+  // removed anything.
+  dropRedoTail(): boolean {
+    if (this.pointer >= this.entries.length) return false;
+    this.entries.length = this.pointer;
+    return true;
+  }
+
+  // Force a compaction regardless of the threshold: bake all folded into the base so
+  // the store can delete the folded rows. Paint-safe (the floor is preserved).
+  compactNow(): Promise<void> {
+    return this.compact();
+  }
+
   // Mirror a live undo/redo. Falls out of sync if the step leaves the captured
   // window (undo below the base, or redo above the captured tip).
   step(kind: "undo" | "redo"): void {
