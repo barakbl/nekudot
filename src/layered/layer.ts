@@ -1,5 +1,6 @@
-import { CanvasRenderer, type IRenderer, type RendererInit } from "../renderer";
+import type { IRenderer, RendererInit } from "../renderer";
 import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
+import { TrackingRenderer } from "./dirty";
 import type { LayerConfig } from "./schema";
 
 // One canvas per layer. Paint and connections both draw onto this surface.
@@ -21,7 +22,9 @@ export class Layer {
     this.canvas = this.createCanvas();
     const ctx = this.canvas.getContext("2d");
     if (!ctx) throw new Error("Failed to get 2D canvas context");
-    this.renderer = new CanvasRenderer(ctx, { dpr, ...rendererInit });
+    // The single per-layer draw sink; TrackingRenderer records dirty regions and
+    // forwards every draw unchanged (record-only, output identical).
+    this.renderer = new TrackingRenderer(ctx, { dpr, ...rendererInit });
     this.applyZIndex();
     this.applyOpacity();
   }

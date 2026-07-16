@@ -1,6 +1,6 @@
-import { CanvasRenderer } from "../renderer";
 import type { IRenderer, RendererInit } from "../renderer";
 import { sizeCanvasForDpr, type CanvasSize } from "../canvas-size";
+import { TrackingRenderer } from "./dirty";
 import { dlog, diagnosticOverride } from "../diagnostics";
 
 // Per-stroke "wet" buffer for continuous strokes. While a partly-transparent
@@ -11,7 +11,7 @@ import { dlog, diagnosticOverride } from "../diagnostics";
 // reused across strokes.
 export class WetStrokeBuffer {
   private canvas: HTMLCanvasElement | null = null;
-  private renderer: CanvasRenderer | null = null;
+  private renderer: TrackingRenderer | null = null;
   private active = false;
   private alpha = 1;
 
@@ -62,7 +62,9 @@ export class WetStrokeBuffer {
     }
     // Resizing the canvas reset its context; rebuild a renderer that mirrors the
     // active stroke style but paints opaque (opacity is applied once on commit).
-    this.renderer = new CanvasRenderer(ctx, {
+    // A fresh TrackingRenderer per engage = a fresh dirty tracker, unioned onto
+    // the layer at commit (end() -> layer.drawSource), never leaking across strokes.
+    this.renderer = new TrackingRenderer(ctx, {
       ...init,
       dpr: this.dpr,
       globalAlpha: 1,
