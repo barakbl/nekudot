@@ -92,6 +92,9 @@ class FakeHost implements TileHost {
   async decodeFull(blob: Blob) {
     return decodePatch(blob);
   }
+  async rawToBlob(img: RawImage) {
+    return encodePatch(img);
+  }
 
   private getLive(id: string): RawImage {
     const img = this.live.get(id);
@@ -233,6 +236,20 @@ describe("TileShadow capture -> reconstruct -> verify round-trip", () => {
     // The span pixels captured the pre-mutation colour.
     const px = await decodePatch(entry.patches[0].blob);
     expect(Array.from(px.data.slice(0, 4))).not.toEqual([9, 9, 9, 255]);
+  });
+
+  it("serializes the chain for v2 persistence (base blobs + entry ids + epoch)", async () => {
+    const { host, shadow } = seeded();
+    host.paint("L0", R(20, 20, 40, 40), [1, 2, 3, 255]);
+    host.markDirty("L0", R(16, 16, 48, 48));
+    await captureCommit(host, shadow);
+    const chain = await shadow.serialize();
+    expect(chain.pointer).toBe(1);
+    expect(chain.epoch).toEqual({ cssW: 512, cssH: 512, dpr: 1 });
+    expect(chain.base.layers.map((l) => l.layerId)).toEqual(["L0"]);
+    expect(chain.base.layers[0].blob).toBeInstanceOf(Blob);
+    expect(chain.entries.map((e) => e.id)).toEqual([0]);
+    expect(chain.entries[0].patches[0].blob).toBeInstanceOf(Blob);
   });
 });
 
