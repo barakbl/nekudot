@@ -17,6 +17,11 @@ import type { StoredBase, StoredChain, StoredEntry, TileEpoch } from "../store/u
 const TILE = 256; // device px per undo-tile
 const DEGRADE_FRACTION = 0.4; // > this fraction of the grid dirty -> full-layer patch
 const MAX_SPANS = 8; // > this many merged spans -> full-layer patch
+// Eviction bounds (PR11). The active undo window is capped by count (maxUndo) AND
+// bytes (this budget); evicted entries pile up in `folded` until it passes the
+// compaction threshold, at which point they bake into the base in one step.
+export const DEFAULT_BUDGET_BYTES = 32 * 1024 * 1024;
+const COMPACT_THRESHOLD = 30;
 
 const FLAG_KEY = "nekudot.undoTiles";
 export type UndoTilesMode = "off" | "shadow" | "on";
@@ -259,7 +264,11 @@ function deviceScale(host: TileHost): number {
 export class TileShadow {
   private base: BaseKeyframe | null = null;
   private entries: TileEntry[] = [];
-  private pointer = 0; // index into [base, entry0, entry1, ...]; 0 = base only
+  // Entries evicted from the undo window but not yet compacted into the base. They
+  // sit below the floor - always applied, never undoable - so a reconstruction is
+  // base + folded + entries[0..pointer-1]. Bounded by COMPACT_THRESHOLD.
+  private folded: TileEntry[] = [];
+  private pointer = 0; // index into [floor, entry0, entry1, ...]; 0 = floor (base + folded)
   // False once an undo/redo leaves the captured window (e.g. undo past the boot
   // seed, or redo into stack history this session never captured). Verifying then
   // would false-positive, so we skip until the next push re-establishes the tip.
@@ -277,7 +286,14 @@ export class TileShadow {
     private readonly host: TileHost,
     private readonly maxUndo: number,
     private readonly onMismatch: (detail: string) => void = () => {},
+    private budget = DEFAULT_BUDGET_BYTES,
   ) {}
+
+  // Refine the byte budget once boot has read navigator.storage.estimate(); until
+  // then the conservative default applies.
+  setBudget(bytes: number): void {
+    if (bytes > 0) this.budget = bytes;
+  }
 
   // Seed the base keyframe from the current live state (the initial push).
   seedBase(): void {
@@ -292,6 +308,7 @@ export class TileShadow {
     for (const l of this.host.layers()) this.host.takeLayerDirty(l.id);
     this.host.takeJournal();
     this.entries = [];
+    this.folded = [];
     this.pointer = 0;
     this.synced = true;
     this.approx.clear();
@@ -313,8 +330,10 @@ export class TileShadow {
     await this.commit(await encodeCut(cut));
   }
 
-  // Append a captured delta, mirroring UndoManager.push: drop any redo tail, then
-  // fold the oldest entry into the base once the stack passes maxUndo.
+  // Append a captured delta, mirroring UndoManager.push: drop any redo tail, evict
+  // the window down to its bounds (meta-only), then compact if folded has grown too
+  // large. After a commit the pointer sits at the tip, so eviction only ever folds
+  // entries strictly below it.
   async commit(entry: TileEntry): Promise<void> {
     if (!this.base) return;
     if (this.pointer < this.entries.length) this.entries.length = this.pointer;
@@ -322,10 +341,39 @@ export class TileShadow {
     this.entries.push(entry);
     this.pointer = this.entries.length;
     this.synced = true;
-    while (this.entries.length + 1 > this.maxUndo) {
-      await this.foldOldestIntoBase();
+    this.evict();
+    if (this.folded.length > COMPACT_THRESHOLD) await this.compact();
+  }
+
+  // Move the oldest active entries into `folded` (cheap: no pixel work) while the
+  // window is over its count OR byte bound. Keeps at least one active entry, so a
+  // user sitting at the stack bottom (a single huge stroke) overshoots transiently
+  // rather than losing the entry they just made. pointer tracks entries.length.
+  private evict(): void {
+    while (
+      this.entries.length > 1 &&
+      (this.entries.length + 1 > this.maxUndo || this.activeBytes() > this.budget)
+    ) {
+      const oldest = this.entries.shift();
+      if (!oldest) break;
+      this.folded.push(oldest);
       this.pointer--;
     }
+  }
+
+  private activeBytes(): number {
+    return this.entries.reduce((n, e) => n + e.bytes, 0);
+  }
+
+  // Bake every folded entry into the base (the deferred cost of eviction), replacing
+  // the base with a new version so the store rewrites it and drops the folded rows
+  // in one tx. State is preserved: base + folded reconstructs the same floor before
+  // and after.
+  private async compact(): Promise<void> {
+    if (!this.base || this.folded.length === 0) return;
+    for (const entry of this.folded) await this.mergeEntryIntoBase(entry);
+    this.folded = [];
+    this.base.id = this.nextBaseId++;
   }
 
   // Mirror a live undo/redo. Falls out of sync if the step leaves the captured
@@ -344,6 +392,7 @@ export class TileShadow {
   reset(): void {
     this.base = null;
     this.entries = [];
+    this.folded = [];
     this.pointer = 0;
     this.synced = true;
     this.approx.clear();
@@ -357,10 +406,10 @@ export class TileShadow {
     let layerDiffs = 0;
     for (const layer of this.host.layers()) {
       // Skip full-snapshot layers: no tile bounds to test, and PNG isn't exact.
-      const activeFull = active.some((e) =>
-        e.patches.some((p) => p.layerId === layer.id && p.full),
-      );
-      if (activeFull || this.approx.has(layer.id)) continue;
+      const hasFull = this.folded
+        .concat(active)
+        .some((e) => e.patches.some((p) => p.layerId === layer.id && p.full));
+      if (hasFull || this.approx.has(layer.id)) continue;
       const recon = await this.reconstructLayer(layer.id, active);
       if (!recon) continue; // a layer not in this target (added later) - skip
       const live = this.host.readLayer(layer.id);
@@ -381,7 +430,8 @@ export class TileShadow {
     const base = this.base?.layers.get(layerId);
     if (!base) return null;
     const out = cloneImage(base);
-    for (const entry of active) {
+    // folded sits below the floor: always applied, before the active window.
+    for (const entry of this.folded.concat(active)) {
       for (const patch of entry.patches) {
         if (patch.layerId !== layerId) continue;
         const px = patch.full
@@ -394,14 +444,14 @@ export class TileShadow {
   }
 
   // Rebuild each cloud's point-value multiset at a pointer: base clouds + forward
-  // replay of the active entries' map ops (never inverted).
+  // replay of the folded then active entries' map ops (never inverted).
   private reconstructCloudsAt(active: TileEntry[]): Map<string, MapPoint[]> {
     const seed: MapOp[] = (this.base?.clouds ?? []).map((c) => ({
       mapId: c.mapId,
       op: "add",
       points: c.points,
     }));
-    return replayMapPoints(seed.concat(...active.map((e) => e.mapOps)));
+    return replayMapPoints(seed.concat(...this.folded.concat(active).map((e) => e.mapOps)));
   }
 
   private epoch(): TileEpoch {
@@ -409,22 +459,21 @@ export class TileShadow {
     return { cssW: css.width, cssH: css.height, dpr: deviceScale(this.host) };
   }
 
-  // Serialize the whole chain for v2 persistence: base layers -> PNG blobs, entries
-  // as-is (their patches are already blobs).
+  // Serialize the whole chain for v2 persistence: base layers -> PNG blobs, folded +
+  // active entries as-is (their patches are already blobs).
   async serialize(): Promise<StoredChain> {
     if (!this.base) throw new Error("tile shadow: nothing to serialize");
     const layers: StoredBase["layers"] = [];
     for (const [layerId, img] of this.base.layers)
       layers.push({ layerId, blob: await this.host.rawToBlob(img), w: img.width, h: img.height });
     const base: StoredBase = { id: this.base.id, config: this.base.config, layers, clouds: this.base.clouds };
-    const entries: StoredEntry[] = this.entries.map((e) => ({
-      id: e.id,
-      config: e.config,
-      bytes: e.bytes,
-      mapOps: e.mapOps,
-      patches: e.patches.map((p) => ({ layerId: p.layerId, rect: p.rect, blob: p.blob, full: p.full })),
-    }));
-    return { epoch: this.epoch(), pointer: this.pointer, base, entries };
+    return {
+      epoch: this.epoch(),
+      pointer: this.pointer,
+      base,
+      folded: this.folded.map(toStoredEntry),
+      entries: this.entries.map(toStoredEntry),
+    };
   }
 
   // Reconstruct the target state (base + deltas up to pointer) as a PaintSnapshot,
@@ -489,8 +538,9 @@ export class TileShadow {
     this.host.takeJournal();
   }
 
-  // Load a persisted v2 chain (boot): base blobs decode back to RawImage, entries
-  // carry their patch blobs as-is, then any pointer reconstructs as if live-captured.
+  // Load a persisted v2 chain (boot): base blobs decode back to RawImage, folded +
+  // active entries carry their patch blobs as-is, then any pointer reconstructs as
+  // if live-captured.
   async hydrate(chain: StoredChain): Promise<void> {
     const layers = new Map<string, RawImage>();
     for (const l of chain.base.layers)
@@ -501,25 +551,19 @@ export class TileShadow {
       layers,
       clouds: chain.base.clouds as Cloud[],
     };
-    this.entries = chain.entries.map((e) => ({
-      id: e.id,
-      config: e.config as LayersConfig,
-      patches: e.patches.map((p) => ({
-        layerId: p.layerId,
-        rect: p.rect,
-        blob: p.blob,
-        full: p.full,
-      })),
-      mapOps: e.mapOps as MapOp[],
-      bytes: e.bytes,
-    }));
+    this.folded = chain.folded.map(fromStoredEntry);
+    this.entries = chain.entries.map(fromStoredEntry);
     this.pointer = chain.pointer;
     this.nextBaseId = chain.base.id + 1;
-    this.nextEntryId = this.entries.reduce((m, e) => Math.max(m, e.id + 1), 0);
+    this.nextEntryId = this.folded
+      .concat(this.entries)
+      .reduce((m, e) => Math.max(m, e.id + 1), 0);
     this.synced = true;
     // A full-layer patch in the chain is PNG-approximate; exact verify must skip it.
     this.approx = new Set(
-      this.entries.flatMap((e) => e.patches.filter((p) => p.full).map((p) => p.layerId)),
+      this.folded
+        .concat(this.entries)
+        .flatMap((e) => e.patches.filter((p) => p.full).map((p) => p.layerId)),
     );
   }
 
@@ -534,13 +578,12 @@ export class TileShadow {
     return false;
   }
 
-  private async foldOldestIntoBase(): Promise<void> {
-    if (!this.base || this.entries.length === 0) return;
-    const oldest = this.entries.shift();
-    if (!oldest) return;
-    // Composite the oldest delta onto each base layer, and its map ops into the
-    // base clouds, so base + remaining entries still reconstructs every state.
-    for (const patch of oldest.patches) {
+  // Composite one entry's patches onto each base layer and replay its map ops into
+  // the base clouds, so base + remaining entries still reconstructs every state.
+  // Does not bump base.id - compact() does that once, after merging the whole batch.
+  private async mergeEntryIntoBase(entry: TileEntry): Promise<void> {
+    if (!this.base) return;
+    for (const patch of entry.patches) {
       const base = this.base.layers.get(patch.layerId);
       if (!base) continue;
       const px = patch.full
@@ -554,15 +597,34 @@ export class TileShadow {
       op: "add",
       points: c.points,
     }));
-    const folded = replayMapPoints(seed.concat(oldest.mapOps));
-    this.base.clouds = [...folded].map(([mapId, points]) => ({ mapId, points }));
-    this.base.config = oldest.config;
-    this.base.id = this.nextBaseId++; // a new base version for the store to persist
+    const merged = replayMapPoints(seed.concat(entry.mapOps));
+    this.base.clouds = [...merged].map(([mapId, points]) => ({ mapId, points }));
+    this.base.config = entry.config;
   }
 }
 
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
+}
+
+function toStoredEntry(e: TileEntry): StoredEntry {
+  return {
+    id: e.id,
+    config: e.config,
+    bytes: e.bytes,
+    mapOps: e.mapOps,
+    patches: e.patches.map((p) => ({ layerId: p.layerId, rect: p.rect, blob: p.blob, full: p.full })),
+  };
+}
+
+function fromStoredEntry(e: StoredEntry): TileEntry {
+  return {
+    id: e.id,
+    config: e.config as LayersConfig,
+    bytes: e.bytes,
+    mapOps: e.mapOps as MapOp[],
+    patches: e.patches.map((p) => ({ layerId: p.layerId, rect: p.rect, blob: p.blob, full: p.full })),
+  };
 }
 
 // The browser pixel surface over a live LayerManager. Only its methods touch the

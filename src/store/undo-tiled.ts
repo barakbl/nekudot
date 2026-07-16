@@ -33,6 +33,9 @@ export type StoredChain = {
   epoch: TileEpoch;
   pointer: number;
   base: StoredBase;
+  // Evicted-from-the-undo-window entries, kept below the floor until compaction
+  // bakes them into the base. Always applied before `entries` on reconstruction.
+  folded: StoredEntry[];
   entries: StoredEntry[];
 };
 
@@ -41,6 +44,7 @@ type Meta2 = {
   epoch: TileEpoch;
   pointer: number;
   baseId: number;
+  foldedIds: number[];
   entryIds: number[];
 };
 
@@ -61,18 +65,26 @@ function isMeta2(m: unknown): m is Meta2 {
     x.version === 2 &&
     typeof x.baseId === "number" &&
     typeof x.pointer === "number" &&
-    Array.isArray(x.entryIds) &&
-    x.entryIds.every((i) => typeof i === "number") &&
+    isNumberArray(x.entryIds) &&
+    // foldedIds was added in PR11; a meta2 written before it (no folded rows) is
+    // still valid and loads with an empty folded list.
+    (x.foldedIds === undefined || isNumberArray(x.foldedIds)) &&
     typeof x.epoch === "object" &&
     x.epoch !== null
   );
 }
 
+function isNumberArray(v: unknown): v is number[] {
+  return Array.isArray(v) && v.every((i) => typeof i === "number");
+}
+
 export class TiledUndoStore {
   private backend: TiledBackend;
-  // Ids already persisted, so a save only writes the base/entries that are new.
+  // Ids already persisted, so a save only writes the base/rows that are new. Rows
+  // cover BOTH the folded and active entries - they share one `entry:<id>` key
+  // namespace (ids are globally unique), so this one set tracks all of them.
   private savedBaseId = -1;
-  private savedEntryIds = new Set<number>();
+  private savedRowIds = new Set<number>();
   private chain: Promise<void> = Promise.resolve();
 
   constructor(backend?: TiledBackend) {
@@ -93,21 +105,23 @@ export class TiledUndoStore {
       if (chain.base.id !== this.savedBaseId) {
         ops.push({ type: "put", key: baseKey(chain.base.id), value: chain.base });
       }
-      const nextEntryIds = new Set<number>();
-      for (const entry of chain.entries) {
-        nextEntryIds.add(entry.id);
-        if (!this.savedEntryIds.has(entry.id))
+      const nextRowIds = new Set<number>();
+      for (const entry of [...chain.folded, ...chain.entries]) {
+        nextRowIds.add(entry.id);
+        if (!this.savedRowIds.has(entry.id))
           ops.push({ type: "put", key: entryKey(entry.id), value: entry });
       }
-      // Delete rows that fell out of the chain (evicted/folded or truncated redo tail).
-      for (const id of this.savedEntryIds)
-        if (!nextEntryIds.has(id)) ops.push({ type: "delete", key: entryKey(id) });
+      // Delete rows that fell out (truncated redo tail, or folded rows a compaction
+      // baked into a new base). A compaction's base rewrite + these deletes land in
+      // this one tx, so the store never has folded rows without a base to hold them.
+      for (const id of this.savedRowIds)
+        if (!nextRowIds.has(id)) ops.push({ type: "delete", key: entryKey(id) });
       if (this.savedBaseId >= 0 && this.savedBaseId !== chain.base.id)
         ops.push({ type: "delete", key: baseKey(this.savedBaseId) });
       ops.push({ type: "put", key: META2_KEY, value: this.meta(chain) });
       await this.backend.batch(ops);
       this.savedBaseId = chain.base.id;
-      this.savedEntryIds = nextEntryIds;
+      this.savedRowIds = nextRowIds;
     });
   }
 
@@ -120,32 +134,41 @@ export class TiledUndoStore {
       if (!isMeta2(meta)) return null;
       const base = await this.backend.get<StoredBase>(baseKey(meta.baseId));
       if (!base) return null;
-      const entries: StoredEntry[] = [];
-      for (const id of meta.entryIds) {
-        const entry = await this.backend.get<StoredEntry>(entryKey(id));
-        if (!entry) {
-          console.warn("TiledUndoStore.load: missing entry row, dropping chain");
-          return null;
-        }
-        entries.push(entry);
-      }
+      const foldedIds = meta.foldedIds ?? [];
+      const folded = await this.loadRows(foldedIds);
+      const entries = await this.loadRows(meta.entryIds);
+      if (!folded || !entries) return null;
       this.savedBaseId = meta.baseId;
-      this.savedEntryIds = new Set(meta.entryIds);
-      return { epoch: meta.epoch, pointer: meta.pointer, base, entries };
+      this.savedRowIds = new Set([...foldedIds, ...meta.entryIds]);
+      return { epoch: meta.epoch, pointer: meta.pointer, base, folded, entries };
     } catch (e) {
       console.warn("TiledUndoStore.load failed", e);
       return null;
     }
   }
 
+  // Fetch a list of entry rows in order; null if any is missing (holed chain).
+  private async loadRows(ids: readonly number[]): Promise<StoredEntry[] | null> {
+    const rows: StoredEntry[] = [];
+    for (const id of ids) {
+      const entry = await this.backend.get<StoredEntry>(entryKey(id));
+      if (!entry) {
+        console.warn("TiledUndoStore.load: missing entry row, dropping chain");
+        return null;
+      }
+      rows.push(entry);
+    }
+    return rows;
+  }
+
   clear(): Promise<void> {
     return this.write(async () => {
       const ops: BatchOp[] = [{ type: "delete", key: META2_KEY }];
       if (this.savedBaseId >= 0) ops.push({ type: "delete", key: baseKey(this.savedBaseId) });
-      for (const id of this.savedEntryIds) ops.push({ type: "delete", key: entryKey(id) });
+      for (const id of this.savedRowIds) ops.push({ type: "delete", key: entryKey(id) });
       await this.backend.batch(ops);
       this.savedBaseId = -1;
-      this.savedEntryIds = new Set();
+      this.savedRowIds = new Set();
     });
   }
 
@@ -155,6 +178,7 @@ export class TiledUndoStore {
       epoch: chain.epoch,
       pointer: chain.pointer,
       baseId: chain.base.id,
+      foldedIds: chain.folded.map((e) => e.id),
       entryIds: chain.entries.map((e) => e.id),
     };
   }
