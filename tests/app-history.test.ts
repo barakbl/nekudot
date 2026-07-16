@@ -167,6 +167,23 @@ describe("AppHistory serialization", () => {
     expect(text).toContain("stack:"); // the backend save tap reported bytes
   });
 
+  // Construct with the undoTiles flag forced (default is "on" since PR12; these
+  // tests exercise the shadow-only path, so they pin it). The flag is read once in
+  // the constructor, so the localStorage stub only needs to cover that call.
+  const withFlag = (value: string, make: () => AppHistory): AppHistory => {
+    const prev = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (k: string) => (k === "nekudot.undoTiles" ? value : null),
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    try {
+      return make();
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = prev;
+    }
+  };
+
   // A blank 1-layer tile host; every stroke is a no-op delta, so the shadow
   // reconstructs the base exactly and never reports a mismatch.
   const blankImg = (): RawImage => ({ data: new Uint8ClampedArray(256 * 256 * 4), width: 256, height: 256 });
@@ -186,7 +203,7 @@ describe("AppHistory serialization", () => {
 
   it("shadow verifies a clean push without reporting a mismatch", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const h = new AppHistory(manager, 10, new UndoStats({ enabled: false }), fakeHost());
+    const h = withFlag("shadow", () => new AppHistory(manager, 10, new UndoStats({ enabled: false }), fakeHost()));
     await h.init(async () => {});
     await h.push("stroke 1");
     await h.undo(async () => {});
@@ -201,7 +218,7 @@ describe("AppHistory serialization", () => {
         throw new Error("no canvas");
       },
     });
-    const h = new AppHistory(manager, 10, new UndoStats({ enabled: false }), boom);
+    const h = withFlag("shadow", () => new AppHistory(manager, 10, new UndoStats({ enabled: false }), boom));
     await h.init(async () => {}); // seedBase throws -> shadow disabled, init still resolves
     await h.push("stroke 1"); // still works
     expect(await h.undo(async () => {})).toBe("stroke 1");

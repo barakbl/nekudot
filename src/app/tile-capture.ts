@@ -26,18 +26,19 @@ const COMPACT_THRESHOLD = 30;
 const FLAG_KEY = "nekudot.undoTiles";
 export type UndoTilesMode = "off" | "shadow" | "on";
 
-// Default is "shadow": capture + verify for everyone, live path unchanged (the
-// soak). "on" is reserved for the real restore swap (a later PR) and behaves as
-// shadow here. Read once at boot; guarded for the bare test env.
+// Default is "on" (PR12): the tile chain drives undo/redo restore + persistence,
+// after the shadow soak proved the dirty bounds. "off" (kill switch) and "shadow"
+// (capture + verify only, the old live path) remain as explicit escape hatches.
+// Read once at boot; guarded for the bare test env.
 export function readUndoTilesMode(): UndoTilesMode {
   try {
-    if (typeof localStorage === "undefined") return "shadow";
+    if (typeof localStorage === "undefined") return "on";
     const raw = localStorage.getItem(FLAG_KEY)?.toLowerCase();
     if (raw === "off") return "off";
-    if (raw === "on") return "on";
-    return "shadow";
+    if (raw === "shadow") return "shadow";
+    return "on";
   } catch {
-    return "shadow";
+    return "on";
   }
 }
 

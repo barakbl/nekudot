@@ -64,6 +64,18 @@ async function main() {
     if (!(await waitFor(() => E(`!!document.querySelector('.stage')`), 30000))) throw new Error("app did not boot");
     await sleep(400);
 
+    // ---- Phase 0: NO flag set -> on-mode is the default (PR12) ------------------
+    await E(`localStorage.removeItem('nekudot.undoTiles');localStorage.setItem('app.eventLog','true');localStorage.setItem('app.onboarded','true');localStorage.setItem('app.opacity','1');localStorage.setItem('app.size','8');true`);
+    await clearDbs();
+    await reload();
+    await drawStroke(-70, 20, 0.5);
+    const cDefault = await count();
+    await forceHide(); await sleep(200);
+    const meta2Default = await idbGet("meta2");
+    ok("no flag set -> tile undo is ON by default (v2 chain written)",
+      cDefault > 0 && meta2Default?.version === 2,
+      `paint=${cDefault} meta2=${JSON.stringify(meta2Default?.version)}`);
+
     // ---- Phase A: shadow mode writes the v1 full stack (pre-migration) ----------
     await E(`localStorage.setItem('nekudot.undoTiles','shadow');localStorage.setItem('app.eventLog','true');localStorage.setItem('app.onboarded','true');localStorage.setItem('app.opacity','1');localStorage.setItem('app.size','8');true`);
     await clearDbs();
