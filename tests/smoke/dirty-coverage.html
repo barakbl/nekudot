@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Dirty-coverage smoke - trackers cover every painted pixel</title>
+    <style>
+      body { margin: 0; background: #1e1e1e; color: #ddd; font: 13px system-ui, sans-serif; padding: 16px; }
+      pre { white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <pre id="log">running…</pre>
+    <script type="module">
+      // In-browser harness for the PR4 dirty-tracker coverage gate. Per hard tool:
+      // build a real GPU-accelerated offscreen LayerManager (off-screen attach, not
+      // detached - see offscreen.ts), drive one stroke through the live funnel order,
+      // then assert every changed pixel falls inside that layer's tracked dirty rects
+      // (too-small bound = uncovered pixels = a real undo paint-loss bug). The runner
+      // reads window.__coverageResult.
+      import { createOffscreenReplayWorld } from "/src/replay/offscreen.ts";
+      import { MemoryStore } from "/src/replay/bare-world.ts";
+      import { RoundBrush } from "/src/brushes/round.ts";
+      import { SprayBrush } from "/src/brushes/spray.ts";
+      import { WispBrush } from "/src/brushes/wisp.ts";
+      import { MOUSE_SAMPLE } from "/src/pen.ts";
+
+      const W = 400, H = 320, SEED = 20260716;
+      const SIZE = { width: W, height: H };
+      // Some brushes read performance.now() for cursor/preview; freeze it (harmless,
+      // matches all-render.html). Wisp/Spray take the clock as a call argument.
+      let CLOCK = 1000;
+      performance.now = () => CLOCK;
+
+      // A curved interior gesture with whitespace - a real stroke, not a saturating scribble.
+      function gesture() {
+        const pts = [];
+        for (let i = 0; i <= 14; i++) {
+          const t = i / 14;
+          pts.push([90 + t * 220, 120 + 70 * Math.sin(t * Math.PI * 1.25)]);
+        }
+        return pts;
+      }
+
+      const setDial = (brush, key, val) => {
+        const s = brush.getSettings().find((s) => s.key === key);
+        if (!s?.onChange) throw new Error(`no dial "${key}" on this brush`);
+        s.onChange(val);
+      };
+
+      const round = (host, seed, store) => new RoundBrush(host, seed, store);
+      const spray = (host, seed, store) => new SprayBrush(host, seed, store);
+      const wisp = (host, seed, store) => new WispBrush(host, seed, store);
+
+      // Opaque per-sample driver (Round/Spray). web=true so the connecting web weaves.
+      const strokeCurve = (brush, pts) => {
+        for (let i = 1; i < pts.length; i++) {
+          CLOCK += 16;
+          brush.stroke(pts[i][0], pts[i][1], true, MOUSE_SAMPLE, CLOCK);
+        }
+      };
+      // Wisp: a wandering, frame-driven plume. Advancing `time` builds particles
+      // across ~90 ticks; strokeEnd() then runs the ≤300-frame tail bake.
+      const strokeWisp = (brush, pts) => {
+        let x = pts[0][0], y = pts[0][1], t = CLOCK;
+        for (let f = 0; f < 90; f++) {
+          x += 2.0 * Math.cos(f * 0.18);
+          y += 1.4 + 1.2 * Math.sin(f * 0.13);
+          t += 1000 / 60;
+          brush.stroke(x, y, true, MOUSE_SAMPLE, t);
+        }
+        CLOCK = t;
+      };
+
+      const TOOLS = [
+        { name: "web-reach1000", make: round,
+          configure: (b) => { b.applyArtStylePreset("web"); setDial(b, "radius", 1000); }, stroke: strokeCurve },
+        { name: "web-bloom", make: round,
+          configure: (b) => { b.applyArtStylePreset("web"); setDial(b, "radius", 1000); setDial(b, "bloom", 28); setDial(b, "bloomRadius", 100); }, stroke: strokeCurve },
+        { name: "web-longfur", make: round,
+          configure: (b) => { b.applyArtStylePreset("longfur"); setDial(b, "length", 1.2); setDial(b, "radius", 1000); setDial(b, "bloom", 20); }, stroke: strokeCurve },
+        { name: "spray", make: spray, stroke: strokeCurve },
+        { name: "wisp-300frame", make: wisp, stroke: strokeWisp },
+        { name: "sym-mirror", make: round, sym: "mirror",
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        { name: "sym-radial-24", make: round, sym: "radial", symSettings: { segments: 12, mirror: true },
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        { name: "sym-concentric", make: round, sym: "concentric",
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        { name: "sym-spiral", make: round, sym: "spiral",
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        { name: "sym-tile", make: round, sym: "tile",
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        { name: "sym-tile-fill", make: round, sym: "tile", symSettings: { fillCanvas: true },
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+        // Faint, no symmetry -> engages the wet-stroke buffer, whose TrackingRenderer
+        // set is unioned onto the layer at commit (the drawSource path).
+        { name: "wet-shaded", make: round, alpha: 0.5,
+          configure: (b) => b.applyArtStylePreset("shaded"), stroke: strokeCurve },
+      ];
+
+      function readPixels(canvas) {
+        // No willReadFrequently hint: keep the canvas GPU-backed (the point of the
+        // off-screen attach); getImageData does a GPU->CPU readback.
+        return canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      }
+
+      // Count changed pixels and, of those, how many fall OUTSIDE the tracked rects.
+      function coverage(before, after, w, h, dirty) {
+        const TOL = 1; // ignore <=1/255 readback jitter; real marks are far larger
+        let mask = null;
+        if (!dirty.all) {
+          mask = new Uint8Array(w * h);
+          for (const r of dirty.rects) {
+            const x0 = Math.max(0, Math.floor(r.x));
+            const y0 = Math.max(0, Math.floor(r.y));
+            const x1 = Math.min(w - 1, Math.floor(r.x + r.w));
+            const y1 = Math.min(h - 1, Math.floor(r.y + r.h));
+            for (let py = y0; py <= y1; py++) {
+              const row = py * w;
+              for (let px = x0; px <= x1; px++) mask[row + px] = 1;
+            }
+          }
+        }
+        let changed = 0, uncovered = 0;
+        for (let i = 0, p = 0; i < after.length; i += 4, p++) {
+          const d = Math.max(
+            Math.abs(after[i] - before[i]),
+            Math.abs(after[i + 1] - before[i + 1]),
+            Math.abs(after[i + 2] - before[i + 2]),
+            Math.abs(after[i + 3] - before[i + 3]),
+          );
+          if (d > TOL) {
+            changed++;
+            if (!dirty.all && !mask[p]) uncovered++;
+          }
+        }
+        return { changed, uncovered };
+      }
+
+      function coverOne(cfg) {
+        const store = new MemoryStore();
+        const { world, manager, symmetry, dispose } = createOffscreenReplayWorld({ width: W, height: H, dpr: 1, store });
+        try {
+          symmetry.setMode(cfg.sym ?? "none");
+          for (const [k, v] of Object.entries(cfg.symSettings ?? {})) symmetry.setActiveSetting(k, v);
+
+          const alpha = cfg.alpha ?? 1;
+          world.setStrokeState({ size: 8, alpha, erase: false, strokeColor: "#3355ff", layer: manager.activeLayerId() });
+
+          const brush = cfg.make(world.host, SEED, world.store);
+          cfg.configure?.(brush);
+
+          const layers = manager.all;
+          for (const L of layers) L.renderer.tracker.take(); // reset
+          const before = layers.map((L) => readPixels(L.canvas));
+
+          const pts = gesture();
+          const [sx, sy] = pts[0];
+          symmetry.beginStroke(sx, sy, SIZE);
+          const buffered = brush.bufferedStroke(MOUSE_SAMPLE) && !symmetry.active();
+          brush.captureStrokeContext();
+          world.beginBuffer(buffered);
+          brush.strokeStart(sx, sy);
+          cfg.stroke(brush, pts);
+          brush.strokeEnd();
+          world.endBuffer(buffered);
+
+          let changed = 0, uncovered = 0, anyAll = false, rects = 0;
+          for (let li = 0; li < layers.length; li++) {
+            const after = readPixels(layers[li].canvas);
+            const dirty = layers[li].renderer.tracker.take();
+            anyAll = anyAll || dirty.all;
+            rects += dirty.rects.length;
+            const r = coverage(before[li], after, layers[li].canvas.width, layers[li].canvas.height, dirty);
+            changed += r.changed;
+            uncovered += r.uncovered;
+          }
+          return { name: cfg.name, changed, uncovered, all: anyAll, rects, buffered };
+        } finally {
+          dispose();
+        }
+      }
+
+      const results = [];
+      let error = null;
+      try {
+        for (const cfg of TOOLS) results.push(coverOne(cfg));
+      } catch (e) {
+        error = String(e?.stack || e);
+      }
+      window.__coverageResult = results;
+      window.__coverageError = error;
+      window.__coverageDone = true;
+      document.getElementById("log").textContent =
+        (error ? "ERROR: " + error + "\n\n" : "") +
+        results.map((r) => `${r.uncovered === 0 && r.changed > 0 ? "OK " : "!! "} ${r.name}: changed=${r.changed} uncovered=${r.uncovered} rects=${r.rects} all=${r.all} buffered=${r.buffered}`).join("\n");
+    </script>
+  </body>
+</html>
