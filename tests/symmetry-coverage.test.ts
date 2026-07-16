@@ -29,6 +29,8 @@ const NON_GEOMETRY = new Set([
   // Bakes a pasted image once at its placed rect (called on the raw
   // LayerManager, not the brush/symmetry proxy) - a placement, not a mark.
   "drawImageRect",
+  // Restore-only undo-tile blit; never a brush mark, so never symmetry-mirrored.
+  "blitPatch",
   "toBlob",
   // Diagnostic-only pixel/canvas readback (App settings -> Diagnostics); reads,
   // never draws, so nothing to mirror.

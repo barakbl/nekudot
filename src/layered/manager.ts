@@ -1,5 +1,5 @@
 import { createOffscreenRenderer } from "../renderer";
-import type { IRenderer, LineStyle, LineConnectType, RendererInit } from "../renderer";
+import type { DeviceRect, IRenderer, LineStyle, LineConnectType, RendererInit } from "../renderer";
 import type { Pixel } from "../neighbor-finder";
 import type { PaintHost } from "../paint-host";
 import type { Store } from "../store/base";
@@ -405,6 +405,9 @@ export class LayerManager implements PaintHost {
   }
   drawImageRect(img: CanvasImageSource, x: number, y: number, w: number, h: number): void {
     this.active.renderer.drawImageRect(img, x, y, w, h);
+  }
+  blitPatch(bmp: CanvasImageSource, dest: DeviceRect): void {
+    this.active.renderer.blitPatch(bmp, dest);
   }
   toBlob(type?: string): Promise<Blob | null> {
     return this.active.renderer.toBlob(type);
