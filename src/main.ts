@@ -611,7 +611,7 @@ layerManager.subscribe(() => {
 // AppHistory (the undo stack + paint snapshot) stays here, with its
 // init/clear/subscribe below; createUndoWiring owns the thin action wrappers.
 // layersBox is read lazily - it's created just below this block.
-const history = new AppHistory(layerManager, MAX_UNDO, undefined, createTileHost(layerManager));
+const history = new AppHistory(layerManager, MAX_UNDO, undefined, createTileHost(layerManager), showChip);
 const { pushUndo: commitUndo, activeLayerName, doUndo, doRedo } = createUndoWiring({
   history,
   layerManager,

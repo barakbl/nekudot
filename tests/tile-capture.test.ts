@@ -354,6 +354,35 @@ describe("TileShadow chain: undo/redo + evict-fold", () => {
     expect((await shadow.verify(0)).layerDiffs).toBe(0);
   });
 
+  it("dropRedoTail drops not-yet-reached redo states, staying exact", async () => {
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 10);
+    shadow.seedBase();
+    for (let n = 1; n <= 3; n++) await paintStroke(host, shadow, n);
+    shadow.step("undo"); // pointer 2, redo tail = [stroke3]
+    expect(shadow.dropRedoTail()).toBe(true);
+    const chain = await shadow.serialize();
+    expect(chain.entries.length).toBe(2); // stroke3 gone
+    expect(chain.pointer).toBe(2);
+    // Live is the 2-stroke state; reconstruction at the (unchanged) pointer is exact.
+    host.live.set("L0", blank(1024, 256));
+    for (let n = 1; n <= 2; n++) host.paint("L0", R(10 + n * 40, 10, 30, 30), [n & 255, 0, 0, 255]);
+    expect((await shadow.verify(0)).layerDiffs).toBe(0);
+    expect(shadow.dropRedoTail()).toBe(false); // nothing left above the pointer
+  });
+
+  it("compactNow forces folded into the base below the threshold, staying exact", async () => {
+    const host = new FakeHost(1024, 256, 1, ["L0"]);
+    const shadow = new TileShadow(host, 3);
+    shadow.seedBase();
+    for (let n = 1; n <= 5; n++) await paintStroke(host, shadow, n); // folded = 3, base.id 0
+    await shadow.compactNow();
+    const chain = await shadow.serialize();
+    expect(chain.folded.length).toBe(0); // baked into the base
+    expect(chain.base.id).toBeGreaterThan(0);
+    expect((await shadow.verify(0)).layerDiffs).toBe(0); // floor preserved
+  });
+
   it("500-stroke soak stays under budget and the folded cap, still exact", async () => {
     const BUDGET = 4000;
     const host = new FakeHost(1024, 256, 1, ["L0"]);

@@ -99,30 +99,38 @@ export class TiledUndoStore {
     return next;
   }
 
+  // Unlike write()/clear(), save propagates its error to the caller (AppHistory
+  // watches for QuotaExceededError to drive recovery) while keeping the write chain
+  // alive - the ids are committed only after the tx lands, so a failed save leaves
+  // nothing half-tracked and the next save retries it.
   save(chain: StoredChain): Promise<void> {
-    return this.write(async () => {
-      const ops: BatchOp[] = [];
-      if (chain.base.id !== this.savedBaseId) {
-        ops.push({ type: "put", key: baseKey(chain.base.id), value: chain.base });
-      }
-      const nextRowIds = new Set<number>();
-      for (const entry of [...chain.folded, ...chain.entries]) {
-        nextRowIds.add(entry.id);
-        if (!this.savedRowIds.has(entry.id))
-          ops.push({ type: "put", key: entryKey(entry.id), value: entry });
-      }
-      // Delete rows that fell out (truncated redo tail, or folded rows a compaction
-      // baked into a new base). A compaction's base rewrite + these deletes land in
-      // this one tx, so the store never has folded rows without a base to hold them.
-      for (const id of this.savedRowIds)
-        if (!nextRowIds.has(id)) ops.push({ type: "delete", key: entryKey(id) });
-      if (this.savedBaseId >= 0 && this.savedBaseId !== chain.base.id)
-        ops.push({ type: "delete", key: baseKey(this.savedBaseId) });
-      ops.push({ type: "put", key: META2_KEY, value: this.meta(chain) });
-      await this.backend.batch(ops);
-      this.savedBaseId = chain.base.id;
-      this.savedRowIds = nextRowIds;
-    });
+    const run = this.chain.then(() => this.commitSave(chain));
+    this.chain = run.catch(() => {});
+    return run;
+  }
+
+  private async commitSave(chain: StoredChain): Promise<void> {
+    const ops: BatchOp[] = [];
+    if (chain.base.id !== this.savedBaseId) {
+      ops.push({ type: "put", key: baseKey(chain.base.id), value: chain.base });
+    }
+    const nextRowIds = new Set<number>();
+    for (const entry of [...chain.folded, ...chain.entries]) {
+      nextRowIds.add(entry.id);
+      if (!this.savedRowIds.has(entry.id))
+        ops.push({ type: "put", key: entryKey(entry.id), value: entry });
+    }
+    // Delete rows that fell out (truncated redo tail, or folded rows a compaction
+    // baked into a new base). A compaction's base rewrite + these deletes land in
+    // this one tx, so the store never has folded rows without a base to hold them.
+    for (const id of this.savedRowIds)
+      if (!nextRowIds.has(id)) ops.push({ type: "delete", key: entryKey(id) });
+    if (this.savedBaseId >= 0 && this.savedBaseId !== chain.base.id)
+      ops.push({ type: "delete", key: baseKey(this.savedBaseId) });
+    ops.push({ type: "put", key: META2_KEY, value: this.meta(chain) });
+    await this.backend.batch(ops);
+    this.savedBaseId = chain.base.id;
+    this.savedRowIds = nextRowIds;
   }
 
   // Load the persisted chain, or null when there is no valid v2 meta / a row is

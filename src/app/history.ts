@@ -55,12 +55,16 @@ export class AppHistory {
   // The v1 backend when on-mode: kept as a typed ref so pagehide can force a flush
   // of the debounced keyframe. Null off-mode (the plain UndoStore is not debounced).
   private readonly shadowStore: ShadowKeyframeStore | null = null;
+  // Shown at most once per session when storage is full and even shrinking the chain
+  // can't make room (the on-mode delta persist gives up; in-memory history lives on).
+  private quotaToastShown = false;
 
   constructor(
     private readonly layerManager: LayerManager,
     maxUndo: number,
     stats: UndoStats = new UndoStats(),
     tileHost?: TileHost,
+    private readonly notify: (message: string) => void = () => {},
   ) {
     this.stats = stats;
     this.tilesMode = tileHost ? readUndoTilesMode() : "off";
@@ -280,8 +284,16 @@ export class AppHistory {
     try {
       await this.tiledStore.save(await this.tileShadow.serialize());
     } catch (e) {
-      console.warn("AppHistory: tile persist failed", e);
+      if (isQuotaError(e))
+        await recoverTileQuota(this.tileShadow, this.tiledStore, () => this.notifyQuota());
+      else console.warn("AppHistory: tile persist failed", e);
     }
+  }
+
+  private notifyQuota(): void {
+    if (this.quotaToastShown) return;
+    this.quotaToastShown = true;
+    this.notify("Storage is full - some undo history may not be saved.");
   }
 
   private async commitAndVerify(cut: CaptureCut): Promise<void> {
@@ -411,4 +423,44 @@ export class AppHistory {
 // saved base must be stretch-applied and reseeded rather than hydrated tile-exact.
 function sameEpoch(a: TileEpoch, b: TileEpoch): boolean {
   return a.cssW === b.cssW && a.cssH === b.cssH && a.dpr === b.dpr;
+}
+
+// IndexedDB signals a full disk with a QuotaExceededError DOMException (code 22 on
+// older engines). Matched by name so a plain-object throw is still recognized.
+function isQuotaError(e: unknown): boolean {
+  const name = (e as { name?: string } | null)?.name;
+  return name === "QuotaExceededError" || (e as { code?: number } | null)?.code === 22;
+}
+
+// The minimal shape recoverTileQuota needs - the real TileShadow, or a fake in tests.
+type QuotaShrinkable = {
+  dropRedoTail(): boolean;
+  compactNow(): Promise<void>;
+  serialize(): Promise<StoredChain>;
+};
+
+// Storage is full and the last delta save failed. Reclaim room with paint-safe
+// levers, retrying after each: first drop the redo tail (cheap), then compact the
+// folded rows into the base. If neither makes room, give up persisting this entry
+// (in-memory history stays intact) and warn the user once. Never loses live paint.
+export async function recoverTileQuota(
+  shadow: QuotaShrinkable,
+  store: { save(chain: StoredChain): Promise<void> },
+  notifyOnce: () => void,
+): Promise<void> {
+  const retry = async (): Promise<boolean> => {
+    try {
+      await store.save(await shadow.serialize());
+      return true;
+    } catch (e) {
+      if (isQuotaError(e)) return false;
+      console.warn("AppHistory: tile persist retry failed", e);
+      return true; // a non-quota error won't be fixed by shrinking; stop retrying
+    }
+  };
+  shadow.dropRedoTail();
+  if (await retry()) return;
+  await shadow.compactNow();
+  if (await retry()) return;
+  notifyOnce();
 }

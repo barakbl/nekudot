@@ -48,6 +48,7 @@ async function main() {
     // Force the debounced v1 shadow keyframe to flush (durability's pagehide hook).
     const forceHide = () => E(`window.dispatchEvent(new Event('pagehide'));true`);
     const count = () => E(`(()=>{const c=window.__replay.layerManager.all[1].canvas;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i]>10)n++;return n})()`);
+    const clickBtn = (re) => E(`(()=>{const b=[...document.querySelectorAll('button,[role=button]')].find(e=>${re}.test((e.getAttribute('aria-label')||e.title||'')));if(b&&!b.disabled){b.click();return true}return false})()`);
     // Read a value out of the nekudot-undo store.
     const idbGet = (key) => E(`(async()=>{try{const db=await new Promise((res,rej)=>{const r=indexedDB.open('nekudot-undo');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});const v=await new Promise((res,rej)=>{const req=db.transaction('stacks','readonly').objectStore('stacks').get('${key}');req.onsuccess=()=>res(req.result);req.onerror=()=>rej(req.error)});db.close();return v??null}catch(e){return null}})()`);
     const clearDbs = () => E(`(async()=>{for(const n of ['nekudot-undo','nekudot-paint'])await new Promise((res)=>{const r=indexedDB.deleteDatabase(n);r.onsuccess=r.onerror=r.onblocked=()=>res()});return true})()`);
@@ -97,20 +98,9 @@ async function main() {
       v1MetaOn?.version === 1 && Array.isArray(v1MetaOn?.rowIds) && v1MetaOn.rowIds.length === 1,
       `v1=${JSON.stringify(v1MetaOn)}`);
 
-    // ---- Phase D: dpr switch (epoch boundary) stretch-restores -----------------
-    await setDpr(2);
-    await reload();
-    const cDpr = await count();
-    ok("dpr switch (1x->2x) reload stretch-restored the paint", cDpr > 0, `paint=${cDpr} @dpr2`);
-    // and the app keeps working after the reseed: a new stroke + reload survives.
-    await drawStroke(-20, 60, 3.0);
-    await forceHide(); await sleep(200);
-    await reload();
-    ok("post-dpr-reseed session persists a new stroke", (await count()) > 0);
-
-    // ---- Phase E: eviction - folded rows persist + reload reconstructs ---------
+    // ---- Phase D: eviction - folded rows persist + reload keeps paint AND undo -
     // MAX_UNDO is 10; >10 strokes pushes the oldest into `folded`. The reload must
-    // reconstruct base + folded + active, proving folded rows round-trip through IDB.
+    // reconstruct base + folded + active AND rebuild the undo window (stable dpr).
     for (let i = 0; i < 13; i++) await drawStroke(-140 + i * 18, -80 + (i % 3) * 20, i * 0.4);
     const cManyLive = await count();
     await forceHide(); await sleep(200);
@@ -123,6 +113,39 @@ async function main() {
     ok("reload reconstructs base + folded + active (paint preserved)",
       cManyBoot > 0 && Math.abs(cManyBoot - cManyLive) < cManyLive * 0.1,
       `boot=${cManyBoot} live=${cManyLive}`);
+    const undoEnabled = await E(`(()=>{const b=[...document.querySelectorAll('button,[role=button]')].find(e=>/undo/i.test(e.getAttribute('aria-label')||e.title||''));return !!b&&!b.disabled})()`);
+    await clickBtn("/undo/i"); await sleep(400); const cAfterUndo = await count();
+    ok("undo works after an eviction reload (folded chain rebuilt)", undoEnabled && cAfterUndo !== cManyBoot,
+      `enabled=${undoEnabled} boot=${cManyBoot} afterUndo=${cAfterUndo}`);
+
+    // ---- Phase E: quota recovery - inject QuotaExceededError on v2 writes -------
+    // Make every v2 store write (meta2/base/entry keys) throw quota; the v1 shadow
+    // keyframe (meta/row) still writes, so recovery exhausts its levers and toasts.
+    await E(`(()=>{const o=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(v,k){if(window.__quotaArm&&typeof k==='string'&&/^(meta2|base:|entry:)/.test(k))throw new DOMException('full','QuotaExceededError');return o.call(this,v,k)};return true})()`);
+    const beforeQuota = await count();
+    await E(`window.__quotaArm=true;true`);
+    await drawStroke(30, 70, 2.2); // push -> v2 save throws quota -> recover -> toast
+    await sleep(500);
+    const chipText = await E(`document.querySelector('.undo-chip')?.textContent||''`);
+    ok("storage-full toast shown when quota can't be recovered", /storage is full/i.test(chipText), `chip="${chipText}"`);
+    ok("app survives quota (paint intact, no crash, in-memory alive)",
+      (await count()) >= beforeQuota && !!(await E(`!!(window.__replay&&window.__replay.layerManager)`)));
+    await E(`window.__quotaArm=false;true`); // disarm
+
+    // ---- Phase F: dpr switch (epoch boundary) stretch-restores; depth reset (S3) -
+    await setDpr(2);
+    await reload();
+    ok("dpr switch (1x->2x) reload stretch-restored the paint", (await count()) > 0, "@dpr2");
+    // After the reseed, draw at the new dpr, then reload at the SAME dpr: paint AND
+    // the freshly-built undo window must both survive (only the switch resets depth).
+    await drawStroke(-20, 60, 3.0);
+    await drawStroke(20, -60, 1.0);
+    await forceHide(); await sleep(200);
+    await reload();
+    const cDpr2Boot = await count();
+    const undoAtDpr2 = await E(`(()=>{const b=[...document.querySelectorAll('button,[role=button]')].find(e=>/undo/i.test(e.getAttribute('aria-label')||e.title||''));return !!b&&!b.disabled})()`);
+    ok("stable-dpr2 reload keeps paint and a working undo window", cDpr2Boot > 0 && undoAtDpr2,
+      `paint=${cDpr2Boot} undo=${undoAtDpr2}`);
 
     const mismatches = logs.filter((l) => /shadow verify mismatch/.test(l));
     const errors = logs.filter((l) => /error|exception|is not a function/i.test(l) && !/mismatch|persist failed|migration persist|boot failed|boot error/.test(l));
