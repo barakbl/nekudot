@@ -45,6 +45,7 @@
     "smoke:replay": "node tests/smoke/replay-twice.mjs",
     "smoke:replay-equivalence": "node tests/smoke/replay-equivalence.mjs",
     "smoke:replay-bench": "node tests/smoke/replay-bench.mjs",
+    "smoke:dirty-coverage": "node tests/smoke/dirty-coverage.mjs",
     "render-presets": "node tests/smoke/render-presets.mjs",
     "smoke-render": "node tests/smoke/all-render.mjs",
     "smoke-render:update": "node tests/smoke/all-render.mjs --update"
