@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // This suite uses the shared LayerManager harness, extended with an ASYNC toBlob
 // so captures genuinely take time - that's what the races are made of.
@@ -15,6 +15,7 @@ const raceToBlob = (cb: (b: Blob | null) => void) => {
 
 import type { LayerManager } from "../src/layered/manager";
 import { AppHistory } from "../src/app/history";
+import { UndoStats } from "../src/app/undo-stats";
 import {
   installDocumentStub,
   makeCanvasStub,
@@ -142,6 +143,27 @@ describe("AppHistory serialization", () => {
     await done;
     expect(initDone).toBe(true);
     expect(clearDone).toBe(true);
+  });
+
+  it("with stats off, the instrumentation never fires through push/undo", async () => {
+    const log = vi.fn();
+    const h = new AppHistory(manager, 10, new UndoStats({ enabled: false, log }));
+    await h.init(async () => {});
+    await h.push("stroke 1");
+    await h.undo(async () => {});
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("with stats on, push logs a capture and undo logs a restore", async () => {
+    const log = vi.fn();
+    const h = new AppHistory(manager, 10, new UndoStats({ enabled: true, log, now: () => 0 }));
+    await h.init(async () => {}); // seeds "Initial state" (a push)
+    await h.push("stroke 1");
+    await h.undo(async () => {});
+    const text = log.mock.calls.map((c) => c[0]).join("\n");
+    expect(text).toContain('capture "stroke 1"');
+    expect(text).toContain("undo restore:");
+    expect(text).toContain("stack:"); // the backend save tap reported bytes
   });
 
   it("rapid undo+redo serialize their applies (no interleaving)", async () => {

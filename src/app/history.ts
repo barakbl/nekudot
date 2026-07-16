@@ -2,6 +2,7 @@ import { PaintStore, type PaintSnapshot } from "../store/paint";
 import { UndoStore } from "../store/undo";
 import { UndoManager, type UndoSnapshot } from "../undo";
 import type { LayerManager } from "../layered/manager";
+import { UndoStats, withStackReporting } from "./undo-stats";
 
 // Paint persistence + undo plumbing for the app. Every history operation runs
 // through one FIFO queue, because captures and restores are async while the
@@ -25,11 +26,24 @@ export class AppHistory {
   // silently stop history recording for the rest of the session).
   private chain: Promise<void> = Promise.resolve();
 
+  // Instrumentation for the tile-undo baseline; a no-op unless
+  // localStorage["nekudot.undoStats"] is on (see undo-stats.ts). Injectable so
+  // tests can force it on/off and capture the log.
+  private readonly stats: UndoStats;
+
   constructor(
     private readonly layerManager: LayerManager,
     maxUndo: number,
+    stats: UndoStats = new UndoStats(),
   ) {
-    this.undoManager = new UndoManager(new UndoStore<UndoSnapshot>(), maxUndo);
+    this.stats = stats;
+    const backend = new UndoStore<UndoSnapshot>();
+    this.undoManager = new UndoManager(
+      // The stack-bytes tap only wraps the backend when stats are on, so the
+      // normal path keeps the bare store with no extra indirection.
+      stats.enabled ? withStackReporting(backend, stats) : backend,
+      maxUndo,
+    );
   }
 
   private enqueue(op: () => Promise<void> | void): Promise<void> {
@@ -49,6 +63,9 @@ export class AppHistory {
   init(
     restorePaint: (paint: PaintSnapshot | null) => Promise<void>,
   ): Promise<void> {
+    // Log the storage estimate at boot (no-op when the flag is off). Deliberately
+    // not awaited: it must not gate the first FIFO op behind a storage query.
+    void this.stats.logStorageEstimate();
     return this.enqueue(async () => {
       await this.undoManager.init();
       const current = this.undoManager.current();
@@ -70,7 +87,7 @@ export class AppHistory {
   // layer bitmap at invocation — so later mutations can't bleed in; the queue
   // only decides when the finished snapshot enters the stack, in call order.
   push(description: string): Promise<void> {
-    const pending = this.capture(description);
+    const pending = this.stats.measureCapture(description, this.capture(description));
     return this.enqueue(async () => {
       this.undoManager.push(await pending);
     });
@@ -97,7 +114,7 @@ export class AppHistory {
       const result =
         kind === "undo" ? this.undoManager.undo() : this.undoManager.redo();
       if (!result) return;
-      await apply(result.snap);
+      await this.stats.measureRestore(kind, () => apply(result.snap));
       action = result.action ?? null;
     }).then(() => action);
   }
