@@ -43,6 +43,7 @@ import { createFolderSync } from "./app/folder-sync";
 import { exportSettings, importSettings } from "./app/settings-io";
 import { setDiagnostics, dlog } from "./diagnostics";
 import { AppHistory } from "./app/history";
+import { createTileHost } from "./app/tile-capture";
 import { createMapsControl } from "./app/maps-control";
 import { bindDrawingInput } from "./app/drawing-input";
 import { createOpacityController } from "./app/opacity-controller";
@@ -610,7 +611,7 @@ layerManager.subscribe(() => {
 // AppHistory (the undo stack + paint snapshot) stays here, with its
 // init/clear/subscribe below; createUndoWiring owns the thin action wrappers.
 // layersBox is read lazily - it's created just below this block.
-const history = new AppHistory(layerManager, MAX_UNDO);
+const history = new AppHistory(layerManager, MAX_UNDO, undefined, createTileHost(layerManager));
 const { pushUndo: commitUndo, activeLayerName, doUndo, doRedo } = createUndoWiring({
   history,
   layerManager,
