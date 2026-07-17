@@ -404,6 +404,9 @@ describe("TileShadow chain: undo/redo + evict-fold", () => {
     expect((await shadow.verify(0)).layerDiffs).toBe(0); // floor preserved
   });
 
+  // A real 500-iteration soak with encode/decode + repeated compaction: seconds of
+  // genuine work, so it needs headroom over the default 5s per-test timeout on slow
+  // CI runners (it is not hung - just long).
   it("500-stroke soak stays under budget and the folded cap, still exact", async () => {
     const BUDGET = 4000;
     const host = new FakeHost(1024, 256, 1, ["L0"]);
@@ -425,5 +428,5 @@ describe("TileShadow chain: undo/redo + evict-fold", () => {
     expect(chain.folded.length).toBeLessThanOrEqual(30); // boot-replay cap holds
     expect((await shadow.verify(0)).layerDiffs).toBe(0); // exact through every compaction
     expect(shadow.mismatches).toBe(0);
-  });
+  }, 30_000);
 });
